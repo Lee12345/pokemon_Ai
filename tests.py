@@ -680,6 +680,109 @@ def test_scout_narrowing(dex):
           [b["name"] for b in blind["blame"][:3]])
 
 
+def test_switching(dex):
+    """5단계 — 교체 · 압정 · 강제 교체기.
+
+    제일 중요한 규칙은 **물러나면 랭크가 사라진다** 는 것이다.
+    이게 있어야 '용의춤을 쌓았으면 안 빠져야 한다' 가 계산으로 나오고,
+    상위권이 날려버리기를 드는 이유도 설명된다.
+    """
+    print("\n[19] 교체 · 압정")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    # --- 물러나면 랭크가 사라진다 ---
+    bt = battle.Battle(dex, [B("메가보만다"), B("고릴타")], B("하마돈"),
+                       rng=random.Random(1))
+    bt.step(dex.find_move("용의춤"), dex.find_move("하품"))
+    first = bt.me_party.members[0]
+    check("용의춤으로 공격+1", first.ranks["attack"] == 1, first.ranks)
+    bt.step(("교체", 1), dex.find_move("하품"))
+    check("교체하면 나간 쪽 랭크가 사라진다",
+          first.ranks["attack"] == 0, first.ranks)
+    check("교체하면 나와 있는 놈이 바뀐다", bt.me.name == "고릴타", bt.me.name)
+
+    # --- 스텔스록은 바위 상성을 탄다 ---
+    bt = battle.Battle(dex, [B("메가보만다"), B("한카리아스")], B("하마돈"),
+                       rng=random.Random(1), log=True)
+    bt.me_party.hazards["스텔스록"] = 1
+    bt.switch_in(bt.me_party, 1)
+    chomp = bt.me_party.members[1]
+    # 메가한카리아스Z 는 순수 드래곤 -> 바위는 보통(x1) -> 1/8
+    check("스텔스록 데미지가 상성을 탄다",
+          chomp.max_hp - chomp.hp == max(1, int(chomp.max_hp * 1.0 / 8)),
+          chomp.max_hp - chomp.hp)
+
+    # --- 압정은 떠 있으면 안 밟지만 스텔스록은 밟는다 ---
+    bt = battle.Battle(dex, [B("하마돈"), B("메가보만다")], B("하마돈"),
+                       rng=random.Random(1))
+    bt.me_party.hazards["압정뿌리기"] = 1
+    bt.switch_in(bt.me_party, 1)
+    flyer = bt.me_party.members[1]
+    check("비행타입은 압정을 안 밟는다", flyer.hp == flyer.max_hp,
+          "%d/%d" % (flyer.hp, flyer.max_hp))
+
+    # --- 독압정은 독타입이 걷어 간다 ---
+    poison = [p for p in dex.pokemon
+              if "독" in p["types"] and (dex.usage.get(p["key"]) or {}).get("rank")]
+    if poison:
+        bt = battle.Battle(dex, [B("하마돈"), calc.Build(dex, poison[0])],
+                           B("하마돈"), rng=random.Random(1))
+        bt.me_party.hazards["독압정"] = 1
+        bt.switch_in(bt.me_party, 1)
+        check("독타입이 나오면 독압정을 걷어 간다",
+              "독압정" not in bt.me_party.hazards, bt.me_party.hazards)
+
+    # --- 강제 교체기가 실제로 바꾼다 ---
+    bt = battle.Battle(dex, [B("메가보만다"), B("고릴타")], B("하마돈"),
+                       rng=random.Random(2))
+    bt.step(dex.find_move("용의춤"), dex.find_move("날려버리기"))
+    check("날려버리기에 밀려 강제로 바뀐다", bt.me.name == "고릴타", bt.me.name)
+    check("밀려 나가면 쌓은 랭크도 같이 날아간다",
+          bt.me_party.members[0].ranks["attack"] == 0,
+          bt.me_party.members[0].ranks)
+
+    # --- 흡반은 강제 교체를 막는다 ---
+    bt = battle.Battle(dex, [B("메가보만다"), B("고릴타")], B("하마돈"),
+                       rng=random.Random(2))
+    bt.me_party.members[0].base.ability = "흡반"
+    bt.step(dex.find_move("용의춤"), dex.find_move("날려버리기"))
+    check("흡반이 강제 교체를 막는다", bt.me.name == "메가보만다", bt.me.name)
+
+    # --- 쓰러지면 다음이 나오고, 파티가 다 죽어야 끝난다 ---
+    bt = battle.Battle(dex, [B("메가보만다"), B("고릴타")], B("하마돈"),
+                       rng=random.Random(1))
+    bt.me_party.members[0].hp = 0
+    bt._replace_fainted()
+    check("쓰러지면 다음 포켓몬이 나온다", bt.me.name == "고릴타", bt.me.name)
+    check("한 마리 쓰러져도 안 끝난다", not bt.over)
+    bt.me_party.members[1].hp = 0
+    check("다 쓰러지면 끝난다", bt.over)
+
+
+def test_intimidate(dex):
+    """위협 — 1위 보만다 99.3%, 갸라도스 99.4%. 나올 때마다 상대 공격을 깎는다."""
+    print("\n[20] 나올 때 터지는 특성")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    gyara = calc.Build(dex, dex.find_pokemon("갸라도스"), ability="위협")
+    bt = battle.Battle(dex, gyara, B("한카리아스"), rng=random.Random(1),
+                       log=True)
+    check("위협이 상대 공격을 1단계 깎는다",
+          bt.opp.ranks["attack"] == -1, bt.opp.ranks)
+    check("로그에 남는다", any("위협" in r for r in bt.log), bt.log[:3])
+
+    # 파수견은 위협을 막고 오히려 공격이 오른다
+    target = calc.Build(dex, dex.find_pokemon("한카리아스"), ability="파수견")
+    bt = battle.Battle(dex, gyara, target, rng=random.Random(1))
+    check("파수견은 위협을 안 받는다", bt.opp.ranks["attack"] >= 0, bt.opp.ranks)
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -703,6 +806,8 @@ def main():
     test_status(dex)
     test_scout(dex)
     test_scout_narrowing(dex)
+    test_switching(dex)
+    test_intimidate(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

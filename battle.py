@@ -79,6 +79,27 @@ ON_HIT_ABILITY = {
 DISGUISE = "탈"          # 따라큐(11위) 100% — 첫 공격을 무효로 하고 최대 HP의 1/8 소모
 ENDURE_FULL = "옹골참"   # HP가 꽉 차 있으면 한 방에 안 죽고 1 남는다
 
+# --- 5단계: 교체 -----------------------------------------------------------
+# 나올 때 한 번 터지는 특성. 날씨 까는 것들은 WEATHER_ABILITY 에 따로 있다.
+ENTRY_ABILITY = {
+    # 보만다(1위) 99.3%, 갸라도스(14위) 99.4% — 나올 때마다 상대 공격을 깎는다
+    "위협": {"kind": "foe_rank", "stat": "attack", "step": -1},
+    "파수견": {"kind": "self_rank", "stat": "attack", "step": 1},
+}
+# 위협을 무시하는 특성
+INTIMIDATE_PROOF = {"파수견", "둔감", "마이페이스", "정신력"}
+# 강제 교체를 안 당하는 특성 (설명문에 '교체시키는 기술 ... 효과를 받지 않는다')
+PHAZE_PROOF = {"흡반", "파수견"}
+# 상대를 못 빠지게 하는 특성
+TRAP_ABILITY = {"그림자밟기", "개미지옥", "자력"}
+
+# 압정. 나올 때 한 번 맞는다.
+# 수치는 게임 데이터에 없어서 calc.CONFIG 에 본편 값을 모아 뒀다.
+HAZARDS = ("스텔스록", "압정뿌리기", "독압정", "끈적끈적네트")
+# 땅에 안 닿아 있으면 압정을 안 밟는다 (스텔스록은 예외 — 공중에도 맞는다)
+GROUNDED_IMMUNE_TYPES = {"비행"}
+GROUNDED_IMMUNE_ABILITY = {"부유", "천정부지"}
+
 
 # ---------------------------------------------------------------------------
 # 변화기가 무슨 일을 하는가 — 게임 설명문에서 읽어낸다
@@ -272,6 +293,55 @@ class Side(object):
         }
 
 
+class Party(object):
+    """한 쪽이 데리고 나온 포켓몬들. 지금 나와 있는 것과 벤치.
+
+    기본 룰이 6마리 파티 -> 3마리 선출이므로, 여기 들어오는 건 보통 3마리다.
+    1마리만 넣으면 4-B 와 똑같이 1대1 이 된다.
+    """
+
+    def __init__(self, dex, builds):
+        if not isinstance(builds, (list, tuple)):
+            builds = [builds]
+        self.dex = dex
+        self.members = [Side(dex, b) for b in builds]
+        self.active_idx = 0
+        # 이 편이 '맞는' 압정. 상대가 깔아 둔 것이다.
+        self.hazards = {}
+
+    @property
+    def active(self):
+        return self.members[self.active_idx]
+
+    @property
+    def alive(self):
+        return any(m.alive for m in self.members)
+
+    def bench(self):
+        """지금 바꿔 나갈 수 있는 것들. (번호, Side) 목록."""
+        return [(i, m) for i, m in enumerate(self.members)
+                if i != self.active_idx and m.alive]
+
+    def add_hazard(self, kind):
+        """압정을 한 겹 쌓는다. 쌓을 수 있으면 True."""
+        cap = 1
+        if kind == "압정뿌리기":
+            cap = calc.CONFIG["max_spike_layers"]
+        elif kind == "독압정":
+            cap = calc.CONFIG["max_toxic_layers"]
+        now = self.hazards.get(kind, 0)
+        if now >= cap:
+            return False
+        self.hazards[kind] = now + 1
+        return True
+
+    def hazard_text(self):
+        if not self.hazards:
+            return "없음"
+        return " ".join("%s%s" % (k, "x%d" % v if v > 1 else "")
+                        for k, v in self.hazards.items())
+
+
 class Field(object):
     """날씨·필드. 전역 상태라 처음부터 자리를 만들어 둔다."""
 
@@ -314,8 +384,9 @@ class Battle(object):
 
     def __init__(self, dex, me_build, opp_build, rng=None, log=False):
         self.dex = dex
-        self.me = Side(dex, me_build)
-        self.opp = Side(dex, opp_build)
+        # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
+        self.me_party = Party(dex, me_build)
+        self.opp_party = Party(dex, opp_build)
         self.field = Field()
         self.rng = rng or random.Random()
         self.turn = 0
@@ -324,6 +395,19 @@ class Battle(object):
         self._immune_abilities = status_immune_abilities(dex)
         self._entry_weather()
 
+    # 지금 나와 있는 놈. 교체가 들어와도 나머지 코드는 그대로 돌아간다.
+    @property
+    def me(self):
+        return self.me_party.active
+
+    @property
+    def opp(self):
+        return self.opp_party.active
+
+    def _party_of(self, side):
+        return (self.me_party if side in self.me_party.members
+                else self.opp_party)
+
     def _say(self, text):
         if self.log is not None:
             self.log.append("%2d턴  %s" % (self.turn, text))
@@ -331,6 +415,114 @@ class Battle(object):
     def _warn(self, text):
         if text not in self.warnings:
             self.warnings.append(text)
+
+    # -- 교체 ---------------------------------------------------------------
+    def _grounded(self, side):
+        """땅에 닿아 있는가. 압정은 떠 있으면 안 밟는다 (스텔스록은 예외)."""
+        if side.base.ability in GROUNDED_IMMUNE_ABILITY:
+            return False
+        if set(side.base.types) & GROUNDED_IMMUNE_TYPES:
+            return False
+        return True
+
+    def _apply_hazards(self, party, side):
+        """나올 때 압정을 밟는다. 수치는 게임 데이터에 없어서 본편 값 가정."""
+        if not party.hazards:
+            return
+        self._warn("압정 수치는 게임 데이터에 없어 본편 값을 가정했습니다 "
+                   "(스텔스록 1/8 x 바위 상성, 압정 1/8~1/4)")
+
+        if party.hazards.get("스텔스록"):
+            # 스텔스록만 떠 있어도 맞고, 바위 상성을 그대로 탄다
+            eff = self.dex.effectiveness("바위", side.base.types)
+            hurt = max(1, int(side.max_hp * eff / calc.CONFIG["rock_hazard"]))
+            side.damage(hurt, direct=False)
+            self._say("%s 가 스텔스록을 밟았다 — %d (상성 x%g, HP %d/%d)"
+                      % (side.name, hurt, eff, side.hp, side.max_hp))
+            self._pinch_berry(side)
+        if not side.alive or not self._grounded(side):
+            return
+
+        n = party.hazards.get("압정뿌리기", 0)
+        if n:
+            frac = calc.CONFIG["spike_layers"][min(n, 3) - 1]
+            hurt = max(1, side.max_hp // frac)
+            side.damage(hurt, direct=False)
+            self._say("%s 가 압정을 밟았다 — %d (%d겹, HP %d/%d)"
+                      % (side.name, hurt, n, side.hp, side.max_hp))
+            self._pinch_berry(side)
+        if not side.alive:
+            return
+
+        n = party.hazards.get("독압정", 0)
+        if n:
+            if "독" in side.base.types:
+                # 독타입이 나오면 독압정을 걷어 간다
+                party.hazards.pop("독압정", None)
+                self._say("%s 가 독압정을 걷어 갔다" % side.name)
+            else:
+                self._inflict(side, "맹독" if n >= 2 else "독")
+        if party.hazards.get("끈적끈적네트"):
+            if side.bump("speed", -1):
+                self._say("%s 가 끈적끈적네트에 걸렸다 — 스피드-1" % side.name)
+
+    def _entry_abilities(self, side):
+        """나올 때 한 번 터지는 특성. 위협이 제일 흔하다 (보만다 99.3%)."""
+        ab = ENTRY_ABILITY.get(side.base.ability)
+        if not ab:
+            return
+        if ab["kind"] == "foe_rank":
+            foe = self.opp if side is self.me else self.me
+            if foe.base.ability in INTIMIDATE_PROOF:
+                self._say("%s 의 %s — %s 에게는 안 통한다"
+                          % (side.name, side.base.ability, foe.name))
+                return
+            if foe.bump(ab["stat"], ab["step"]):
+                self._say("%s 의 %s — %s %s%+d"
+                          % (side.name, side.base.ability, foe.name,
+                             calc.STAT_KO[ab["stat"]], ab["step"]))
+        elif ab["kind"] == "self_rank":
+            if side.bump(ab["stat"], ab["step"]):
+                self._say("%s 의 %s — 공격%+d" % (side.name, side.base.ability,
+                                                 ab["step"]))
+
+    def switch_in(self, party, idx, reason=""):
+        """교체. 나가는 쪽의 랭크는 사라지고, 들어오는 쪽은 압정을 밟는다."""
+        old = party.active
+        if old.alive:
+            # **랭크는 물러나면 사라진다.** 쌓아 둔 것을 지키려면 안 빠져야 한다.
+            old.ranks = {k: 0 for k in old.ranks}
+            old.confused = 0
+            old.drowsy = 0
+            old.protecting = False
+        party.active_idx = idx
+        side = party.active
+        self._say("%s 로 교체%s" % (side.name, (" (%s)" % reason) if reason else ""))
+        self._apply_hazards(party, side)
+        if side.alive:
+            self._entry_weather_for(side)
+            self._entry_abilities(side)
+
+    def _entry_weather_for(self, side):
+        w = WEATHER_ABILITY.get(side.base.ability)
+        if w:
+            self.field.set(w)
+            self._say("%s(%s) — %s" % (side.name, side.base.ability, w))
+
+    def _force_switch(self, party, by_name):
+        """날려버리기·울부짖기·드래곤테일. 랭크를 통째로 날린다."""
+        side = party.active
+        if side.base.ability in PHAZE_PROOF:
+            self._say("%s 의 %s 로 %s 를 버텼다"
+                      % (side.name, side.base.ability, by_name))
+            return False
+        bench = party.bench()
+        if not bench:
+            self._say("%s — 바꿀 포켓몬이 없어 실패" % by_name)
+            return False
+        idx = self.rng.choice([i for i, _ in bench])
+        self.switch_in(party, idx, "%s 에 밀려서" % by_name)
+        return True
 
     def _entry_weather(self):
         """등장만으로 날씨를 까는 특성. 상위권에 99.8% 로 깔려 있다.
@@ -346,6 +538,8 @@ class Battle(object):
             if w:
                 self.field.set(w)
                 self._say("%s(%s) 등장 — %s" % (side.name, side.base.ability, w))
+        for side, who in order:
+            self._entry_abilities(side)
 
     # -- 데미지 -------------------------------------------------------------
     def _power_scale(self, move, attacker):
@@ -503,16 +697,21 @@ class Battle(object):
                 self.field.set(ef["weather"])
                 self._say("%s 의 %s — %s" % (user.name, move["name"], ef["weather"]))
             elif k == "phaze":
-                self._say("%s 의 %s — 바꿀 포켓몬이 없어 실패 (파티는 5단계)"
-                          % (user.name, move["name"]))
-                self._warn("'%s' 는 상대를 강제로 교체시키는 기술입니다. "
-                           "1대1 에서는 실패 처리되지만 실전에서는 "
-                           "쌓아 놓은 랭크가 전부 날아갑니다." % move["name"])
+                if target.protecting:
+                    continue
+                self._force_switch(self._party_of(target), move["name"])
             elif k == "hazard":
-                self._say("%s 의 %s — 1대1 에서는 효과가 없다 (교체가 없음)"
-                          % (user.name, move["name"]))
-                self._warn("'%s' 는 교체가 있어야 값어치가 나옵니다 (5단계)"
-                           % move["name"])
+                foe_party = self._party_of(target)
+                if foe_party.add_hazard(ef["hazard"]):
+                    self._say("%s 의 %s — 상대 쪽에 깔았다 (지금 %s)"
+                              % (user.name, move["name"],
+                                 foe_party.hazard_text()))
+                    if len(foe_party.members) == 1:
+                        self._warn("'%s' 는 상대가 교체할 때 값어치가 납니다. "
+                                   "지금은 1대1 이라 효과가 없습니다."
+                                   % move["name"])
+                else:
+                    self._say("%s 의 %s — 더 못 쌓는다" % (user.name, move["name"]))
             else:
                 self._say("%s 의 %s — 효과를 아직 모른다" % (user.name, move["name"]))
                 self._warn("'%s' 의 효과를 설명문에서 못 읽었습니다" % move["name"])
@@ -629,14 +828,46 @@ class Battle(object):
         else:
             self._hit(actor, target, move, None)
 
-    def step(self, my_move, opp_move):
-        """한 턴 진행."""
+    def step(self, my_action, opp_action):
+        """한 턴 진행.
+
+        수는 둘 중 하나다.
+          · 기술 (moves.json 의 항목)
+          · ("교체", 번호)
+        교체는 기술보다 먼저 처리된다.
+        """
         self.turn += 1
         self.me.protecting = False
         self.opp.protecting = False
 
-        order = best.turn_order(self.dex, self.me.as_build(), my_move,
-                                self.opp.as_build(), opp_move)
+        # 1) 교체가 먼저다
+        pending = []
+        for action, party, who in ((my_action, self.me_party, "나"),
+                                   (opp_action, self.opp_party, "상대")):
+            if isinstance(action, tuple) and action[0] == "교체":
+                foe = self.opp if party is self.me_party else self.me
+                if foe.base.ability in TRAP_ABILITY:
+                    self._say("%s 의 %s 때문에 못 빠진다"
+                              % (foe.name, foe.base.ability))
+                    pending.append((party, None))
+                    continue
+                self.switch_in(party, action[1])
+                pending.append((party, None))
+            else:
+                pending.append((party, action))
+
+        my_move = pending[0][1]
+        opp_move = pending[1][1]
+        if my_move is None and opp_move is None:
+            self._end_of_turn()
+            self._replace_fainted()
+            return
+
+        # 2) 남은 기술을 순서대로
+        probe = my_move or best.NEUTRAL_MOVE
+        probe2 = opp_move or best.NEUTRAL_MOVE
+        order = best.turn_order(self.dex, self.me.as_build(), probe,
+                                self.opp.as_build(), probe2)
         first = order["first"]
         if first == "동시":
             first = "나" if self.rng.random() < 0.5 else "상대"
@@ -645,12 +876,32 @@ class Battle(object):
             seq.reverse()
 
         for actor, target, move in seq:
+            if move is None:
+                continue          # 이 턴에 교체한 쪽이다
             if not (self.me.alive and self.opp.alive):
                 break
             self._act(actor, target, move)
 
         if self.me.alive and self.opp.alive:
             self._end_of_turn()
+        self._replace_fainted()
+
+    def _replace_fainted(self):
+        """쓰러진 자리에 다음 놈을 내보낸다. 나오면서 압정을 밟는다."""
+        for party in (self.me_party, self.opp_party):
+            if party.active.alive or not party.alive:
+                continue
+            bench = party.bench()
+            if not bench:
+                continue
+            # 지금은 남은 것 중 HP 비율이 제일 높은 놈을 낸다.
+            # 무엇을 내보낼지 고르는 것 자체가 하나의 판단이라 나중에 손볼 자리다.
+            idx = max(bench, key=lambda x: x[1].hp_ratio)[0]
+            self.switch_in(party, idx, "쓰러진 자리")
+
+    @property
+    def over(self):
+        return not (self.me_party.alive and self.opp_party.alive)
 
     def _end_of_turn(self):
         """턴 끝 — 상태이상 · 날씨 칩댐 · 먹다남은음식."""
@@ -718,18 +969,36 @@ def _pick(plan, turn_index):
     return plan[min(turn_index, len(plan) - 1)]
 
 
+def action_name(action, party=None):
+    """수 하나를 사람이 읽을 이름으로. 교체는 누구로 바꾸는지까지 적는다."""
+    if isinstance(action, tuple) and action[0] == "교체":
+        if party is not None and action[1] < len(party):
+            return "%s 로 교체" % party[action[1]].name
+        return "교체"
+    return action["name"]
+
+
+def _first(builds):
+    """파티를 줬으면 지금 나와 있는 놈, 한 마리를 줬으면 그놈."""
+    return builds[0] if isinstance(builds, (list, tuple)) else builds
+
+
+def _as_party(builds):
+    return list(builds) if isinstance(builds, (list, tuple)) else [builds]
+
+
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다."""
     b = Battle(dex, me_build, opp_build, rng=rng, log=log)
     for i in range(MAX_TURNS):
-        if not (b.me.alive and b.opp.alive):
+        if b.over:
             break
         b.step(_pick(my_plan, i), _pick(opp_plan, i))
-    if b.me.alive and not b.opp.alive:
+    if b.me_party.alive and not b.opp_party.alive:
         result = "이김"
-    elif b.opp.alive and not b.me.alive:
+    elif b.opp_party.alive and not b.me_party.alive:
         result = "짐"
-    elif not b.me.alive and not b.opp.alive:
+    elif not b.me_party.alive and not b.opp_party.alive:
         result = "동시에 쓰러짐"
     else:
         result = "안 끝남"
@@ -739,7 +1008,8 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False):
             "weather": b.field.weather, "terrain": b.field.terrain}
 
 
-def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400, seed=7):
+def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
+             seed=7, my_party=None):
     """같은 계획을 여러 번 돌려 승률과 '평균적으로 어떤 상태로 끝나는지' 를 낸다.
 
     난수(데미지 16단계 · 명중 · 급소 · 마비)가 있으므로 한 판만 봐서는 안 된다.
@@ -767,7 +1037,7 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400, seed=7):
     # 이기고 나서 남는 몸을 한 숫자로. 후속 포켓몬에게 이어지는 값어치다.
     carry = avg_hp + sum(avg_ranks.values()) * RANK_VALUE
     return {
-        "plan": [m["name"] for m in my_plan],
+        "plan": [action_name(a, my_party) for a in my_plan],
         "winRate": wins / float(trials),
         "avgTurns": turns / float(trials),
         # 이겼을 때 평균적으로 어떤 몸으로 남는가 — 후속 포켓몬에게 그대로 이어진다
@@ -779,7 +1049,7 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400, seed=7):
 
 
 def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
-                             seed=7, evidence=None):
+                             seed=7, evidence=None, my_party=None):
     """4-C — 상대를 하나로 고정하지 않고, 매 판 새로 뽑아서 싸운다.
 
     '사용률 1위 배분에 제일 아픈 기술' 하나를 상대로 삼으면
@@ -802,7 +1072,7 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
     for _ in range(trials):
         opp_build, opp_moves = scout.sample_opponent(
             dex, opp_poke, rng, evidence, speed_of)
-        rows = best.rate_moves(dex, opp_build, me_build,
+        rows = best.rate_moves(dex, opp_build, _first(me_build),
                                [(m, None) for m in opp_moves])
         threat = best.best_threat(rows)
         if threat:
@@ -847,7 +1117,7 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
     blame.sort(key=lambda x: -(x["lift"] * x["inLosses"]))
 
     return {
-        "plan": [m["name"] for m in my_plan],
+        "plan": [action_name(a, my_party) for a in my_plan],
         "winRate": wins / float(trials),
         "avgTurns": turns / float(trials),
         "carry": (carry_sum / wins) if wins else 0.0,
@@ -860,7 +1130,11 @@ def build_plans(dex, me_build, opp_build, my_moves=None):
     """비교해 볼 계획들을 만든다.
 
     ① 공격기 하나만 계속  ② 변화기 한 번 쓰고 그 공격기  ③ 변화기 두 번
+    ④ **빠지고 나서 때린다** — 파티가 있을 때만 (5단계)
     """
+    party = _as_party(me_build)
+    me_build = _first(me_build)
+    opp_build = _first(opp_build)
     rows = best.rate_moves(dex, me_build, opp_build,
                            best.candidate_moves(dex, me_build.poke, my_moves))
     dmg = sorted(best.damage_rows(rows), key=lambda r: -r["expected"])
@@ -877,6 +1151,15 @@ def build_plans(dex, me_build, opp_build, my_moves=None):
     # 두 번째로 센 공격기도 한 번 본다
     if len(dmg) > 1:
         plans.append([dmg[1]["move"]])
+
+    # 빠지는 것도 하나의 수다. 벤치마다 '바꿔서 그놈의 주력으로 때린다' 를 만든다.
+    for i in range(1, len(party)):
+        sub_rows = best.rate_moves(
+            dex, party[i], opp_build,
+            best.candidate_moves(dex, party[i].poke))
+        sub = best.best_threat(sub_rows)
+        if sub:
+            plans.append([("교체", i), sub["move"]])
     return plans, rows
 
 
@@ -905,6 +1188,8 @@ def opponent_plan(dex, opp_build, me_build, worst_case=False):
 
     4-C 에서 이 자리가 '분포' 로 바뀐다.
     """
+    opp_build = _first(opp_build)
+    me_build = _first(me_build)
     pool = (best.candidate_moves(dex, opp_build.poke) if worst_case
             else realistic_moveset(dex, opp_build.poke))
     rows = best.rate_moves(dex, opp_build, me_build, pool)
@@ -927,14 +1212,19 @@ def _rank_text(ranks):
     return " ".join(got) if got else "없음"
 
 
-def report(dex, me_build, opp_build, results, opp_plan_moves, opp_pool, trials):
+def report(dex, me_build, opp_build, results, opp_plan_moves, opp_pool, trials,
+           me_party=None, opp_party=None):
     L = []
     line = "=" * 78
     L.append(line)
     L.append("  4-B  턴을 끝까지 돌려 본 결과   ·   각 계획 %d판" % trials)
     L.append(line)
-    L.append("  나   " + me_build.describe())
-    L.append("  상대 " + opp_build.describe())
+    L.append("  나   " + _first(me_build).describe())
+    if me_party and len(me_party) > 1:
+        L.append("       벤치 " + ", ".join(b.name for b in me_party[1:]))
+    L.append("  상대 " + _first(opp_build).describe())
+    if opp_party and len(opp_party) > 1:
+        L.append("       벤치 " + ", ".join(b.name for b in opp_party[1:]))
     L.append("")
     L.append("  [판단의 근거]  나중에 지고 나서 되짚을 수 있도록 남긴다")
     L.append("    · 상대 기술 4개를 이렇게 가정했다 — %s"
@@ -1060,6 +1350,9 @@ def report_distribution(dex, me_build, opp_poke, results, evidence, trials):
 
 USAGE = """사용법: python battle.py <내 포켓몬> <상대 포켓몬> [옵션]
 
+  포켓몬을 쉼표로 여러 마리 적으면 교체가 있는 대전이 된다 (5단계)
+    python battle.py 메가보만다,한카리아스 하마돈,브리두라스
+
   --분포                       상대를 사용률대로 매 판 새로 뽑는다 (4-C)
   --봤다 지진,하품             상대가 쓰는 걸 본 기술 — 확률 100%로 확정된다
   --계획 용의춤,이판사판태클   이 순서대로 쓰는 계획 하나만 돌려본다
@@ -1103,8 +1396,13 @@ def main():
 
     dex = calc.Dex()
     try:
-        me, _ = calc.popular_build(dex, dex.find_pokemon(rest[0]))
-        opp, _ = calc.popular_build(dex, dex.find_pokemon(rest[1]))
+        # 쉼표로 여러 마리를 적으면 교체가 있는 대전이 된다 (5단계)
+        me_party = [calc.popular_build(dex, dex.find_pokemon(n))[0]
+                    for n in rest[0].split(",") if n.strip()]
+        opp_party = [calc.popular_build(dex, dex.find_pokemon(n))[0]
+                     for n in rest[1].split(",") if n.strip()]
+        me = me_party if len(me_party) > 1 else me_party[0]
+        opp = opp_party if len(opp_party) > 1 else opp_party[0]
         opp_plan, _, opp_pool = opponent_plan(dex, opp, me, worst_case=worst)
         if plan_arg:
             plans = [[dex.find_move(n) for n in plan_arg.split(",")]]
@@ -1121,16 +1419,20 @@ def main():
     # 승률이 먼저, 같으면 '이기고 나서 남는 몸' 으로 가른다
     if use_dist:
         ev = scout.Evidence(seen_moves=seen)
-        results = [evaluate_vs_distribution(dex, me, opp.poke, p,
-                                            trials=trials, evidence=ev)
+        results = [evaluate_vs_distribution(dex, me, _first(opp).poke, p,
+                                            trials=trials, evidence=ev,
+                                            my_party=me_party)
                    for p in plans]
         results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
-        print(report_distribution(dex, me, opp.poke, results, ev, trials))
+        print(report_distribution(dex, _first(me), _first(opp).poke, results,
+                                  ev, trials))
     else:
-        results = [evaluate(dex, me, opp, p, opp_plan, trials=trials)
+        results = [evaluate(dex, me, opp, p, opp_plan, trials=trials,
+                            my_party=me_party)
                    for p in plans]
         results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
-        print(report(dex, me, opp, results, opp_plan, opp_pool, trials))
+        print(report(dex, me, opp, results, opp_plan, opp_pool, trials,
+                     me_party=me_party, opp_party=opp_party))
 
     if show_log:
         r = run_once(dex, me, opp, plans[0], opp_plan, random.Random(1), log=True)
