@@ -11,6 +11,7 @@ import itertools
 import math
 import sys
 
+import best
 import calc
 
 FAIL = []
@@ -57,14 +58,14 @@ def test_stat_formula():
 def test_sp_budget():
     """노력치 총합 66, 개별 32 제약이 실제로 가능한 최대치인가."""
     print("\n[2] 노력치 예산")
-    best = 0
+    top = 0        # 이름을 best 로 두면 위에서 import 한 모듈을 가린다
     for used in range(1, 7):
         for total in range(1, 6 * 32 + 1):
             if total > 32 * used:
                 break
             if 8 * total - 4 * used <= 510:
-                best = max(best, total)
-    check("구 노력치 510 제약에서 최대 66점", best == 66, "계산값 %d" % best)
+                top = max(top, total)
+    check("구 노력치 510 제약에서 최대 66점", top == 66, "계산값 %d" % top)
 
 
 def test_damage_vs_index(dex):
@@ -234,6 +235,138 @@ def test_abilities_items(dex):
     check("구애하치마키는 챔피언스에 없다", "구애하치마키" not in eff)
 
 
+def test_mega_stone(dex):
+    """메가스톤이 어느 폼으로 이어지는지 제대로 읽어냈는가.
+
+    사용률은 기본 폼 기준이라 메가는 '도구 채용률' 로만 나타난다.
+    이걸 놓치면 메가스톤을 든 기본 폼이라는, 실제로는 없는 몸으로 계산하게 된다.
+    """
+    print("\n[7] 메가스톤 -> 폼 연결")
+    megas = [p for p in dex.pokemon if p.get("isMega")]
+    check("메가 폼 %d개가 전부 도구와 이어짐" % len(megas),
+          len(dex.mega_by_item) == len(megas),
+          "도구 %d개 / 폼 %d개" % (len(dex.mega_by_item), len(megas)))
+    # 메가가 둘인 포켓몬은 설명문 괄호로 갈라야 한다
+    check("리자몽나이트X -> 메가리자몽X",
+          dex.mega_by_item.get("리자몽나이트X", {}).get("formName") == "메가리자몽X",
+          dex.mega_by_item.get("리자몽나이트X"))
+    check("한카리아스나이트Z -> 메가한카리아스Z",
+          dex.mega_by_item.get("한카리아스나이트Z", {}).get("formName")
+          == "메가한카리아스Z",
+          dex.mega_by_item.get("한카리아스나이트Z"))
+    # 1위 도구가 메가스톤이면 그 폼으로 바뀌어야 한다
+    b, _ = calc.popular_build(dex, dex.find_pokemon("보만다"))
+    check("보만다는 메가로 계산된다 (보만다나이트 97.7%)",
+          b.poke.get("isMega"), b.name)
+
+
+def test_speed(dex):
+    """4-A 의 핵심 — 누가 먼저 때리는가."""
+    print("\n[8] 스피드 · 선공 판정")
+    items = best.speed_item_effects(dex)
+    check("구애스카프 = 스피드 1.5배", items.get("구애스카프") == 1.5,
+          items.get("구애스카프"))
+    check("검은철구 = 스피드 0.5배", items.get("검은철구") == 0.5,
+          items.get("검은철구"))
+
+    chomp = dex.find_pokemon("한카리아스")
+    jolly = dex.find_nature("명랑")
+    bare = calc.Build(dex, chomp, sp={"speed": 32}, nature=jolly)
+    base = best.effective_speed(dex, bare)[0]
+    scarf = calc.Build(dex, chomp, sp={"speed": 32}, nature=jolly,
+                       item="구애스카프")
+    para = calc.Build(dex, chomp, sp={"speed": 32}, nature=jolly, status="마비")
+    check("스카프를 들면 1.5배", best.effective_speed(dex, scarf)[0]
+          == int(base * 1.5), best.effective_speed(dex, scarf)[0])
+    check("마비면 절반", best.effective_speed(dex, para)[0]
+          == int(base * calc.CONFIG["paralysis_speed"]),
+          best.effective_speed(dex, para)[0])
+
+    slow = calc.Build(dex, dex.find_pokemon("하마돈"))
+    quick_move = dex.find_move("지진")
+    o = best.turn_order(dex, bare, quick_move, slow, quick_move)
+    check("빠른 쪽이 먼저", o["first"] == "나", o)
+    o = best.turn_order(dex, bare, quick_move, slow, quick_move, trick_room=True)
+    check("트릭룸이면 느린 쪽이 먼저", o["first"] == "상대", o)
+    o = best.turn_order(dex, bare, quick_move, slow, dex.find_move("전광석화"))
+    check("우선도가 스피드를 이긴다", o["first"] == "상대", o)
+    o = best.turn_order(dex, bare, quick_move, bare, quick_move)
+    check("스피드가 같으면 동속", o["first"] == "동시", o)
+
+    # 짓궂은마음은 변화기 우선도를 올린다
+    prank = calc.Build(dex, chomp, ability="짓궂은마음")
+    p, _ = best.move_priority(prank, dex.find_move("칼춤"))
+    check("짓궂은마음: 변화기 우선도 +1", p == 1, p)
+    p, _ = best.move_priority(prank, dex.find_move("지진"))
+    check("짓궂은마음: 공격기는 그대로", p == 0, p)
+
+
+def test_race():
+    """선공/후공에 따라 몇 타 차이가 나야 이기는가.
+
+    선공이면 같은 타수라도 이기고, 후공이면 한 번 더 빨라야 이긴다.
+    여기가 틀리면 4-A 의 결론이 통째로 뒤집힌다.
+    """
+    print("\n[9] 대면 승패 계산")
+
+    def res(lo, hi):
+        return {"hitsMin": lo, "hitsMax": hi}
+
+    check("선공 2타 vs 상대 2타 → 이김",
+          best.race(res(2, 2), res(2, 2), "나") == best.WIN)
+    check("후공 2타 vs 상대 2타 → 짐",
+          best.race(res(2, 2), res(2, 2), "상대") == best.LOSE)
+    check("후공 2타 vs 상대 3타 → 이김",
+          best.race(res(2, 2), res(3, 3), "상대") == best.WIN)
+    check("선공 2~3타 vs 상대 2타 → 난수",
+          best.race(res(2, 3), res(2, 2), "나") == best.LUCK)
+    check("동속 2타 vs 상대 2타 → 난수",
+          best.race(res(2, 2), res(2, 2), "동시") == best.LUCK)
+    check("상대가 나를 못 잡으면 이김",
+          best.race(res(5, 5), None, "상대") == best.WIN)
+
+
+def test_move_caveats(dex):
+    """'위력 그대로' 가 아닌 기술을 알아보는가."""
+    print("\n[10] 기술 특수 규칙 잡아내기")
+    cases = [("솔라빔", "2턴"), ("바늘미사일", "연속"), ("나이트헤드", "고정"),
+             ("이판사판태클", "자신도 받는다"), ("자이로볼", "위력"),
+             ("역린", "혼란")]
+    for name, word in cases:
+        got = best.move_caveats(dex.find_move(name))
+        check("%s → 경고에 '%s'" % (name, word),
+              any(word in g for g in got), got)
+    check("화염방사는 특수 규칙 없음",
+          best.move_caveats(dex.find_move("화염방사")) == [],
+          best.move_caveats(dex.find_move("화염방사")))
+
+
+def test_analyze(dex):
+    """4-A 전체가 끝까지 도는가 + 결론이 상식과 맞는가."""
+    print("\n[11] 4-A 전체 돌려보기")
+    me, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
+    opp, _ = calc.popular_build(dex, dex.find_pokemon("하마돈"))
+    a = best.analyze(dex, me, opp)
+    check("추천 기술이 나온다", a["pick"] is not None)
+    check("메가보만다가 하마돈보다 빠르다", a["speed"]["first"] == "나",
+          a["speed"])
+    # 하마돈의 지진(97.7%)은 비행타입에게 안 통해야 한다
+    quake = [r for r in a["oppRows"] if r["move"]["name"] == "지진"]
+    check("하마돈의 지진은 메가보만다에게 무효",
+          quake and quake[0]["kind"] == "none",
+          quake[0]["kind"] if quake else "없음")
+    check("결론까지 글로 나온다", "대면 결론" in best.report(dex, a))
+
+    # 사용률이 없는 포켓몬도 배울 수 있는 기술로 돌아가야 한다
+    odd = [p for p in dex.pokemon
+           if not (dex.usage.get(p["key"])
+                   or dex.usage.get("%04d-00" % p["dexNo"]))]
+    if odd:
+        mv = best.candidate_moves(dex, odd[0])
+        check("사용률 없으면 배우는 기술로 대신함 (%s)"
+              % (odd[0]["formName"] or odd[0]["name"]), len(mv) > 0, len(mv))
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -245,6 +378,11 @@ def main():
     test_known_cases(dex)
     test_abilities_items(dex)
     test_damage_vs_index(dex)
+    test_mega_stone(dex)
+    test_speed(dex)
+    test_race()
+    test_move_caveats(dex)
+    test_analyze(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
