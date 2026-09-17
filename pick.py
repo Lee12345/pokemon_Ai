@@ -49,19 +49,16 @@ PICK = 3            # 몇 마리를 내는가
 def pairwise(dex, my6, opp6, trials=40, seed=1):
     """내 6마리 x 상대 6마리의 1대1 승률.
 
-    선출 자체를 정하는 데 쓰기도 하지만, 사람이 보기에도 이게 제일 쓸모 있다.
+    선출을 정하는 데도 쓰지만, 사람이 보기에는 이게 제일 쓸모 있다.
     "내 어떤 놈이 상대 어떤 놈을 잡는가" 가 한눈에 보인다.
+
+    battle.matchup_table 과 같은 것을 재므로 그걸 그대로 쓴다.
+    (거기서 캐시까지 해 주므로 뒤에서 교체 판단에 다시 쓸 때 공짜다.)
     """
-    table = {}
-    for i, mine in enumerate(my6):
-        for j, theirs in enumerate(opp6):
-            opp_plan, _, _ = battle.opponent_plan(dex, theirs, mine)
-            plans, _ = battle.build_plans(dex, mine, theirs)
-            plan = plans[0] if plans else [dex.find_move("막치기")]
-            r = battle.evaluate(dex, mine, theirs, plan, opp_plan,
-                                trials=trials, seed=seed + i * 7 + j)
-            table[(i, j)] = r["winRate"]
-    return table
+    named = battle.matchup_table(dex, my6, opp6, trials=trials, seed=seed)
+    return {(i, j): named[(mine.name, theirs.name)]
+            for i, mine in enumerate(my6)
+            for j, theirs in enumerate(opp6)}
 
 
 def _lead_for(trio_idx, foe_trio_idx, table, flip=False):

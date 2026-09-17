@@ -383,7 +383,8 @@ class Battle(object):
     '왜 졌나' 를 되짚으려면 이 기록이 있어야 한다.
     """
 
-    def __init__(self, dex, me_build, opp_build, rng=None, log=False):
+    def __init__(self, dex, me_build, opp_build, rng=None, log=False,
+                 matchup=None):
         self.dex = dex
         # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
         self.me_party = Party(dex, me_build)
@@ -394,6 +395,8 @@ class Battle(object):
         self.log = [] if log else None
         self.warnings = []
         self._immune_abilities = status_immune_abilities(dex)
+        # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
+        self.matchup = matchup
         self._entry_weather()
 
     # 지금 나와 있는 놈. 교체가 들어와도 나머지 코드는 그대로 돌아간다.
@@ -891,7 +894,7 @@ class Battle(object):
             self._end_of_turn()
         self._replace_fainted()
 
-    def replacement_score(self, party, side, foe):
+    def replacement_score(self, party, side, foe, taking_hit=False):
         """이놈을 지금 내보내면 이 상대에게 무엇을 할 수 있는가.
 
         **'HP 비율이 제일 높은 놈' 은 틀린 기준이다.** 필요한 HP 는 상대마다 다르다.
@@ -915,6 +918,21 @@ class Battle(object):
 
         me_build = side.as_build()
         foe_build = foe.as_build()
+
+        # taking_hit — 스스로 빼서 들어오는 경우다. 그 턴에 한 대를 그냥 맞는다.
+        # 쓰러진 자리로 나오는 것(공짜)과 값이 다르므로 여기서 갈라 준다.
+        if taking_hit:
+            entry_rows = best.rate_moves(
+                self.dex, foe_build, me_build,
+                realistic_moveset(self.dex, foe.base.poke))
+            entry = best.best_threat(entry_rows)
+            if entry:
+                if side.disguise:
+                    hp -= max(1, side.max_hp // 8)      # 탈이 대신 맞는다
+                else:
+                    hp -= int(entry["expected"])
+            if hp <= 0:
+                return -1.0
 
         # 2) 내가 이 상대를 잡는 데 몇 대가 드는가
         my_rows = best.rate_moves(
@@ -949,8 +967,14 @@ class Battle(object):
                                     foe_build, threat["move"])
             first = order["first"]
 
-        # 4) 죽기 전에 몇 대나 넣는가.
-        #    선공이면 내가 쓰러지는 턴에도 한 대 넣는다. 후공이면 그만큼 못 넣는다.
+        # 4) 이 대면을 이기는가. best.race 와 같은 판정이다.
+        #    선공이면 같은 타수라도 이기고, 후공이면 한 대 더 빨라야 한다.
+        wins = best._i_win(my_hits, foe_hits, first == "나")
+        if first == "동시":
+            wins = best._i_win(my_hits, foe_hits, True) and \
+                best._i_win(my_hits, foe_hits, False)
+
+        # 죽기 전에 몇 대나 넣는가 (못 이길 때 얼마나 깎아 놓는지)
         if first == "나":
             chances = foe_hits
         elif first == "동시":
@@ -958,17 +982,55 @@ class Battle(object):
         else:
             chances = foe_hits - 1
         chances = max(0.0, min(chances, my_hits))
-
         dealt = min(1.0, chances * per_hit)
-        kills = chances >= my_hits
-        survives = kills and first == "나" or foe_hits > my_hits
 
-        score = dealt                      # 깎아 놓는 것만으로도 값이 있다
-        if kills:
-            score += 1.0                   # 잡으면 확실히 이득
-        if survives:
-            score += 0.3 * (hp / float(side.max_hp))
-        return score
+        # **이기는 것과 비기는 것을 확실히 갈라야 한다.**
+        # 전에는 '깎은 양' 과 '잡았음' 을 그냥 더해서, 사이좋게 비기는 놈이
+        # 확실히 이기는 놈과 같은 점수가 나왔다. 그러면 카운터를 안 꺼낸다.
+        if wins:
+            left = max(0.0, 1.0 - (my_hits - 1) / float(max(1, foe_hits)))
+            return 1.0 + 0.5 * left        # 1.0 ~ 1.5 — 여유가 많을수록 높다
+        return 0.6 * dealt                 # 0 ~ 0.6 — 못 이기면 무조건 아래
+
+    def should_switch(self, party):
+        """지금 빼는 게 나은가. 나으면 바꿀 번호를, 아니면 None.
+
+        **되도록 추측하지 않고 실제로 잰 1대1 승률을 쓴다.**
+        한 번의 교환만 보는 어림셈으로는 카운터를 못 알아본다 —
+        '한 대 맞고 들어가면 손해' 로만 보여서, 확실히 이기는 놈도 안 꺼내게 된다.
+
+        표가 없으면 어림셈(replacement_score)으로 돌아간다.
+        """
+        bench = party.bench()
+        if not bench:
+            return None
+        foe = self.opp if party is self.me_party else self.me
+        if not foe.alive or not party.active.alive:
+            return None
+
+        if self.matchup is not None:
+            stay = self.matchup.get((party.active.name, foe.name))
+            if stay is not None:
+                best_idx, best_val = None, stay + SWITCH_MARGIN
+                for i, side in bench:
+                    v = self.matchup.get((side.name, foe.name))
+                    if v is None:
+                        continue
+                    # 들어오면서 한 대 맞고, 압정도 밟는다. 그만큼 깎아 본다.
+                    v *= (1.0 - SWITCH_COST)
+                    if party.hazards:
+                        v *= (1.0 - HAZARD_COST)
+                    if v > best_val:
+                        best_idx, best_val = i, v
+                return best_idx
+
+        stay = self.replacement_score(party, party.active, foe)
+        best_idx, best_val = None, stay + SWITCH_MARGIN
+        for i, side in bench:
+            v = self.replacement_score(party, side, foe, taking_hit=True)
+            if v > best_val:
+                best_idx, best_val = i, v
+        return best_idx
 
     def choose_replacement(self, party, explain=False):
         """쓰러진 자리에 누구를 낼지 고른다.
@@ -1061,6 +1123,17 @@ class Battle(object):
 # ---------------------------------------------------------------------------
 MAX_TURNS = 30           # 서로 못 죽이면 여기서 끊는다
 
+# 얼마나 나아야 빼는가.
+#
+# 빼면 들어오는 놈이 그 턴에 한 대 맞는다. 조금 나은 정도로는 빼면 손해다.
+# 이 값이 0이면 매 턴 들락날락하고, 너무 크면 영영 안 뺀다.
+# 사람이 감으로 박은 값이다 (RANK_VALUE 와 같이 5장 B 에서 맞출 자리).
+SWITCH_MARGIN = 0.15
+# 빼서 들어오면 그 턴에 한 대 맞는다. 1대1 승률을 그만큼 깎아서 본다.
+SWITCH_COST = 0.25
+# 압정이 깔려 있으면 더 깎는다.
+HAZARD_COST = 0.10
+
 # 랭크 1단계를 'HP 몇 %' 로 칠 것인가.
 #
 # 이 숫자가 "용의춤 두 번 쌓고 HP 38% 로 이기기" 와 "그냥 때려서 HP 89% 로 이기기"
@@ -1086,12 +1159,16 @@ class Policy(object):
     (배우지도 않은 기술이라 조용히 이상한 계산이 된다.)
     """
 
-    def __init__(self, dex, party, foe_build, plan):
+    def __init__(self, dex, party, foe_build, plan, allow_switch=True):
         self.dex = dex
         self.plan = plan
         self.lead = party[0] if isinstance(party, (list, tuple)) else party
         self._fallback = {}
         self._foe = _first(foe_build)
+        # 계획이 끝난 뒤에는 스스로 뺄지도 판단한다.
+        # 이게 없으면 상대가 죽을 때까지 절대 안 빠지고, 그러면 내 승률이
+        # 실제보다 한참 높게 나온다 (재 보니 최대 89%p 차이가 났다).
+        self.allow_switch = allow_switch
 
     def _best_move(self, side):
         key = side.name
@@ -1110,7 +1187,16 @@ class Policy(object):
             self._fallback[key] = mv
         return self._fallback[key]
 
-    def act(self, party, turn_index):
+    def act(self, party, turn_index, battle=None):
+        # 계획은 처음 나온 놈의 수순이다. 그놈이 나와 있는 동안은 계획대로.
+        if party.active.base is self.lead and turn_index < len(self.plan):
+            return self.plan[turn_index]
+
+        # 계획이 끝났거나 다른 놈이 나와 있다 — 빼는 게 나은지 본다
+        if self.allow_switch and battle is not None:
+            idx = battle.should_switch(party)
+            if idx is not None:
+                return ("교체", idx)
         if party.active.base is self.lead:
             return _pick(self.plan, turn_index)
         return self._best_move(party.active)
@@ -1134,15 +1220,56 @@ def _as_party(builds):
     return list(builds) if isinstance(builds, (list, tuple)) else [builds]
 
 
-def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False):
+_MATCHUP_CACHE = {}
+
+
+def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
+    """양쪽 파티의 1대1 승률을 미리 재 둔다. 이름쌍으로 찾는다.
+
+    교체를 판단할 때 쓴다. 대전 한 판마다 다시 재면 너무 비싸므로
+    시작 전에 한 번만 재고 돌려 쓴다.
+    (여기서 돌리는 1대1 에는 교체가 없다 — 있으면 서로를 불러 무한히 돈다.)
+    """
+    mine = _as_party(my_builds)
+    theirs = _as_party(opp_builds)
+    if len(mine) == 1 and len(theirs) == 1:
+        return {}                       # 1대1 이면 교체가 없으니 필요 없다
+    key = (tuple(b.name for b in mine), tuple(b.name for b in theirs), trials)
+    if key in _MATCHUP_CACHE:
+        return _MATCHUP_CACHE[key]
+    out = {}
+    for i, a in enumerate(mine):
+        for j, b in enumerate(theirs):
+            opp_plan, _, _ = opponent_plan(dex, b, a)
+            plans, _ = build_plans(dex, a, b)
+            plan = plans[0] if plans else [dex.find_move("막치기")]
+            rng = random.Random(seed + i * 13 + j)
+            win = 0
+            for _ in range(trials):
+                r = run_once(dex, a, b, plan, opp_plan, rng, opp_switch=False)
+                if r["result"] == "이김":
+                    win += 1
+            p = win / float(trials)
+            out[(a.name, b.name)] = p
+            out[(b.name, a.name)] = 1.0 - p
+    _MATCHUP_CACHE[key] = out
+    return out
+
+
+def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
+             opp_switch=True, matchup=None):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다."""
-    b = Battle(dex, me_build, opp_build, rng=rng, log=log)
+    b = Battle(dex, me_build, opp_build, rng=rng, log=log,
+               matchup=matchup)
+    # 내 쪽은 '이 계획이 좋은가' 를 재는 중이므로 계획을 그대로 밀고,
+    # 계획이 끝난 뒤부터는 양쪽 다 빼는 것을 판단한다.
     mine = Policy(dex, me_build, opp_build, my_plan)
-    theirs = Policy(dex, opp_build, me_build, opp_plan)
+    theirs = Policy(dex, opp_build, me_build, opp_plan,
+                    allow_switch=opp_switch)
     for i in range(MAX_TURNS):
         if b.over:
             break
-        b.step(mine.act(b.me_party, i), theirs.act(b.opp_party, i))
+        b.step(mine.act(b.me_party, i, b), theirs.act(b.opp_party, i, b))
     if b.me_party.alive and not b.opp_party.alive:
         result = "이김"
     elif b.opp_party.alive and not b.me_party.alive:
@@ -1171,6 +1298,7 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
     난수(데미지 16단계 · 명중 · 급소 · 마비)가 있으므로 한 판만 봐서는 안 된다.
     """
     rng = random.Random(seed)
+    table = matchup_table(dex, me_build, opp_build)
     wins = 0
     turns = hp = 0.0
     lost = party_hp = 0.0
@@ -1178,7 +1306,8 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
     counts = {}
     warnings = []
     for _ in range(trials):
-        r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng)
+        r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng,
+                     matchup=table)
         counts[r["result"]] = counts.get(r["result"], 0) + 1
         if r["result"] == "이김":
             wins += 1

@@ -16,6 +16,7 @@ import best
 import calc
 import scout
 import pick as selection
+import sensitivity
 
 FAIL = []
 
@@ -959,6 +960,75 @@ def test_selection(dex):
     check("보고서가 나온다", "어떤 3마리를 낼까" in txt)
 
 
+def test_opponent_switching(dex):
+    """상대도 빠진다.
+
+    전에는 상대가 죽을 때까지 절대 안 빠졌다. 그러면 내 승률이 실제보다
+    한참 높게 나온다 — 재 보니 한 대면에서 59.2% -> 3.6% 까지 벌어졌다.
+
+    빼는 판단은 **어림셈이 아니라 미리 잰 1대1 승률**로 한다.
+    한 번의 교환만 보는 어림셈으로는 '한 대 맞고 들어가면 손해' 로만 보여서
+    확실히 이기는 카운터도 안 꺼내게 된다.
+    """
+    print("\n[25] 상대도 빠진다")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    me = [B("한카리아스"), B("따라큐"), B("킬가르도")]
+    op = [B("갑주무사"), B("루카리오"), B("드닐레이브")]
+
+    table = battle.matchup_table(dex, me, op, trials=15)
+    check("1대1 표가 양방향으로 다 찬다",
+          len(table) == 2 * len(me) * len(op), len(table))
+    a, b = me[0].name, op[0].name
+    check("서로 반대 방향은 합이 1",
+          abs(table[(a, b)] + table[(b, a)] - 1.0) < 1e-9)
+
+    opp_plan, _, _ = battle.opponent_plan(dex, op, me)
+    plan = battle.build_plans(dex, me, op)[0][0]
+
+    def run(switch, tbl):
+        rng = random.Random(4)
+        win = 0
+        for _ in range(60):
+            r = battle.run_once(dex, me, op, plan, opp_plan, rng,
+                                opp_switch=switch, matchup=tbl)
+            if r["result"] == "이김":
+                win += 1
+        return win / 60.0
+
+    off = run(False, None)
+    on = run(True, table)
+    check("상대가 빠지면 내 승률이 내려간다 (%.0f%% -> %.0f%%)"
+          % (off * 100, on * 100), on < off, "%.2f vs %.2f" % (off, on))
+
+    # 상대가 이미 유리하면 굳이 안 뺀다
+    me2 = [B("누리레느"), B("아머까오")]
+    op2 = [B("메가보만다"), B("한카리아스")]
+    t2 = battle.matchup_table(dex, me2, op2, trials=15)
+    bt = battle.Battle(dex, me2, op2, rng=random.Random(1), matchup=t2)
+    if t2[(op2[0].name, me2[0].name)] >= 0.9:
+        check("상대 리드가 이미 이기고 있으면 안 뺀다",
+              bt.should_switch(bt.opp_party) is None,
+              bt.should_switch(bt.opp_party))
+
+
+def test_sensitivity(dex):
+    """가정값을 흔들어 보고 답이 바뀌는지 재는 도구가 도는가."""
+    print("\n[26] 가정값 감도")
+    rows, setups = sensitivity.measure(dex, [("고릴타", "하마돈")], trials=20)
+    check("가정값 %d개를 다 재 본다" % len(sensitivity.ALTERNATIVES),
+          len(rows) == len(sensitivity.ALTERNATIVES), len(rows))
+    check("재고 나서 CONFIG 를 원래대로 돌려놓는다",
+          calc.CONFIG["stab"] == 1.5 and calc.CONFIG["crit_rate"] == 1 / 24.0,
+          (calc.CONFIG["stab"], calc.CONFIG["crit_rate"]))
+    check("흔들림은 0~1 사이", all(0.0 <= r["swing"] <= 1.0 for r in rows))
+    txt = sensitivity.report(rows, setups, 20)
+    check("보고서가 나온다", "무엇을 먼저 실측" in txt)
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -988,6 +1058,8 @@ def main():
     test_policy(dex)
     test_replacement_choice(dex)
     test_selection(dex)
+    test_opponent_switching(dex)
+    test_sensitivity(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

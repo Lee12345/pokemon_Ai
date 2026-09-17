@@ -1,0 +1,192 @@
+# -*- coding: utf-8 -*-
+"""
+가정값 감도 — 어떤 값을 먼저 실측해야 하는가.
+
+    python sensitivity.py
+    python sensitivity.py 메가보만다 하마돈
+
+`calc.CONFIG` 에는 **챔피언스에서 확인한 적 없는 값이 스무 개 넘게** 들어 있다.
+전부 본편 값을 가져다 쓴 것이다. 그런데 스무 개를 다 실측할 수는 없다.
+
+그래서 **하나씩 흔들어 보고, 답이 실제로 바뀌는 것만 골라낸다.**
+
+두 가지를 따로 잰다. 둘의 답이 다르기 때문이다.
+
+| | 뜻 |
+|---|---|
+| **추천이 바뀌는가** | "뭘 누를까" 의 답. 이게 안 바뀌면 지금 써도 된다 |
+| **승률이 흔들리는가** | "이 판을 이기나" 의 답. 학습의 보상이 되는 값이다 |
+
+설계 문서 4장의 *"규칙이 틀린 시뮬레이터에서 학습하면 틀린 것에 최적화된다"* 를
+**말이 아니라 숫자로** 확인하는 자리다.
+"""
+
+import sys
+
+import battle
+import best
+import calc
+
+# 각 가정값을 무엇으로 바꿔 볼 것인가.
+# 대부분 '본편의 다른 세대 값' 이다. 챔피언스가 어느 쪽인지 모르므로,
+# 실제로 있을 법한 다른 값으로 바꿔 보고 답이 흔들리는지 본다.
+ALTERNATIVES = [
+    ("stab", 2.0, "자속 1.5 → 2.0"),
+    ("critical", 2.0, "급소 1.5 → 2.0 (5세대 이전 값)"),
+    ("crit_rate", 1 / 16.0, "급소 확률 1/24 → 1/16"),
+    ("burn_physical", 0.33, "화상 물리 0.5 → 0.33"),
+    ("burn_chip", 8, "화상 칩 1/16 → 1/8 (2~6세대)"),
+    ("poison_chip", 16, "독 칩 1/8 → 1/16 (1세대)"),
+    ("toxic_chip", 8, "맹독 1/16 → 1/8 누적"),
+    ("paralysis_speed", 0.25, "마비 스피드 0.5 → 0.25 (6세대 이전)"),
+    ("paralysis_skip", 0.5, "마비 행동불가 25% → 50%"),
+    ("sand_chip", 8, "모래 칩 1/16 → 1/8 (2세대)"),
+    ("sand_rock_spdef", 1.0, "모래 바위 특방 1.5 → 없음"),
+    ("terrain_boost", 1.5, "필드 강화 1.3 → 1.5"),
+    ("sleep_max", 7, "잠듦 2~4턴 → 2~7턴"),
+    ("freeze_thaw", 0.10, "얼음 해동 20% → 10%"),
+    ("confuse_self", 0.5, "혼란 자해 1/3 → 1/2"),
+    ("rock_hazard", 4, "스텔스록 1/8 → 1/4"),
+]
+
+# 기본으로 재 볼 대면들. 한쪽이 100% 인 대면은 아무것도 안 흔들리므로
+# 접전에 가까운 것들을 골라 둔다.
+DEFAULT_PAIRS = [
+    ("드닐레이브", "한카리아스"),
+    ("루카리오", "메가보만다"),
+    ("갑주무사", "따라큐"),
+    ("아머까오", "브리두라스"),
+    ("고릴타", "하마돈"),
+]
+
+
+def rank_plans(dex, me, opp, plans, opp_plan, trials, seed=3):
+    """계획들을 줄 세우고 1등과 그 승률을 돌려준다."""
+    rows = []
+    for p in plans:
+        r = battle.evaluate(dex, me, opp, p, opp_plan, trials=trials, seed=seed)
+        rows.append((r["winRate"], r["carry"], " → ".join(r["plan"])))
+    rows.sort(key=lambda x: (-x[0], -x[1]))
+    return rows[0][2], rows[0][0], [x[2] for x in rows]
+
+
+def measure(dex, pairs, trials=150):
+    """가정값을 하나씩 흔들어 보고 무엇이 답을 바꾸는지 잰다."""
+    setups = []
+    for a, b in pairs:
+        try:
+            me, _ = calc.popular_build(dex, dex.find_pokemon(a))
+            opp, _ = calc.popular_build(dex, dex.find_pokemon(b))
+        except LookupError:
+            continue
+        opp_plan, _, _ = battle.opponent_plan(dex, opp, me)
+        plans, _ = battle.build_plans(dex, me, opp)
+        if not plans:
+            continue
+        top, win, order = rank_plans(dex, me, opp, plans, opp_plan, trials)
+        setups.append({"names": (a, b), "me": me, "opp": opp,
+                       "plans": plans, "oppPlan": opp_plan,
+                       "top": top, "win": win, "order": order})
+
+    out = []
+    for key, alt, why in ALTERNATIVES:
+        if key not in calc.CONFIG:
+            continue
+        old = calc.CONFIG[key]
+        calc.CONFIG[key] = alt
+        flips, swing, order_moves = 0, 0.0, 0
+        try:
+            for st in setups:
+                top, win, order = rank_plans(dex, st["me"], st["opp"],
+                                             st["plans"], st["oppPlan"], trials)
+                if top != st["top"]:
+                    flips += 1
+                if order != st["order"]:
+                    order_moves += 1
+                swing = max(swing, abs(win - st["win"]))
+        finally:
+            calc.CONFIG[key] = old
+        out.append({"key": key, "why": why, "flips": flips,
+                    "orderMoves": order_moves, "swing": swing,
+                    "of": len(setups)})
+    return out, setups
+
+
+def report(rows, setups, trials):
+    L = []
+    line = "=" * 78
+    L.append(line)
+    L.append("  가정값 감도 — 무엇을 먼저 실측해야 하는가   ·   대면 %d개 x %d판"
+             % (len(setups), trials))
+    L.append(line)
+    for st in setups:
+        L.append("  %s vs %s — 기본 1등 '%s' (%.0f%%)"
+                 % (st["names"][0], st["names"][1], st["top"], st["win"] * 100))
+    L.append("-" * 78)
+
+    head = [("바꿔 본 값", 34), ("추천이 바뀐 대면", 18), ("승률 최대 흔들림", 18)]
+    L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+    for r in sorted(rows, key=lambda x: (-x["flips"], -x["swing"])):
+        cells = [r["why"],
+                 "%d / %d" % (r["flips"], r["of"]),
+                 "%.1f%%p" % (r["swing"] * 100)]
+        mark = ""
+        if r["flips"]:
+            mark = "   ← 추천이 바뀐다"
+        elif r["swing"] >= 0.15:
+            mark = "   ← 승률이 크게 흔들린다"
+        L.append("  " + "".join(best._pad(c, w)
+                                for c, (h, w) in zip(cells, head)).rstrip() + mark)
+
+    L.append("-" * 78)
+    flipping = [r for r in rows if r["flips"]]
+    swinging = [r for r in rows if not r["flips"] and r["swing"] >= 0.15]
+    if flipping:
+        L.append("  [먼저 실측할 것 — 추천 자체가 바뀐다]")
+        for r in sorted(flipping, key=lambda x: -x["flips"]):
+            L.append("    · %s" % r["why"])
+    else:
+        L.append("  [추천을 바꾸는 값은 없다]")
+        L.append("    → \"뭘 누를까\" 는 지금 답을 믿어도 된다.")
+    if swinging:
+        L.append("")
+        L.append("  [승률만 흔드는 것 — 학습에는 치명적, 한 턴 판단에는 덜 중요]")
+        for r in sorted(swinging, key=lambda x: -x["swing"]):
+            L.append("    · %-30s 최대 %.1f%%p" % (r["why"], r["swing"] * 100))
+        L.append("")
+        L.append("    승률은 학습의 보상이다. 이만큼 틀린 채로 학습하면")
+        L.append("    틀린 것에 최적화되고, 시뮬레이터 안에서는 승률이 계속 올라")
+        L.append("    틀렸다는 것을 눈치채지 못한다 (설계 문서 4장).")
+    zero = [r for r in rows if not r["flips"] and r["swing"] < 0.005]
+    if zero:
+        L.append("")
+        L.append("  [아무것도 안 바뀐 것 %d개]" % len(zero))
+        L.append("    ! 0.0%p 는 '값이 안 중요하다' 가 아니라 **이 대면들에서는")
+        L.append("      그 조건이 아예 안 나왔다** 는 뜻일 수 있다.")
+        L.append("      (화상이 안 걸리는 대면에서는 화상 칩댐을 흔들어도 0 이다.)")
+        L.append("      그 값이 걸리는 대면을 따로 넣어 다시 재 볼 것.")
+    L.append(line)
+    return "\n".join(L)
+
+
+def main():
+    args = sys.argv[1:]
+    trials = 150
+    rest = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--판수" and i + 1 < len(args):
+            trials = int(args[i + 1]); i += 2
+        else:
+            rest.append(args[i]); i += 1
+
+    dex = calc.Dex()
+    pairs = [(rest[0], rest[1])] if len(rest) >= 2 else DEFAULT_PAIRS
+    sys.stderr.write("  대면 %d개 x 가정값 %d개를 재는 중...\n"
+                     % (len(pairs), len(ALTERNATIVES)))
+    rows, setups = measure(dex, pairs, trials=trials)
+    print(report(rows, setups, trials))
+
+
+if __name__ == "__main__":
+    main()
