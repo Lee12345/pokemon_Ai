@@ -17,6 +17,7 @@ import calc
 import forms
 import scout
 import pick as selection
+import samples
 import sensitivity
 
 FAIL = []
@@ -1386,6 +1387,167 @@ def test_forms_body(dex):
     check("자기 공격력을 깎는 성격이 줄었다 (%.0f%% -> %.0f%%)" % (before, after),
           after < before * 0.4, (before, after))
 
+def _fake_parties(dex, truth, n=24, seed=1, pokes=None):
+    """정답을 아는 가짜 표본. 맞추기가 그 값을 되찾는지 보려고 만든다."""
+    import random
+    pokes = pokes or ["한카리아스", "보만다", "리자몽", "망나뇽"]
+    old = dict((k, calc.CONFIG[k]) for k in samples.KNOBS)
+    calc.CONFIG.update(truth)
+    samples._clear()
+    scout._WEIGHT_CACHE.clear()
+    rng = random.Random(seed)
+    parties = []
+    try:
+        for i in range(n):
+            mem = []
+            for nm in pokes:
+                b, mv = scout.sample_opponent(dex, dex.find_pokemon(nm), rng)
+                evs = dict((k, b.sp[ko]) for k, ko in calc.SPREAD_KEY.items()
+                           if b.sp.get(ko, 0) > 0)
+                mem.append({"name": nm, "item": b.item,
+                            "nature": (b.nature or {}).get("name"),
+                            "ability": b.ability, "evs": evs,
+                            "moves": [x["name"] for x in mv]})
+            parties.append({"season": 6, "rank": i + 1, "members": mem})
+    finally:
+        calc.CONFIG.update(old)
+        samples._clear()
+        scout._WEIGHT_CACHE.clear()
+    return {"parties": parties}
+
+
+def test_samples(dex):
+    """1-B — 구축기사 표본을 받아 조합을 배운다."""
+    print("\n[31] 구축기사 표본")
+    import json
+    import os
+    import tempfile
+
+    def write(doc):
+        fd, path = tempfile.mkstemp(suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False)
+        return path
+
+    # -- 노력치 표기 ------------------------------------------------------
+    check("노력치를 dict 로 받는다",
+          samples.parse_evs({"A": 32, "S": 32}) == {"A": 32, "S": 32})
+    check("노력치를 'A32 S32' 로도 받는다",
+          samples.parse_evs("A32 S32") == {"A": 32, "S": 32})
+    check("'H32/B32' 처럼 빗금도 받는다",
+          samples.parse_evs("H32/B32") == {"H": 32, "B": 32})
+    check("0 은 버린다", samples.parse_evs({"A": 32, "B": 0}) == {"A": 32})
+
+    # -- 일본어 이름이 이어지는가 -----------------------------------------
+    jp = {"parties": [{"season": 6, "rank": 3, "url": "테스트", "members": [
+        {"name": "ガブリアス", "item": "こだわりスカーフ", "ability": "さめはだ",
+         "nature": "いじっぱり", "evs": {"A": 32, "S": 32},
+         "moves": ["じしん", "げきりん", "スケイルショット", "ドラゴンテール"]},
+        {"name": "ボーマンダ", "item": "ボーマンダナイト", "nature": "いじっぱり",
+         "evs": "A32 S32",
+         "moves": ["すてみタックル", "りゅうのまい", "じしん", "はねやすめ"]}]}]}
+    path = write(jp)
+    try:
+        parties, bad = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    check("일본어 파티가 읽힌다", len(parties) == 1 and
+          len(parties[0]["members"]) == 2, parties)
+    m0 = parties[0]["members"][0]
+    check("포켓몬 이름이 이어진다 (ガブリアス -> 한카리아스)",
+          m0["poke"]["name"] == "한카리아스", m0["poke"]["name"])
+    check("도구 이름이 이어진다", m0["item"] == "구애스카프", m0["item"])
+    check("성격 이름이 이어진다", m0["nature"] == "고집", m0["nature"])
+    check("기술 이름이 이어진다",
+          [x["name"] for x in m0["moves"]]
+          == ["지진", "역린", "스케일샷", "드래곤테일"],
+          [x["name"] for x in m0["moves"]])
+    check("배분에서 형태가 나온다 (AS형)", m0["cls"] == "AS", m0["cls"])
+    check("한국어로 넣어도 된다",
+          samples.load(dex, write({"parties": [{"season": 6, "members": [
+              {"name": "한카리아스", "moves": ["지진"], "evs": {"A": 32}}]}]}))[0]
+          [0]["members"][0]["poke"]["name"] == "한카리아스")
+
+    # -- 못 알아들은 이름은 조용히 버리지 않는다 --------------------------
+    weird = {"parties": [{"season": 6, "members": [
+        {"name": "ガブリアス", "evs": {"A": 32},
+         "moves": ["じしん", "でんげきは"]},
+        {"name": "존재하지않는포켓몬", "moves": [], "evs": {}}]}]}
+    path = write(weird)
+    try:
+        parties, bad = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    kinds = bad.summary()
+    check("못 알아들은 기술을 보고한다", "기술" in kinds, kinds)
+    check("못 알아들은 포켓몬을 보고한다", "포켓몬" in kinds, kinds)
+    check("알아들은 것은 그대로 살린다",
+          len(parties) == 1 and len(parties[0]["members"]) == 1)
+
+    # -- 맞추기가 정답을 되찾는가 (제일 중요한 검증) ----------------------
+    for truth in ({"form_mismatch": 0.05}, {"form_mismatch": 0.40}):
+        doc = _fake_parties(dex, truth, n=24, seed=2)
+        path = write(doc)
+        try:
+            parties, _ = samples.load(dex, path)
+        finally:
+            os.unlink(path)
+        got = samples.fit(dex, parties)
+        pick, rows = got["form_mismatch"]
+        used = max(r[2] for r in rows)
+        # 표본 100마리로는 한 칸 어긋날 수 있다. 정확히 맞으려면 800마리쯤
+        # 필요하다 (직접 재 봤다 — samples.py 의 표본 크기 설명 참고).
+        grid = samples.KNOBS["form_mismatch"]
+        near = abs(grid.index(pick) - grid.index(truth["form_mismatch"])) <= 1
+        check("정답 %.2f 인 가짜 표본에서 %.2f 를 되찾는다 (표본 %d, 한 칸 이내)"
+              % (truth["form_mismatch"], pick, used), near, (truth, pick))
+
+    # -- 맞추기가 CONFIG 를 원래대로 돌려놓는가 ---------------------------
+    before = dict((k, calc.CONFIG[k]) for k in samples.KNOBS)
+    samples.fit(dex, parties)
+    check("재고 나서 CONFIG 를 원래대로 돌려놓는다",
+          all(calc.CONFIG[k] == v for k, v in before.items()))
+
+    # -- 기술 쌍 — 마진으로는 절대 안 나오는 것 ---------------------------
+    doc = _fake_parties(dex, {}, n=60, seed=5, pokes=["한카리아스"])
+    path = write(doc)
+    try:
+        parties, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    rows, n = samples.move_pairs(parties, "한카리아스")
+    check("기술 쌍이 나온다 (%d마리, %d쌍)" % (n, len(rows)), rows, n)
+    lift = dict(((a, b), lf) for a, b, _c, _na, _nb, lf in rows)
+    def get(a, b):
+        return lift.get((a, b), lift.get((b, a)))
+    both_spec = get("용성군", "화염방사")
+    cross = get("용성군", "역린")
+    if both_spec is not None and cross is not None:
+        check("같은 쪽 기술끼리는 같이 다닌다 (용성군-화염방사 %.2f)" % both_spec,
+              both_spec > cross, (both_spec, cross))
+        check("반대쪽 기술끼리는 서로 안 든다 (용성군-역린 %.2f)" % cross,
+              cross < 1.0, cross)
+
+    # -- 시즌을 섞지 않는다 -----------------------------------------------
+    mixed = {"parties": [
+        {"season": 5, "members": [{"name": "한카리아스", "evs": {"A": 32},
+                                   "moves": ["지진"]}]},
+        {"season": 6, "members": [{"name": "보만다", "evs": {"A": 32},
+                                   "moves": ["지진"]}]}]}
+    path = write(mixed)
+    try:
+        parties, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    check("시즌으로 걸러낼 수 있다",
+          len(list(samples.members(parties, season=6))) == 1
+          and len(list(samples.members(parties))) == 2)
+
+    # -- 표본이 없어도 안 죽는다 ------------------------------------------
+    empty, bad2 = samples.load(dex, "/그런/파일/없음.json")
+    check("표본 파일이 없어도 그냥 빈 목록", empty == [] and len(bad2) == 0)
+    check("보고서가 나온다", "구축기사" in samples.report(dex, empty, bad2))
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1421,6 +1583,7 @@ def main():
     test_new_abilities(dex)
     test_forms(dex)
     test_forms_body(dex)
+    test_samples(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
