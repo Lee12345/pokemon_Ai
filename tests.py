@@ -15,6 +15,7 @@ import battle
 import best
 import calc
 import scout
+import pick as selection
 
 FAIL = []
 
@@ -927,6 +928,37 @@ def test_replacement_choice(dex):
           any("누구를 낼까" in r for r in bt3.log), bt3.log[-2:])
 
 
+def test_selection(dex):
+    """6단계 — 선출. 4마리로 줄여서 빠르게만 확인한다."""
+    print("\n[24] 선출 (6마리 중 3마리)")
+
+    names = ["메가보만다", "고릴타", "아머까오", "따라큐"]
+    foes = ["하마돈", "브리두라스", "누리레느", "갑주무사"]
+    my4 = [calc.popular_build(dex, dex.find_pokemon(n))[0] for n in names]
+    op4 = [calc.popular_build(dex, dex.find_pokemon(n))[0] for n in foes]
+
+    table = selection.pairwise(dex, my4, op4, trials=6)
+    check("1대1 상성표가 %d쌍 다 찬다" % (len(my4) * len(op4)),
+          len(table) == len(my4) * len(op4), len(table))
+    check("승률은 0~1 사이", all(0.0 <= v <= 1.0 for v in table.values()))
+
+    matrix, my_trios, opp_trios = selection.selection_matrix(
+        dex, my4, op4, table, trials=4)
+    check("4마리면 조합이 4가지씩", len(my_trios) == 4 and len(opp_trios) == 4,
+          "%d x %d" % (len(my_trios), len(opp_trios)))
+    check("조합 %d개를 다 돌린다" % (len(my_trios) * len(opp_trios)),
+          len(matrix) == len(my_trios) * len(opp_trios), len(matrix))
+
+    rows = selection.rank_selections(matrix, my_trios, opp_trios)
+    check("최악 <= 평균 <= 최고",
+          all(r["worst"] <= r["mean"] + 1e-9 <= r["best"] + 1e-9 for r in rows))
+    check("제일 곤란한 상대 선출을 짚어 준다",
+          all(r["worstAgainst"] in opp_trios for r in rows))
+    txt = selection.report(my4, op4, table, rows, my_trios, opp_trios,
+                           matrix, 4)
+    check("보고서가 나온다", "어떤 3마리를 낼까" in txt)
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -955,6 +987,7 @@ def main():
     test_sacrifice(dex)
     test_policy(dex)
     test_replacement_choice(dex)
+    test_selection(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
