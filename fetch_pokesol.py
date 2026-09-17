@@ -225,7 +225,10 @@ def parse_article(doc):
     season, rank, rule = title_info(art.get("title"))
     published = art.get("publishedAt") or art.get("createdAt")
     if isinstance(published, (int, float)):
-        published = None          # Date 로 온 경우는 굳이 안 쓴다
+        # ["D", 1789554238536] 로 온 경우. 버리면 안 된다 —
+        # 제목에 시즌이 없는 기사는 이게 **언제 것인지 아는 유일한 단서**다.
+        published = time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                  time.gmtime(published / 1000.0))
     return {"season": season, "rule": rule, "rank": rank,
             "publishedAt": published, "title": art.get("title"),
             "url": None, "members": members}
@@ -301,6 +304,27 @@ def main():
                   % (added, party["season"], party.get("rule") or "-",
                      party["rank"], len(party["members"]),
                      (party["title"] or "")[:32]))
+    # 게시일이 빈 것은 사이트맵의 lastmod 로 메운다 (요청 한 번이면 된다).
+    missing = [p for p in doc["parties"] if not p.get("publishedAt")]
+    if missing:
+        try:
+            xml = get(SITEMAP)
+            mod = {}
+            for block in re.findall(r"<url>(.*?)</url>", xml, re.S):
+                loc = re.search(r"<loc>([^<]+)</loc>", block)
+                lm = re.search(r"<lastmod>([^<]+)</lastmod>", block)
+                if loc and lm:
+                    mod[loc.group(1).rstrip("/")] = lm.group(1)
+            filled = 0
+            for party in missing:
+                got = mod.get((party.get("url") or "").rstrip("/"))
+                if got:
+                    party["publishedAt"] = got
+                    filled += 1
+            print("  게시일 %d개를 사이트맵으로 메움" % filled)
+        except Exception as e:
+            print("  게시일 보완 실패: %s" % e)
+
     save_out(doc)
     print("\ndata/samples.json — 파티 %d개 (이번에 %d개 추가, 카드 없는 기사 %d개 건너뜀)"
           % (len(doc["parties"]), added, skipped[0]))

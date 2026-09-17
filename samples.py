@@ -66,6 +66,7 @@
 import itertools
 import json
 import os
+import re
 import sys
 
 import calc
@@ -126,8 +127,22 @@ def _norm(text):
 
 _NORM_CACHE = {}
 
+# 사이트마다 폼 표기가 다르다. 게임 파일은 'ロトム' 과 'ウォッシュロトム' 을 따로
+# 두는데, 기사는 'ロトム(水)' 라고 쓴다. 로토무는 폼마다 타입이 달라서
+# 대충 기본 폼으로 뭉개면 계산이 통째로 틀린다. 그래서 여기만 따로 잇는다.
+_FORM_ALIAS = {
+    "ロトム(水)": "ウォッシュロトム", "ロトム(炎)": "ヒートロトム",
+    "ロトム(氷)": "フロストロトム", "ロトム(飛)": "スピンロトム",
+    "ロトム(草)": "カットロトム",
+}
 
-def _resolve(names, kind, value):
+
+def _strip_form(name):
+    """'ギルガルド(盾)' -> 'ギルガルド'. 괄호 안 폼 표기를 떼어낸다."""
+    return re.sub(r"\s*[(（][^)）]*[)）]\s*$", "", name or "").strip()
+
+
+def _resolve(names, kind, value, bad=None, where=None):
     """일본어면 한국어로 바꾼다. 이미 한국어면 그대로."""
     if not value:
         return None
@@ -139,7 +154,26 @@ def _resolve(names, kind, value):
     if idx is None:
         idx = dict((_norm(k), v) for k, v in table.items())
         _NORM_CACHE[key] = idx
-    return idx.get(_norm(value), value)
+    got = idx.get(_norm(value))
+    if got:
+        return got
+    if kind != "pokemon":
+        return value
+    # 폼 표기가 다른 경우. 로토무처럼 폼이 곧 다른 포켓몬인 것만 따로 잇고,
+    # 나머지는 괄호를 떼어 기본 폼으로 본다. **뗐다는 사실은 보고한다.**
+    alias = _FORM_ALIAS.get(_norm(value).replace(" ", ""))
+    if alias:
+        hit = table.get(alias) or idx.get(_norm(alias))
+        if hit:
+            return hit
+    base = _strip_form(value)
+    if base and base != value:
+        hit = table.get(base) or idx.get(_norm(base))
+        if hit:
+            if bad is not None:
+                bad.add("폼 표기를 떼고 읽음", value, where or "")
+            return hit
+    return value
 
 
 def parse_evs(raw):
@@ -186,7 +220,7 @@ def load(dex, path=None, bad=None):
         where = party.get("url") or ("시즌%s" % party.get("season"))
         members = []
         for m in party.get("members") or []:
-            name = _resolve(names, "pokemon", m.get("name"))
+            name = _resolve(names, "pokemon", m.get("name"), bad, where)
             try:
                 poke = dex.find_pokemon(name)
             except LookupError:
@@ -211,7 +245,11 @@ def load(dex, path=None, bad=None):
                          if k in calc.SPREAD_KEY)),
             })
         if members:
+            # 시즌이 제목에 없는 기사가 많다. 그때는 게시 연월로 묶는다.
+            # 메타가 언제 것인지는 어떻게든 붙들고 있어야 한다.
+            when = (party.get("publishedAt") or "")[:7] or None
             out.append({"season": party.get("season"),
+                        "when": when,
                         "rule": party.get("rule"),
                         "rank": party.get("rank"),
                         "publishedAt": party.get("publishedAt"),
@@ -369,17 +407,18 @@ def report(dex, parties, bad):
         L.append(line)
         return "\n".join(L)
 
-    seasons = {}
+    when = {}
     for p in parties:
-        seasons.setdefault(p.get("season"), 0)
-        seasons[p.get("season")] += 1
+        tag = ("시즌%s" % p["season"]) if p.get("season") else (p.get("when") or "모름")
+        when[tag] = when.get(tag, 0) + 1
     L.append("  파티 %d개 · 개체 %d마리"
              % (len(parties), sum(len(p["members"]) for p in parties)))
-    L.append("  시즌별: " + "  ".join(
-        "시즌%s %d파티" % (s, c) for s, c in sorted(
-            seasons.items(), key=lambda x: (x[0] is None, x[0]))))
-    if len(seasons) > 1:
-        L.append("  ! 시즌이 섞여 있다. 메타가 다르므로 한 덩어리로 보면 안 된다.")
+    L.append("  언제 것인가: " + "  ".join(
+        "%s %d파티" % (k, v)
+        for k, v in sorted(when.items(), key=lambda x: -x[1])[:6]))
+    if len(when) > 1:
+        L.append("  ! 시기가 섞여 있다. 메타가 다르므로 한 덩어리로 보면 안 된다.")
+        L.append("    (제목에 시즌이 없으면 게시 연월로 묶는다)")
 
     if len(bad):
         L.append("-" * 78)
