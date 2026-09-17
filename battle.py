@@ -625,8 +625,12 @@ class Battle(object):
             atk.damage(max(1, atk.max_hp // 10), direct=False)
             self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
 
-        # 데미지 계산기가 '이 특성은 못 넣었다' 고 한 것들을 그대로 올린다
+        # 데미지 계산기가 '이 특성은 못 넣었다' 고 한 것들을 올린다.
+        # 다만 여기서 이미 다루는 것(탈·지구력·까칠한피부·열교환·옹골참)은 뺀다.
+        handled = set(ON_HIT_ABILITY) | {DISGUISE, ENDURE_FULL}
         for w in res.get("warnings") or []:
+            if any(("'%s'" % h) in w for h in handled):
+                continue
             self._warn(w)
 
         # 기술에 붙은 특수 규칙은 경고로만.
@@ -969,6 +973,46 @@ def _pick(plan, turn_index):
     return plan[min(turn_index, len(plan) - 1)]
 
 
+class Policy(object):
+    """누가 나와 있든 무엇을 할지 정한다.
+
+    계획(plan)은 **처음 나온 놈의 수순**이다. 그놈이 빠지거나 쓰러져서
+    다른 놈이 나와 있으면, 그놈이 쓸 수 있는 제일 아픈 수를 쓴다.
+
+    이게 없으면 고릴타가 보만다의 이판사판태클을 쓰려 드는 일이 생긴다.
+    (배우지도 않은 기술이라 조용히 이상한 계산이 된다.)
+    """
+
+    def __init__(self, dex, party, foe_build, plan):
+        self.dex = dex
+        self.plan = plan
+        self.lead = party[0] if isinstance(party, (list, tuple)) else party
+        self._fallback = {}
+        self._foe = _first(foe_build)
+
+    def _best_move(self, side):
+        key = side.name
+        if key not in self._fallback:
+            rows = best.rate_moves(
+                self.dex, side.as_build(), self._foe,
+                best.candidate_moves(self.dex, side.base.poke))
+            threat = best.best_threat(rows)
+            if threat:
+                mv = threat["move"]
+            else:
+                dmg = [r for r in rows if r["kind"] != "status"]
+                mv = (dmg[0]["move"] if dmg else
+                      (rows[0]["move"] if rows else
+                       self.dex.find_move("막치기")))
+            self._fallback[key] = mv
+        return self._fallback[key]
+
+    def act(self, party, turn_index):
+        if party.active.base is self.lead:
+            return _pick(self.plan, turn_index)
+        return self._best_move(party.active)
+
+
 def action_name(action, party=None):
     """수 하나를 사람이 읽을 이름으로. 교체는 누구로 바꾸는지까지 적는다."""
     if isinstance(action, tuple) and action[0] == "교체":
@@ -990,10 +1034,12 @@ def _as_party(builds):
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다."""
     b = Battle(dex, me_build, opp_build, rng=rng, log=log)
+    mine = Policy(dex, me_build, opp_build, my_plan)
+    theirs = Policy(dex, opp_build, me_build, opp_plan)
     for i in range(MAX_TURNS):
         if b.over:
             break
-        b.step(_pick(my_plan, i), _pick(opp_plan, i))
+        b.step(mine.act(b.me_party, i), theirs.act(b.opp_party, i))
     if b.me_party.alive and not b.opp_party.alive:
         result = "이김"
     elif b.opp_party.alive and not b.me_party.alive:
@@ -1002,8 +1048,15 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False):
         result = "동시에 쓰러짐"
     else:
         result = "안 끝남"
+    # 파티 단위 결과. '한 마리 내주고 이겼는가' 를 보려면 이게 있어야 한다.
+    my_alive = sum(1 for m in b.me_party.members if m.alive)
+    my_hp = (sum(m.hp for m in b.me_party.members)
+             / float(sum(m.max_hp for m in b.me_party.members)))
     return {"result": result, "turns": b.turn,
             "me": b.me.snapshot(), "opp": b.opp.snapshot(),
+            "myAlive": my_alive, "myCount": len(b.me_party.members),
+            "myPartyHpPct": my_hp * 100.0,
+            "myLost": len(b.me_party.members) - my_alive,
             "log": b.log, "warnings": b.warnings,
             "weather": b.field.weather, "terrain": b.field.terrain}
 
@@ -1017,6 +1070,7 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
     rng = random.Random(seed)
     wins = 0
     turns = hp = 0.0
+    lost = party_hp = 0.0
     ranks = {}
     counts = {}
     warnings = []
@@ -1026,6 +1080,9 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
         if r["result"] == "이김":
             wins += 1
             hp += r["me"]["hpPct"]
+            # 이기긴 했는데 몇 마리를 내줬나. 빼는 것과 내주는 것을 견주려면 필요하다.
+            lost += r["myLost"]
+            party_hp += r["myPartyHpPct"]
             for k, v in r["me"]["ranks"].items():
                 ranks[k] = ranks.get(k, 0.0) + v
         turns += r["turns"]
@@ -1033,6 +1090,8 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
             if w not in warnings:
                 warnings.append(w)
     avg_hp = (hp / wins) if wins else 0.0
+    avg_lost = (lost / wins) if wins else 0.0
+    avg_party_hp = (party_hp / wins) if wins else 0.0
     avg_ranks = {k: v / wins for k, v in ranks.items()} if wins else {}
     # 이기고 나서 남는 몸을 한 숫자로. 후속 포켓몬에게 이어지는 값어치다.
     carry = avg_hp + sum(avg_ranks.values()) * RANK_VALUE
@@ -1044,6 +1103,8 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
         "avgHpPctWhenWin": avg_hp,
         "avgRanksWhenWin": avg_ranks,
         "carry": carry,
+        "lostWhenWin": avg_lost,        # 이길 때 평균 몇 마리를 내줬나
+        "partyHpWhenWin": avg_party_hp,  # 이길 때 파티 전체 HP 가 얼마나 남나
         "counts": counts, "trials": trials, "warnings": warnings,
     }
 
@@ -1063,6 +1124,7 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
     speed_of = lambda b: best.effective_speed(dex, b)[0]
     wins = 0
     carry_sum = 0.0
+    lost_sum = party_hp_sum = 0.0
     turns = 0.0
     warnings = []
     # 무엇이 나를 이겼나 / 전체에서는 얼마나 나왔나
@@ -1086,6 +1148,8 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
             wins += 1
             carry_sum += (r["me"]["hpPct"]
                           + sum(r["me"]["ranks"].values()) * RANK_VALUE)
+            lost_sum += r["myLost"]
+            party_hp_sum += r["myPartyHpPct"]
         turns += r["turns"]
         for w in r["warnings"]:
             if w not in warnings:
@@ -1121,6 +1185,8 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
         "winRate": wins / float(trials),
         "avgTurns": turns / float(trials),
         "carry": (carry_sum / wins) if wins else 0.0,
+        "lostWhenWin": (lost_sum / wins) if wins else 0.0,
+        "partyHpWhenWin": (party_hp_sum / wins) if wins else 0.0,
         "blame": blame, "trials": trials, "warnings": warnings,
         "distribution": True,
     }
@@ -1237,18 +1303,34 @@ def report(dex, me_build, opp_build, results, opp_plan_moves, opp_pool, trials,
     L.append("    ! 채용률 상위 4개일 뿐, '실제로 같이 쓰이는 4개' 는 아니다.")
     L.append("-" * 78)
 
-    head = [("계획", 34), ("승률", 8), ("평균턴", 8),
-            ("이겼을 때 남는 HP", 20), ("남는 랭크", 20), ("남는 몸", 8)]
+    party_mode = bool(me_party and len(me_party) > 1)
+    if party_mode:
+        head = [("계획", 34), ("승률", 8), ("평균턴", 8),
+                ("이길 때 잃는 마릿수", 20), ("남는 파티 HP", 16),
+                ("남는 랭크", 20)]
+    else:
+        head = [("계획", 34), ("승률", 8), ("평균턴", 8),
+                ("이겼을 때 남는 HP", 20), ("남는 랭크", 20), ("남는 몸", 8)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
     for r in results:
-        cells = [
-            " → ".join(r["plan"]),
-            "%.1f%%" % (r["winRate"] * 100),
-            "%.1f" % r["avgTurns"],
-            "%.0f%%" % r["avgHpPctWhenWin"] if r["winRate"] else "-",
-            _rank_text(r["avgRanksWhenWin"]) if r["winRate"] else "-",
-            "%.0f" % r["carry"] if r["winRate"] else "-",
-        ]
+        if party_mode:
+            cells = [
+                " → ".join(r["plan"]),
+                "%.1f%%" % (r["winRate"] * 100),
+                "%.1f" % r["avgTurns"],
+                "%.2f마리" % r["lostWhenWin"] if r["winRate"] else "-",
+                "%.0f%%" % r["partyHpWhenWin"] if r["winRate"] else "-",
+                _rank_text(r["avgRanksWhenWin"]) if r["winRate"] else "-",
+            ]
+        else:
+            cells = [
+                " → ".join(r["plan"]),
+                "%.1f%%" % (r["winRate"] * 100),
+                "%.1f" % r["avgTurns"],
+                "%.0f%%" % r["avgHpPctWhenWin"] if r["winRate"] else "-",
+                _rank_text(r["avgRanksWhenWin"]) if r["winRate"] else "-",
+                "%.0f" % r["carry"] if r["winRate"] else "-",
+            ]
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip())
 
@@ -1270,6 +1352,15 @@ def report(dex, me_build, opp_build, results, opp_plan_moves, opp_pool, trials,
             L.append("           '남는 몸' = HP%% + 랭크합 x %.0f 으로 갈랐다. "
                      "랭크 1단계를 HP %.0f%% 로 친 값이고," % (RANK_VALUE, RANK_VALUE))
             L.append("           사람이 감으로 박은 숫자다 (5장 B 에서 자동으로 맞출 자리).")
+
+    if party_mode:
+        L.append("")
+        L.append("  [빼는 것 vs 내주는 것]  ← 불리하다고 늘 빼는 것이 답은 아니다")
+        L.append("    · 빼면   — 들어오는 놈이 그 턴에 한 대 맞고 압정도 밟는다.")
+        L.append("              대신 뺀 놈은 살아 남는다 (쌓아 둔 랭크는 사라진다).")
+        L.append("    · 내주면 — 한 마리를 잃지만 다음 놈이 공짜로 나온다.")
+        L.append("              쓰러진 자리로 나오는 턴에는 안 맞고, 압정만 밟는다.")
+        L.append("    위 표의 '이길 때 잃는 마릿수' 와 '남는 파티 HP' 로 둘을 견준다.")
 
     warns = []
     for r in results:
@@ -1416,21 +1507,27 @@ def main():
         print("  데미지가 들어가는 기술이 없습니다. 교체를 봐야 합니다 (5단계).")
         return
 
-    # 승률이 먼저, 같으면 '이기고 나서 남는 몸' 으로 가른다
+    # 승률이 먼저. 파티가 있으면 '몇 마리를 잃었나' 로, 아니면 '남는 몸' 으로 가른다.
+    def rank_key(r):
+        if len(me_party) > 1:
+            return (-r["winRate"], r.get("lostWhenWin", 0),
+                    -r.get("partyHpWhenWin", 0))
+        return (-r["winRate"], -r["carry"])
+
     if use_dist:
         ev = scout.Evidence(seen_moves=seen)
         results = [evaluate_vs_distribution(dex, me, _first(opp).poke, p,
                                             trials=trials, evidence=ev,
                                             my_party=me_party)
                    for p in plans]
-        results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
+        results.sort(key=rank_key)
         print(report_distribution(dex, _first(me), _first(opp).poke, results,
                                   ev, trials))
     else:
         results = [evaluate(dex, me, opp, p, opp_plan, trials=trials,
                             my_party=me_party)
                    for p in plans]
-        results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
+        results.sort(key=rank_key)
         print(report(dex, me, opp, results, opp_plan, opp_pool, trials,
                      me_party=me_party, opp_party=opp_party))
 

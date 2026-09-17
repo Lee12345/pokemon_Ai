@@ -783,6 +783,88 @@ def test_intimidate(dex):
     check("파수견은 위협을 안 받는다", bt.opp.ranks["attack"] >= 0, bt.opp.ranks)
 
 
+def test_sacrifice(dex):
+    """빼는 것과 내주는 것은 값이 다르다.
+
+      · 빼면   — 들어오는 놈이 그 턴에 한 대 맞는다
+      · 내주면 — 한 마리를 잃지만 다음 놈이 공짜로 나온다 (그 턴에 안 맞는다)
+
+    불리하다고 늘 빼는 것이 답은 아니다. 둘을 나란히 재려면
+    '이길 때 몇 마리를 잃었나' 까지 세야 한다.
+    """
+    print("\n[21] 빼는 것 vs 내주는 것")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    quake = dex.find_move("지진")
+
+    # (가) 직접 뺀다 — 들어오는 놈이 그 턴에 맞는다
+    bt = battle.Battle(dex, [B("메가보만다"), B("한카리아스")], B("하마돈"),
+                       rng=random.Random(5))
+    bt.step(("교체", 1), quake)
+    swapped_in = bt.me_party.members[1]
+    check("빼면 들어온 놈이 그 턴에 맞는다",
+          swapped_in.hp < swapped_in.max_hp,
+          "%d/%d" % (swapped_in.hp, swapped_in.max_hp))
+
+    # (나) 내준다 — 쓰러진 자리로 나오는 턴에는 안 맞는다
+    bt = battle.Battle(dex, [B("메가보만다"), B("한카리아스")], B("하마돈"),
+                       rng=random.Random(5))
+    bt.me_party.members[0].hp = 1        # 이번 턴에 쓰러질 상태로
+    bt.step(dex.find_move("이판사판태클"), quake)
+    came_in = bt.me_party.members[1]
+    check("쓰러진 자리로 나온 놈은 그 턴에 안 맞는다",
+          came_in.hp == came_in.max_hp,
+          "%d/%d" % (came_in.hp, came_in.max_hp))
+    check("대신 한 마리를 잃었다",
+          not bt.me_party.members[0].alive)
+
+    # 압정은 어느 쪽으로 나오든 밟는다
+    bt = battle.Battle(dex, [B("메가보만다"), B("한카리아스")], B("하마돈"),
+                       rng=random.Random(5))
+    bt.me_party.hazards["스텔스록"] = 1
+    bt.me_party.members[0].hp = 1
+    bt.step(dex.find_move("이판사판태클"), quake)
+    came_in = bt.me_party.members[1]
+    check("공짜로 나와도 압정은 밟는다", came_in.hp < came_in.max_hp,
+          "%d/%d" % (came_in.hp, came_in.max_hp))
+
+    # 결과에 '몇 마리 잃었나' 가 들어 있다
+    me = [B("메가보만다"), B("한카리아스")]
+    opp_plan, _, _ = battle.opponent_plan(dex, B("브리두라스"), me)
+    r = battle.evaluate(dex, me, [B("브리두라스")], [quake], opp_plan,
+                        trials=40, seed=2, my_party=me)
+    check("이길 때 몇 마리를 잃었는지 센다", "lostWhenWin" in r, list(r)[:4])
+    check("남는 파티 HP 도 센다", "partyHpWhenWin" in r)
+
+
+def test_policy(dex):
+    """교체돼 나온 놈은 자기 기술을 쓴다.
+
+    이게 없으면 고릴타가 보만다의 이판사판태클을 쓰려 든다.
+    배우지도 않은 기술이라 조용히 이상한 계산이 된다.
+    """
+    print("\n[22] 교체된 뒤에 무엇을 쓰는가")
+    me = [calc.popular_build(dex, dex.find_pokemon("메가보만다"))[0],
+          calc.popular_build(dex, dex.find_pokemon("고릴타"))[0]]
+    opp = calc.popular_build(dex, dex.find_pokemon("하마돈"))[0]
+    plan = [dex.find_move("이판사판태클")]
+    pol = battle.Policy(dex, me, opp, plan)
+
+    party = battle.Party(dex, me)
+    check("리드는 계획대로 쓴다",
+          pol.act(party, 0)["name"] == "이판사판태클", pol.act(party, 0))
+    party.active_idx = 1
+    got = pol.act(party, 0)
+    check("바뀐 뒤에는 그놈 기술을 쓴다",
+          got["name"] != "이판사판태클", got["name"])
+    learn = dex.learnsets.get(me[1].poke["key"], [])
+    check("그리고 실제로 배우는 기술이다 (%s)" % got["name"],
+          got["id"] in learn, got["name"])
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -808,6 +890,8 @@ def main():
     test_scout_narrowing(dex)
     test_switching(dex)
     test_intimidate(dex)
+    test_sacrifice(dex)
+    test_policy(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
