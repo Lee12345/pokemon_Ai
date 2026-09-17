@@ -419,11 +419,18 @@ def fit(dex, parties, season=None):
 # ---------------------------------------------------------------------------
 # 기술끼리의 조합 — 마진으로는 절대 안 나오는 것
 # ---------------------------------------------------------------------------
-def move_pairs(parties, poke_name, season=None, min_count=3):
-    """같이 다니는 기술 쌍. (기술A, 기술B, 같이, A만, B만, 리프트).
+def move_pairs(parties, poke_name, season=None, min_count=3,
+               min_expect=2.0):
+    """같이 다니는 기술 쌍. (기술A, 기술B, 같이, A, B, 기대, 리프트).
 
-    리프트 = 실제로 같이 나온 비율 / 따로따로였다면 나왔을 비율.
+    리프트 = 실제로 같이 나온 횟수 / 따로따로였다면 나왔을 횟수.
     1 보다 크면 **같이 다닌다**, 작으면 **서로 안 든다**.
+
+    ! 리프트만 보고 줄 세우면 안 된다. 열 마리에 네 마리씩 나오는
+      드문 기술 둘은 **우연히** 한 번도 안 겹칠 수 있고, 그러면 리프트가
+      0.00 으로 제일 커 보인다. 처음에 그렇게 짰다가 표가 쓸모없어졌다.
+      그래서 (1) 따로따로였다면 몇 번은 겹쳤어야 하는 쌍만 보고,
+      (2) **기대값과 실제의 차이**로 줄 세운다.
     """
     rows = [m for m in members(parties, season)
             if m["poke"]["name"] == poke_name]
@@ -444,9 +451,11 @@ def move_pairs(parties, poke_name, season=None, min_count=3):
         both = sum(1 for h in have if a in h and b in h)
         pa, pb = names[a] / float(n), names[b] / float(n)
         expect = pa * pb * n
-        lift = (both / expect) if expect > 0 else 0.0
-        out.append((a, b, both, names[a], names[b], lift))
-    out.sort(key=lambda r: -abs(math.log(r[5]) if r[5] > 0 else 9))
+        if expect < min_expect:
+            continue           # 따로따로여도 거의 안 겹칠 쌍은 말할 것이 없다
+        lift = both / expect
+        out.append((a, b, both, names[a], names[b], expect, lift))
+    out.sort(key=lambda r: -abs(r[2] - r[5]))
     return out, n
 
 
@@ -595,19 +604,21 @@ def report_pairs(dex, parties, name, season=None):
     L.append("  표본 %d마리" % n)
     L.append("-" * 78)
     head = [("기술 A", 15), ("기술 B", 15), ("같이", 7), ("A", 6), ("B", 6),
-            ("리프트", 9)]
+            ("기대", 7), ("리프트", 9)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
-    for a, b, both, na, nb, lift in rows[:14]:
+    for a, b, both, na, nb, expect, lift in rows[:16]:
         mark = ""
         if lift >= 1.3:
             mark = "   ← 같이 든다"
         elif lift <= 0.7:
             mark = "   ← 서로 안 든다"
-        cells = [a, b, str(both), str(na), str(nb), "%.2f" % lift]
+        cells = [a, b, str(both), str(na), str(nb),
+                 "%.1f" % expect, "%.2f" % lift]
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip() + mark)
     L.append("-" * 78)
-    L.append("  리프트 = 실제로 같이 나온 비율 / 따로따로였다면 나왔을 비율.")
+    L.append("  리프트 = 실제로 같이 나온 횟수 / 따로따로였다면 나왔을 횟수.")
+    L.append("  '기대' 가 작은 쌍은 우연으로 0 이 되기 쉬워서 아예 안 보여 준다.")
     L.append("  **이건 사용률 마진으로는 절대 안 나오는 정보다.**")
     L.append(line)
     return "\n".join(L)
