@@ -62,6 +62,16 @@ TYPE_ORDER = [
 ]
 CATEGORY = {"0": "물리", "1": "특수", "2": "변화"}
 
+# 기술 분류(classification_a / classification_b).
+# 원본에는 숫자로만 들어있어서, 실제로 어떤 기술이 묶여 있는지 보고 이름을 붙였다.
+# 예) 4번 묶음 = 베어가르기·에어슬래시·섀도클로… → '베기'
+# 특성 '예리함'(베는 기술 1.5배), '철주먹'(펀치 1.2배) 등이 이 분류를 쓴다.
+MOVE_TAG = {
+    "1": "펀치", "2": "소리", "3": "춤", "4": "베기", "5": "바람",
+    "6": "가루", "7": "구슬폭탄", "8": "파동", "9": "무는", "10": "폭발",
+    "11": "멘탈", "12": "회복",
+}
+
 # 성격 25개의 능력치 보정.
 # 게임 내부 순번이 곧 규칙이다: 올라가는 능력치 = 번호 // 5, 내려가는 능력치 = 번호 % 5.
 # 두 값이 같으면 보정 없음(무보정 5종). 순서는 공격·방어·스피드·특공·특방.
@@ -182,6 +192,9 @@ def build(refresh=False):
             "priority": int(e["priority"]),
             "isContact": e["direct"] == "1",
             "target": int(e["target"]),
+            "tags": [MOVE_TAG[c] for c in (e["classification_a"],
+                                           e["classification_b"])
+                     if c in MOVE_TAG],
             "description": clean(winfo.get(mid, "")),
         })
     moves.sort(key=lambda m: m["id"])

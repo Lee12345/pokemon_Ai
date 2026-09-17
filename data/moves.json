@@ -10,6 +10,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -23,6 +24,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "10% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -36,6 +40,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "10% 확률로 상대를 얼음 상태로 만든다."
  },
  {
@@ -49,6 +56,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "10% 확률로 상대를 마비 상태로 만든다."
  },
  {
@@ -62,6 +72,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 기절시킨다. 명중률은 30%로 고정된다."
  },
  {
@@ -75,6 +86,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "춤"
+  ],
   "description": "자신의 공격을 2단계 올린다."
  },
  {
@@ -88,6 +102,9 @@
   "priority": -6,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "바람"
+  ],
   "description": "상대에게 교체할 포켓몬이 있는 경우 랜덤한 포켓몬으로 교체시킨다."
  },
  {
@@ -101,6 +118,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 공중 상태가 되어 다음 턴에 공격한다."
  },
  {
@@ -114,6 +132,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -127,6 +146,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -140,6 +160,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 기절시킨다. 명중률은 30%로 고정된다."
  },
  {
@@ -153,6 +174,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 마비 상태로 만든다. 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -166,6 +188,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -179,6 +202,7 @@
   "priority": 0,
   "isContact": true,
   "target": 9,
+  "tags": [],
   "description": "자신은 난동 상태가 된다."
  },
  {
@@ -192,6 +216,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다."
  },
  {
@@ -205,6 +230,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -218,6 +244,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -231,6 +260,9 @@
   "priority": -6,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대에게 교체할 포켓몬이 있는 경우 랜덤한 포켓몬으로 교체시킨다."
  },
  {
@@ -244,6 +276,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대를 잠듦 상태로 만든다."
  },
  {
@@ -257,6 +292,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "멘탈"
+  ],
   "description": "4턴 동안 상대를 기술봉인 상태로 만든다."
  },
  {
@@ -270,6 +308,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -283,6 +322,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -296,6 +336,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "수중 상태인 상대에게는 위력이 2배가 된다."
  },
  {
@@ -309,6 +350,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 얼음 상태로 만든다."
  },
  {
@@ -322,6 +364,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "바람"
+  ],
   "description": "10% 확률로 상대를 얼음 상태로 만든다. 눈 상태인 경우 상대에게 반드시 명중한다."
  },
  {
@@ -335,6 +380,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -348,6 +394,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -361,6 +408,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 무거울수록 위력이 올라간다. (위력은 20~120)"
  },
  {
@@ -374,6 +422,7 @@
   "priority": -5,
   "isContact": true,
   "target": 13,
+  "tags": [],
   "description": "사용한 턴에 상대의 물리 기술로 입은 데미지를 2배로 돌려준다."
  },
  {
@@ -387,6 +436,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대 HP에 50데미지를 준다."
  },
  {
@@ -400,6 +450,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 씨뿌리기 상태로 만든다."
  },
  {
@@ -413,6 +464,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 공격, 특수공격을 1단계 올린다. 쾌청 상태인 경우 2단계 올린다."
  },
  {
@@ -426,6 +478,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 차지 상태가 되어 다음 턴에 공격한다. 쾌청 상태인 경우 차지 상태를 생략하고 바로 공격할 수 있다. 다른 날씨인 경우 위력이 1/2이 된다."
  },
  {
@@ -439,6 +492,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "가루"
+  ],
   "description": "상대를 독 상태로 만든다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -452,6 +508,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "가루"
+  ],
   "description": "상대를 마비 상태로 만든다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -465,6 +524,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "가루"
+  ],
   "description": "상대를 잠듦 상태로 만든다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -478,6 +540,9 @@
   "priority": 0,
   "isContact": true,
   "target": 9,
+  "tags": [
+   "춤"
+  ],
   "description": "자신은 난동 상태가 된다."
  },
  {
@@ -491,6 +556,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "상대의 스피드를 2단계 떨어뜨린다."
  },
  {
@@ -504,6 +570,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -517,6 +584,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 마비 상태로 만든다."
  },
  {
@@ -530,6 +598,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 마비 상태로 만든다. 땅타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -543,6 +612,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 마비 상태로 만든다. 비 상태인 경우 상대에게 반드시 명중한다. 쾌청 상태인 경우 명중률은 50%가 된다. 공중 상태인 상대에게도 맞는다."
  },
  {
@@ -556,6 +626,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "지중 상태인 상대에게는 위력이 2배가 된다. 그래스필드 상태일 때 위력이 1/2이 된다."
  },
  {
@@ -569,6 +640,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 기절시킨다. 명중률은 30%로 고정된다."
  },
  {
@@ -582,6 +654,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 지중 상태가 되어 다음 턴에 공격한다."
  },
  {
@@ -595,6 +668,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 맹독 상태로 만든다. 독타입 포켓몬이 사용하면 상대에게 반드시 명중한다."
  },
  {
@@ -608,6 +682,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -621,6 +696,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 잠듦 상태로 만든다."
  },
  {
@@ -634,6 +710,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 스피드를 2단계 올린다."
  },
  {
@@ -647,6 +724,7 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -660,6 +738,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대 HP에 50데미지를 준다."
  },
  {
@@ -673,6 +752,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 방어를 2단계 떨어뜨린다."
  },
  {
@@ -686,6 +768,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 회피율을 1단계 올린다."
  },
  {
@@ -699,6 +782,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다."
  },
  {
@@ -712,6 +798,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 회피율을 2단계 올린다. 자신은 작아지기 상태가 된다."
  },
  {
@@ -725,6 +812,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 혼란 상태로 만든다."
  },
  {
@@ -738,6 +826,7 @@
   "priority": 0,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "5턴 동안 같은 편 필드를 빛의장막 상태로 만든다."
  },
  {
@@ -751,6 +840,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "전체 필드의 능력 변화를 없앤다."
  },
  {
@@ -764,6 +854,7 @@
   "priority": 0,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "5턴 동안 같은 편 필드를 리플렉터 상태로 만든다."
  },
  {
@@ -777,6 +868,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 급소업 상태가 된다. (+2)"
  },
  {
@@ -790,6 +882,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "폭발"
+  ],
   "description": "사용하면 자신은 기절하게 된다."
  },
  {
@@ -803,6 +898,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -816,6 +912,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -829,6 +926,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 특수방어를 2단계 올린다."
  },
  {
@@ -842,6 +940,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "빗나가거나 실패하면 자신의 최대 HP의 1/2만큼 데미지를 입는다."
  },
  {
@@ -855,6 +954,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 마비 상태로 만든다."
  },
  {
@@ -868,6 +968,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -881,6 +984,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 차지 상태가 되어 다음 턴에 공격한다. 30% 확률로 상대를 풀죽게 한다. 급소업+1로 공격한다."
  },
  {
@@ -894,6 +998,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대와 같은 포켓몬으로 변신한다. HP 이외의 스테이터스도 똑같아진다."
  },
  {
@@ -907,6 +1012,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어를 2단계 올린다."
  },
  {
@@ -920,6 +1026,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -933,6 +1040,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "폭발"
+  ],
   "description": "사용하면 자신은 기절하게 된다."
  },
  {
@@ -946,6 +1056,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 HP와 상태 이상을 모두 회복한다. 2턴 동안 잠듦 상태가 된다. HP가 꽉 찬 상태면 실패한다."
  },
  {
@@ -959,6 +1072,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -972,6 +1086,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 마비, 화상, 얼음 중 하나의 상태로 만든다."
  },
  {
@@ -985,6 +1100,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 남은 HP의 절반만큼 데미지를 준다. 1만 남은 경우 1데미지를 준다."
  },
  {
@@ -998,6 +1114,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -1011,6 +1130,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 최대 HP의 1/4만큼 HP를 소비하여 대타를 내보낸다. 대타는 자신을 대신해 기술을 받는다. 최대 HP의 1/4의 데미지를 입으면 사라진다. 소리 기술에는 대타가 무시된다."
  },
  {
@@ -1024,6 +1144,7 @@
   "priority": 0,
   "isContact": true,
   "target": 9,
+  "tags": [],
   "description": ""
  },
  {
@@ -1037,6 +1158,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 도구를 지니고 있지 않은 경우 상대의 도구를 빼앗는다."
  },
  {
@@ -1050,6 +1172,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "자신이 잠듦 상태인 경우 사용할 수 있다. 30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -1063,6 +1188,7 @@
   "priority": 0,
   "isContact": false,
   "target": 13,
+  "tags": [],
   "description": "자신의 스피드를 1단계 떨어뜨리고 공격, 방어를 1단계 올린다."
  },
  {
@@ -1076,6 +1202,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 남은 HP가 적을수록 위력이 올라간다. (위력은 20~200)"
  },
  {
@@ -1089,6 +1216,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "가루"
+  ],
   "description": "상대의 스피드를 2단계 떨어뜨린다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -1102,6 +1232,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 남은 HP가 적을수록 위력이 올라간다. (위력은 20~200)"
  },
  {
@@ -1115,6 +1246,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 마지막으로 사용한 기술의 PP를 4 줄인다."
  },
  {
@@ -1128,6 +1260,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 기술로부터 몸을 보호한다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -1141,6 +1274,9 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": ""
  },
  {
@@ -1154,6 +1290,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 2단계 떨어뜨린다."
  },
  {
@@ -1167,6 +1304,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 혼란 상태로 만든다."
  },
  {
@@ -1180,6 +1318,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 최대 HP의 1/2만큼 HP를 소비하여 공격을 6단계까지 올린다. 남은 HP가 부족한 경우 실패한다."
  },
  {
@@ -1193,6 +1332,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "30% 확률로 상대를 독 상태로 만든다."
  },
  {
@@ -1206,6 +1348,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 명중률을 1단계 떨어뜨린다."
  },
  {
@@ -1219,6 +1362,7 @@
   "priority": 0,
   "isContact": false,
   "target": 11,
+  "tags": [],
   "description": "상대 필드를 압정뿌리기 상태로 만든다."
  },
  {
@@ -1232,6 +1376,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "상대를 마비 상태로 만든다."
  },
  {
@@ -1245,6 +1392,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 길동무 상태가 된다. 연속해서 사용하면 실패한다."
  },
  {
@@ -1258,6 +1406,9 @@
   "priority": 0,
   "isContact": false,
   "target": 8,
+  "tags": [
+   "소리"
+  ],
   "description": "필드의 전원을 멸망 상태로 만든다."
  },
  {
@@ -1271,6 +1422,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "바람"
+  ],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -1284,6 +1438,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 기술로부터 몸을 보호한다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -1297,6 +1452,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -1310,6 +1466,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신은 록온 상태가 된다."
  },
  {
@@ -1323,6 +1480,7 @@
   "priority": 0,
   "isContact": true,
   "target": 9,
+  "tags": [],
   "description": "자신은 난동 상태가 된다."
  },
  {
@@ -1336,6 +1494,9 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [
+   "바람"
+  ],
   "description": "5턴 동안 모래바람 상태로 만든다."
  },
  {
@@ -1349,6 +1510,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -1362,6 +1526,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 기절할 듯한 기술로 데미지를 입으면 HP를 1 남기고 버틴다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -1375,6 +1540,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 2단계 떨어뜨린다."
  },
  {
@@ -1388,6 +1554,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 2단계 올리고 혼란 상태로 만든다."
  },
  {
@@ -1401,6 +1568,9 @@
   "priority": 0,
   "isContact": false,
   "target": 1,
+  "tags": [
+   "회복"
+  ],
   "description": "자신 또는 같은 편의 HP를 최대 HP의 1/2만큼 회복한다."
  },
  {
@@ -1414,6 +1584,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 자신의 방어를 1단계 올린다."
  },
  {
@@ -1427,6 +1598,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 교체 불가 상태로 만든다."
  },
  {
@@ -1440,6 +1612,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "멘탈"
+  ],
   "description": "상대를 헤롱헤롱 상태로 만든다. 성별이 같거나 불명인 상대에게는 실패한다."
  },
  {
@@ -1453,6 +1628,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신이 잠듦 상태인 경우 사용할 수 있다. 자신이 배운 다른 기술 중에서 무작위로 기술을 사용한다."
  },
  {
@@ -1466,6 +1642,9 @@
   "priority": 0,
   "isContact": false,
   "target": 6,
+  "tags": [
+   "소리"
+  ],
   "description": "자신과 같은 편과 지닌 포켓몬 전원의 상태 이상을 회복한다."
  },
  {
@@ -1479,6 +1658,7 @@
   "priority": 0,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "5턴 동안 같은 편 필드를 신비의부적 상태로 만든다."
  },
  {
@@ -1492,6 +1672,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신과 상대의 남은 HP를 더한 다음 1/2씩 나눠 갖는다."
  },
  {
@@ -1505,6 +1686,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "상대를 혼란 상태로 만든다."
  },
  {
@@ -1518,6 +1702,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -1531,6 +1716,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "다른 지닌 포켓몬과 교체한다. 능력 변화, 대타출동 등을 그 포켓몬이 이어받는다."
  },
  {
@@ -1544,6 +1730,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "멘탈"
+  ],
   "description": "상대를 앙코르 상태로 만든다."
  },
  {
@@ -1557,6 +1746,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 바인드, 씨뿌리기 상태와 같은 편 필드의 압정뿌리기, 독압정, 끈적끈적네트, 스텔스록 상태를 해제한다. 자신의 스피드를 1단계 올린다."
  },
  {
@@ -1570,6 +1760,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "상대의 회피율을 2단계 떨어뜨린다."
  },
  {
@@ -1583,6 +1774,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -1596,6 +1788,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다. 쾌청 상태인 경우 2/3만큼 회복한다. 다른 날씨인 경우 1/4만큼 회복한다."
  },
  {
@@ -1609,6 +1804,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다. 쾌청 상태인 경우 2/3만큼 회복한다. 다른 날씨인 경우 1/4만큼 회복한다."
  },
  {
@@ -1622,6 +1820,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다. 쾌청 상태인 경우 2/3만큼 회복한다. 다른 날씨인 경우 1/4만큼 회복한다."
  },
  {
@@ -1635,6 +1836,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -1648,6 +1850,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 비 상태로 만든다."
  },
  {
@@ -1661,6 +1864,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 쾌청 상태로 만든다."
  },
  {
@@ -1674,6 +1878,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "20% 확률로 상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -1687,6 +1894,7 @@
   "priority": -5,
   "isContact": false,
   "target": 13,
+  "tags": [],
   "description": "사용한 턴에 상대의 특수 기술로 입은 데미지를 2배로 돌려준다."
  },
  {
@@ -1700,6 +1908,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 능력 변화를 자신도 똑같이 만든다."
  },
  {
@@ -1713,6 +1922,7 @@
   "priority": 2,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -1726,6 +1936,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 자신의 공격, 방어, 특수공격, 특수방어, 스피드를 1단계 올린다."
  },
  {
@@ -1739,6 +1950,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "20% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -1752,6 +1966,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 위치한 자리를 미래의 공격 상태로 만든다."
  },
  {
@@ -1765,6 +1980,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다. 수중 상태인 상대에게는 위력이 2배가 된다."
  },
  {
@@ -1778,6 +1994,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "지닌 포켓몬의 수만큼 상대를 공격한다. 기절했거나 상태 이상에 걸린 포켓몬은 포함하지 않는다. 기술의 위력은 지닌 포켓몬의 공격으로 계산된다."
  },
  {
@@ -1791,6 +2008,7 @@
   "priority": 3,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 풀죽게 한다. 등장하고 가장 먼저 사용하지 않으면 실패한다."
  },
  {
@@ -1804,6 +2022,9 @@
   "priority": 0,
   "isContact": false,
   "target": 9,
+  "tags": [
+   "소리"
+  ],
   "description": "자신은 소란피기 상태가 된다."
  },
  {
@@ -1817,6 +2038,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어, 특수방어를 1단계 올린다. 비축하기 상태를 1회 추가한다. 비축하기 상태는 최대 3회까지 추가할 수 있다."
  },
  {
@@ -1830,6 +2052,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "비축하기 상태의 수치가 높을수록 위력이 올라간다. (위력은 100~300) 비축하기 상태가 아닌 경우 이 기술은 실패한다."
  },
  {
@@ -1843,6 +2066,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "비축하기 상태의 수치가 높을수록 HP를 많이 회복한다. 1번이라면 최대 HP의 1/4만큼 회복한다. 2번이라면 최대 HP의 1/2만큼 회복한다. 3번이라면 모두 회복한다. 비축하기 상태가 아닌 경우 이 기술은 실패한다."
  },
  {
@@ -1856,6 +2082,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "바람"
+  ],
   "description": "10% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -1869,6 +2098,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "멘탈"
+  ],
   "description": "상대를 연속 불가 상태로 만든다."
  },
  {
@@ -1882,6 +2114,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수공격을 1단계 올리고 혼란 상태로 만든다."
  },
  {
@@ -1895,6 +2128,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 화상 상태로 만든다."
  },
  {
@@ -1908,6 +2142,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신은 기절하게 되지만 상대의 공격, 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -1921,6 +2156,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 독, 맹독, 마비, 화상 상태일 때 위력이 2배가 된다. 화상 상태에 의한 물리 기술의 데미지가 반감되는 효과는 무시한다."
  },
  {
@@ -1934,6 +2170,9 @@
   "priority": -3,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "자신이 기술을 사용하는 턴에 상대로부터 먼저 기술로 데미지를 입으면 실패한다."
  },
  {
@@ -1947,6 +2186,7 @@
   "priority": 2,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "상대의 기술을 모두 자신이 받는다. 상대를 선택하는 기술에만 효과가 있다."
  },
  {
@@ -1960,6 +2200,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 특수방어를 1단계 올린다. 전기위력업 상태가 된다."
  },
  {
@@ -1973,6 +2214,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "멘탈"
+  ],
   "description": "상대를 도발 상태로 만든다."
  },
  {
@@ -1986,6 +2230,7 @@
   "priority": 5,
   "isContact": false,
   "target": 2,
+  "tags": [],
   "description": "사용한 턴 동안 같은 편의 기술 위력을 1.5배로 만든다."
  },
  {
@@ -1999,6 +2244,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대와 자신의 지니고 있는 도구를 바꾼다."
  },
  {
@@ -2012,6 +2258,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 특성을 상대와 같은 특성으로 바꾼다."
  },
  {
@@ -2025,6 +2272,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신이 위치한 자리를 희망사항 상태로 만든다."
  },
  {
@@ -2038,6 +2288,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 뿌리박기 상태가 된다."
  },
  {
@@ -2051,6 +2302,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 공격, 방어를 1단계 떨어뜨린다."
  },
  {
@@ -2064,6 +2316,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신이 마지막으로 소비한 도구를 원래 상태로 돌려놓아 다시 지닌다."
  },
  {
@@ -2077,6 +2330,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대 필드의 빛의장막, 리플렉터, 오로라베일 상태를 해제하고 공격한다."
  },
  {
@@ -2090,6 +2344,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 졸음 상태로 만든다. 상대에게 반드시 명중한다."
  },
  {
@@ -2103,6 +2358,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 도구를 지니고 있으면 위력이 1.5배가 된다. 상대의 도구를 없앤다."
  },
  {
@@ -2116,6 +2372,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 남은 HP에서 자신의 남은 HP를 뺀 수치만큼 데미지를 준다. 상대의 HP가 자신의 HP 이하면 실패한다."
  },
  {
@@ -2129,6 +2386,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "자신의 남은 HP가 적을수록 위력이 떨어진다. (위력은 1~150)"
  },
  {
@@ -2142,6 +2400,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신과 상대의 특성을 바꾼다."
  },
  {
@@ -2155,6 +2414,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 봉인 상태가 된다."
  },
  {
@@ -2168,6 +2428,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 수중 상태가 되어 다음 턴에 공격한다."
  },
  {
@@ -2181,6 +2442,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "춤"
+  ],
   "description": "상대의 공격을 2단계 떨어뜨린다."
  },
  {
@@ -2194,6 +2458,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "춤"
+  ],
   "description": "자신을 제외한 필드의 전원을 혼란 상태로 만든다."
  },
  {
@@ -2207,6 +2474,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 화상 상태로 만든다. 급소업+1로 공격한다."
  },
  {
@@ -2220,6 +2488,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다."
  },
  {
@@ -2233,6 +2504,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "소리"
+  ],
   "description": ""
  },
  {
@@ -2246,6 +2520,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "50% 확률로 상대를 맹독 상태로 만든다."
  },
  {
@@ -2259,6 +2536,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "50% 확률로 상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -2272,6 +2552,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -2285,6 +2566,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -2298,6 +2580,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "20% 확률로 자신의 공격을 1단계 올린다."
  },
  {
@@ -2311,6 +2596,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "날씨가 바뀐 경우 위력이 2배가 되며 기술의 타입도 바뀐다. 쾌청 상태: 불꽃 비 상태: 물 눈 상태: 얼음 모래바람 상태: 바위"
  },
  {
@@ -2324,6 +2612,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수방어를 2단계 떨어뜨린다."
  },
  {
@@ -2337,6 +2626,10 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "베기",
+   "바람"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -2350,6 +2643,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -2363,6 +2657,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -2376,6 +2671,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 특수방어를 2단계 떨어뜨린다."
  },
  {
@@ -2389,6 +2687,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격, 방어를 1단계 떨어뜨린다."
  },
  {
@@ -2402,6 +2701,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어, 특수방어를 1단계 올린다."
  },
  {
@@ -2415,6 +2715,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "자신의 남은 HP가 적을수록 위력이 떨어진다. (위력은 1~150)"
  },
  {
@@ -2428,6 +2729,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "상대에게 반드시 명중한다."
  },
  {
@@ -2441,6 +2745,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -2454,6 +2759,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -2467,6 +2773,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 기절시킨다. 명중률은 30%로 고정된다. 얼음타입인 상대에게는 맞지 않는다. 얼음타입 이외의 포켓몬이 사용하면 명중률이 20%가 된다."
  },
  {
@@ -2480,6 +2787,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "30% 확률로 상대의 명중률을 1단계 떨어뜨린다."
  },
  {
@@ -2493,6 +2801,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -2506,6 +2817,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "상대에게 반드시 명중한다."
  },
  {
@@ -2519,6 +2833,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -2532,6 +2847,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어를 2단계 올린다."
  },
  {
@@ -2545,6 +2861,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 교체 불가 상태로 만든다."
  },
  {
@@ -2558,6 +2875,9 @@
   "priority": 0,
   "isContact": false,
   "target": 6,
+  "tags": [
+   "소리"
+  ],
   "description": "자신과 같은 편의 공격을 1단계 올린다."
  },
  {
@@ -2571,6 +2891,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": ""
  },
  {
@@ -2584,6 +2907,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -2597,6 +2921,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 공격, 방어를 1단계 올린다."
  },
  {
@@ -2610,6 +2935,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 공중 상태가 되어 다음 턴에 공격한다. 30% 확률로 상대를 마비 상태로 만든다."
  },
  {
@@ -2623,6 +2949,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -2636,6 +2963,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 도구를 지니고 있지 않은 경우 상대의 도구를 빼앗는다."
  },
  {
@@ -2649,6 +2977,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다. 10% 확률로 상대를 마비 상태로 만든다."
  },
  {
@@ -2662,6 +2991,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 특수공격, 특수방어를 1단계 올린다."
  },
  {
@@ -2675,6 +3005,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -2688,6 +3021,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "춤"
+  ],
   "description": "자신의 공격, 스피드를 1단계 올린다."
  },
  {
@@ -2701,6 +3037,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -2714,6 +3053,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "파동"
+  ],
   "description": "20% 확률로 상대를 혼란 상태로 만든다."
  },
  {
@@ -2727,6 +3069,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신의 최대 HP의 1/2만큼 회복한다. 비행타입이 사용하면 그 턴 동안 비행타입이 아니게 된다."
  },
  {
@@ -2740,6 +3085,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 중력 상태로 만든다."
  },
  {
@@ -2753,6 +3099,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "자신의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -2766,6 +3115,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "자신의 스피드가 상대보다 느릴수록 위력이 올라간다. (위력은 1~150)"
  },
  {
@@ -2779,6 +3131,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "자신은 기절하게 되지만 다음에 내보내는 포켓몬의 HP를 모두 회복하고 상태 이상을 회복한다."
  },
  {
@@ -2792,6 +3147,7 @@
   "priority": 2,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "방어, 판별 등의 효과를 해제하고 공격한다."
  },
  {
@@ -2805,6 +3161,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 나무열매를 지니고 있으면 그 나무열매를 대신 먹고 자신이 효과를 받는다."
  },
  {
@@ -2818,6 +3175,9 @@
   "priority": 0,
   "isContact": false,
   "target": 12,
+  "tags": [
+   "바람"
+  ],
   "description": "4턴 동안 같은 편 필드를 순풍 상태로 만든다."
  },
  {
@@ -2831,6 +3191,7 @@
   "priority": 0,
   "isContact": false,
   "target": 1,
+  "tags": [],
   "description": "자신 또는 같은 편의 공격, 방어, 특수공격, 특수방어, 스피드, 명중률, 회피율 중 하나를 2단계 올린다."
  },
  {
@@ -2844,6 +3205,7 @@
   "priority": 0,
   "isContact": false,
   "target": 13,
+  "tags": [],
   "description": "사용한 턴에 상대의 기술로 입은 데미지를 1.5배로 돌려준다."
  },
  {
@@ -2857,6 +3219,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "공격한 다음 다른 지닌 포켓몬과 교체한다."
  },
  {
@@ -2870,6 +3233,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 방어, 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -2883,6 +3247,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대보다 나중에 공격하면 위력이 2배가 된다."
  },
  {
@@ -2896,6 +3261,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴 동안 상대가 이미 데미지를 입었다면 위력이 2배가 된다."
  },
  {
@@ -2909,6 +3275,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "지니고 있는 도구에 따라 위력과 효과가 바뀐다. 사용하면 도구는 사라진다."
  },
  {
@@ -2922,6 +3289,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 공방반전 상태가 된다."
  },
  {
@@ -2935,6 +3303,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 특성 없음 상태로 만든다."
  },
  {
@@ -2948,6 +3317,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "마지막으로 사용된 기술을 사용한다. 사용된 기술이 없는 경우 실패한다."
  },
  {
@@ -2961,6 +3331,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 공격, 특수공격 능력 변화를 상대의 공격, 특수공격 능력 변화와 바꾼다."
  },
  {
@@ -2974,6 +3345,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 방어, 특수방어 능력 변화를 상대의 방어, 특수방어 능력 변화와 바꾼다."
  },
  {
@@ -2987,6 +3359,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "다른 배운 기술을 모두 사용하지 않은 경우 실패한다."
  },
  {
@@ -3000,6 +3373,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특성을 불면으로 만든다."
  },
  {
@@ -3013,6 +3387,7 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 공격 기술을 선택하였고 이 기술을 사용한 턴 동안 이미 공격하였다면 실패한다."
  },
  {
@@ -3026,6 +3401,7 @@
   "priority": 0,
   "isContact": false,
   "target": 11,
+  "tags": [],
   "description": "상대 필드를 독압정 상태로 만든다."
  },
  {
@@ -3039,6 +3415,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 아쿠아링 상태가 된다."
  },
  {
@@ -3052,6 +3429,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신은 전자부유 상태가 된다."
  },
  {
@@ -3065,6 +3443,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다. 10% 확률로 상대를 화상 상태로 만든다. 사용하면 자신의 얼음 상태를 회복한다."
  },
  {
@@ -3078,6 +3457,10 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄",
+   "파동"
+  ],
   "description": "상대에게 반드시 명중한다."
  },
  {
@@ -3091,6 +3474,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 스피드를 2단계 올린다."
  },
  {
@@ -3104,6 +3488,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 독 상태로 만든다."
  },
  {
@@ -3117,6 +3502,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "파동"
+  ],
   "description": "20% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3130,6 +3518,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -3143,6 +3534,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3156,6 +3548,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": ""
  },
  {
@@ -3169,6 +3564,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3182,6 +3580,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": ""
  },
  {
@@ -3195,6 +3596,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -3208,6 +3612,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "파동"
+  ],
   "description": ""
  },
  {
@@ -3221,6 +3628,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 풀죽게 한다. 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -3234,6 +3642,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3247,6 +3656,10 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치",
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -3260,6 +3673,7 @@
   "priority": 1,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3273,6 +3687,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -3286,6 +3703,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -3299,6 +3719,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다."
  },
  {
@@ -3312,6 +3733,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -3325,6 +3747,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대와 자신의 지니고 있는 도구를 바꾼다."
  },
  {
@@ -3338,6 +3761,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -3351,6 +3775,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 특수공격을 2단계 올린다."
  },
  {
@@ -3364,6 +3789,9 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": ""
  },
  {
@@ -3377,6 +3805,7 @@
   "priority": -4,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "이 기술을 사용하는 턴에 상대에게 기술의 데미지를 입으면 위력이 2배가 된다."
  },
  {
@@ -3390,6 +3819,7 @@
   "priority": 1,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3403,6 +3833,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -3416,6 +3849,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "10% 확률로 상대를 마비 상태로 만든다. 10% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3429,6 +3865,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "10% 확률로 상대를 얼음 상태로 만든다. 10% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3442,6 +3881,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "10% 확률로 상대를 화상 상태로 만든다. 10% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3455,6 +3897,7 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3468,6 +3911,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -3481,6 +3927,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3494,6 +3941,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -3507,6 +3955,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 회피율을 1단계 떨어뜨린다. 리플렉터, 압정뿌리기, 신비의부적, 필드 등을 해제한다."
  },
  {
@@ -3520,6 +3969,7 @@
   "priority": -7,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 트릭룸 상태로 만든다."
  },
  {
@@ -3533,6 +3983,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -3546,6 +3997,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "30% 확률로 상대를 마비 상태로 만든다."
  },
  {
@@ -3559,6 +4011,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "30% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -3572,6 +4025,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -3585,6 +4039,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3598,6 +4053,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -3611,6 +4069,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "10% 확률로 상대를 독 상태로 만든다. 급소업+1로 공격한다."
  },
  {
@@ -3624,6 +4085,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 독 상태로 만든다."
  },
  {
@@ -3637,6 +4099,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -3650,6 +4113,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -3663,6 +4127,7 @@
   "priority": 0,
   "isContact": false,
   "target": 11,
+  "tags": [],
   "description": "상대 필드를 스텔스록 상태로 만든다."
  },
  {
@@ -3676,6 +4141,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 무거울수록 위력이 올라간다. (위력은 20~120)"
  },
  {
@@ -3689,6 +4155,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 나무열매를 지니고 있으면 그 나무열매를 대신 먹고 자신이 효과를 받는다."
  },
  {
@@ -3702,6 +4169,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "70% 확률로 자신의 특수공격을 1단계 올린다."
  },
  {
@@ -3715,6 +4183,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다."
  },
  {
@@ -3728,6 +4197,7 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -3741,6 +4211,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/2만큼 자신도 데미지를 입는다."
  },
  {
@@ -3754,6 +4225,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "2회 연속으로 공격한다."
  },
  {
@@ -3767,6 +4239,7 @@
   "priority": 3,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "사용한 턴 동안 같은 편 전원을 공격하는 기술로부터 몸을 보호한다."
  },
  {
@@ -3780,6 +4253,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신과 상대의 방어와 특수방어 수치를 각각 더해서 1/2씩 나눠 갖는다."
  },
  {
@@ -3793,6 +4267,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신과 상대의 공격과 특수공격 수치를 각각 더해서 1/2씩 나눠 갖는다."
  },
  {
@@ -3806,6 +4281,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 원더룸 상태로 만든다."
  },
  {
@@ -3819,6 +4295,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "이 기술은 특수 기술이나 상대의 방어를 기준으로 데미지를 계산한다."
  },
  {
@@ -3832,6 +4309,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 독, 맹독 상태인 경우 위력이 2배가 된다."
  },
  {
@@ -3845,6 +4323,9 @@
   "priority": 2,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "가루"
+  ],
   "description": "상대의 기술을 모두 자신이 받는다. 상대를 선택하는 기술에만 효과가 있다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -3858,6 +4339,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 매직룸 상태로 만든다."
  },
  {
@@ -3871,6 +4353,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "땅 위에 있지 않은 상대를 추락 상태로 만든다. 공중 상태인 상대에게도 맞는다."
  },
  {
@@ -3884,6 +4367,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "반드시 급소에 맞는다."
  },
  {
@@ -3897,6 +4381,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "10% 확률로 상대를 독 상태로 만든다."
  },
  {
@@ -3910,6 +4395,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "춤"
+  ],
   "description": "자신의 특수공격, 특수방어, 스피드를 1단계 올린다."
  },
  {
@@ -3923,6 +4411,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 상대보다 무거울수록 위력이 올라간다. (위력은 40~120) 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -3936,6 +4425,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "자신의 스피드가 상대보다 빠를수록 위력이 올라간다. (위력은 40~150)"
  },
  {
@@ -3949,6 +4441,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 타입을 물타입으로 바꾼다."
  },
  {
@@ -3962,6 +4455,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 스피드를 1단계 올린다."
  },
  {
@@ -3975,6 +4469,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 공격, 방어, 명중률을 1단계 올린다."
  },
  {
@@ -3988,6 +4483,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -4001,6 +4497,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "상대의 특수방어를 2단계 떨어뜨린다."
  },
  {
@@ -4014,6 +4513,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 공격이 아닌 상대의 공격 수치에 따라 데미지가 결정된다."
  },
  {
@@ -4027,6 +4527,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특성을 단순으로 만든다."
  },
  {
@@ -4040,6 +4541,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특성을 자신과 같은 특성으로 만든다."
  },
  {
@@ -4053,6 +4555,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 행동 순서를 자신의 바로 다음으로 만든다."
  },
  {
@@ -4066,6 +4569,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "같은 턴에 복수의 포켓몬이 이 기술을 사용하면 첫 번째가 사용한 바로 다음에 두 번째 이후가 사용한다. 두 번째 이후의 위력은 2배가 된다."
  },
  {
@@ -4079,6 +4585,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 능력 변화를 원래대로 되돌린다. 상대에게 반드시 명중한다."
  },
  {
@@ -4092,6 +4599,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 올라간 능력 변화 1단계당 이 기술의 위력이 20씩 올라간다."
  },
  {
@@ -4105,6 +4613,7 @@
   "priority": 3,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "사용한 턴 동안 자신과 같은 편을 선제 기술로부터 보호한다."
  },
  {
@@ -4118,6 +4627,7 @@
   "priority": 2,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신과 같은 편의 자리를 바꾼다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -4131,6 +4641,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 화상 상태로 만든다. 상대의 얼음 상태를 회복한다. 사용하면 자신의 얼음 상태를 회복한다."
  },
  {
@@ -4144,6 +4655,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어, 특수방어를 1단계 떨어뜨리고 공격, 특수공격, 스피드를 2단계 올린다."
  },
  {
@@ -4157,6 +4669,10 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "파동",
+   "회복"
+  ],
   "description": "상대의 HP를 최대 HP의 1/2만큼 회복시킨다."
  },
  {
@@ -4170,6 +4686,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 상태 이상인 경우 위력이 2배가 된다."
  },
  {
@@ -4183,6 +4700,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 공격을 1단계 올리고 스피드를 2단계 올린다."
  },
  {
@@ -4196,6 +4714,7 @@
   "priority": -6,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대에게 교체할 포켓몬이 있는 경우 랜덤한 포켓몬으로 교체시킨다."
  },
  {
@@ -4209,6 +4728,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 행동 순서를 사용한 턴의 가장 마지막으로 만든다."
  },
  {
@@ -4222,6 +4742,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 도구를 지니고 있지 않은 경우 위력이 2배가 된다."
  },
  {
@@ -4235,6 +4756,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 타입을 상대와 같은 타입으로 바꾼다."
  },
  {
@@ -4248,6 +4770,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신은 기절하게 되며 사용할 때 남은 HP만큼의 데미지를 준다."
  },
  {
@@ -4261,6 +4784,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 화상 상태로 만든다."
  },
  {
@@ -4274,6 +4798,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "공격한 다음 다른 지닌 포켓몬과 교체한다."
  },
  {
@@ -4287,6 +4812,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -4300,6 +4826,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다. 그래스필드 상태일 때 위력이 1/2이 된다."
  },
  {
@@ -4313,6 +4840,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "반드시 급소에 맞는다."
  },
  {
@@ -4326,6 +4854,7 @@
   "priority": -6,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대에게 교체할 포켓몬이 있는 경우 랜덤한 포켓몬으로 교체시킨다."
  },
  {
@@ -4339,6 +4868,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -4352,6 +4882,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/4만큼 자신도 데미지를 입는다."
  },
  {
@@ -4365,6 +4896,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -4378,6 +4910,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -4391,6 +4926,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "상대의 능력 변화를 무시하고 데미지를 준다."
  },
  {
@@ -4404,6 +4942,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "50% 확률로 상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -4417,6 +4958,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신이 상대보다 무거울수록 위력이 올라간다. (위력은 40~120) 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -4430,6 +4972,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어를 3단계 올린다."
  },
  {
@@ -4443,6 +4986,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "40% 확률로 상대의 명중률을 1단계 떨어뜨린다."
  },
  {
@@ -4456,6 +5000,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -4469,6 +5014,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "바람"
+  ],
   "description": "30% 확률로 상대를 혼란 상태로 만든다. 비 상태인 경우 상대에게 반드시 명중한다. 쾌청 상태인 경우 명중률은 50%가 된다. 공중 상태인 상대에게도 맞는다."
  },
  {
@@ -4482,6 +5030,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "춤"
+  ],
   "description": "50% 확률로 자신의 특수공격을 1단계 올린다."
  },
  {
@@ -4495,6 +5046,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -4508,6 +5062,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -4521,6 +5076,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "이 기술의 타입과 비행타입 두 타입의 상성을 종합하여 데미지가 결정된다. 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -4534,6 +5090,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "배틀 중에 나무열매를 먹지 않은 경우 이 기술은 실패한다."
  },
  {
@@ -4547,6 +5104,7 @@
   "priority": 0,
   "isContact": false,
   "target": 11,
+  "tags": [],
   "description": "상대 필드를 끈적끈적네트 상태로 만든다."
  },
  {
@@ -4560,6 +5118,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "이 기술로 상대를 쓰러뜨리면 공격이 3단계 올라간다."
  },
  {
@@ -4573,6 +5132,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 잠복 상태가 되어 다음 턴에 공격한다. 방어, 판별 등의 효과를 해제하고 공격한다."
  },
  {
@@ -4586,6 +5146,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 핼러윈 상태로 만든다."
  },
  {
@@ -4599,6 +5160,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 공격, 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -4612,6 +5176,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -4625,6 +5192,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 숲의저주 상태로 만든다."
  },
  {
@@ -4638,6 +5206,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "바람"
+  ],
   "description": ""
  },
  {
@@ -4651,6 +5222,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "물타입인 상대에게도 효과가 굉장해진다."
  },
  {
@@ -4664,6 +5236,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 공격, 특수공격을 1단계 떨어뜨리고 자신은 다른 지닌 포켓몬과 교체한다."
  },
  {
@@ -4677,6 +5252,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 능력 변화를 모두 반대로 만든다."
  },
  {
@@ -4690,6 +5266,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 3/4만큼 자신의 HP를 회복한다."
  },
  {
@@ -4703,6 +5282,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 그래스필드 상태로 만든다."
  },
  {
@@ -4716,6 +5296,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 미스트필드 상태로 만든다."
  },
  {
@@ -4729,6 +5310,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 기술을 사용하기 전에 이 기술이 명중하면 그 턴 동안 상대의 기술은 전기타입이 된다."
  },
  {
@@ -4742,6 +5324,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -4755,6 +5338,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "10% 확률로 상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -4768,6 +5352,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "소리"
+  ],
   "description": ""
  },
  {
@@ -4781,6 +5368,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "필드의 전원을 페어리록 상태로 만든다."
  },
  {
@@ -4794,6 +5382,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 공격으로부터 몸을 보호하며 접촉 기술을 받으면 상대의 공격을 1단계 떨어뜨린다. 실드폼으로 폼체인지한다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -4807,6 +5396,7 @@
   "priority": 1,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다."
  },
  {
@@ -4820,6 +5410,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -4833,6 +5424,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 기술로부터 몸을 보호하며 접촉 기술로 공격한 상대 최대 HP의 1/8만큼 데미지를 준다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -4846,6 +5438,7 @@
   "priority": 0,
   "isContact": false,
   "target": 2,
+  "tags": [],
   "description": "자신의 특수방어를 1단계 올린다."
  },
  {
@@ -4859,6 +5452,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -4872,6 +5466,7 @@
   "priority": 0,
   "isContact": false,
   "target": 6,
+  "tags": [],
   "description": "특성이 플러스, 마이너스인 자신과 같은 편의 방어, 특수방어를 1단계 올린다."
  },
  {
@@ -4885,6 +5480,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 일렉트릭필드 상태로 만든다."
  },
  {
@@ -4898,6 +5494,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": ""
  },
  {
@@ -4911,6 +5508,7 @@
   "priority": 1,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -4924,6 +5522,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 마비 상태로 만든다."
  },
  {
@@ -4937,6 +5536,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -4950,6 +5550,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/2만큼 자신도 데미지를 입는다."
  },
  {
@@ -4963,6 +5564,7 @@
   "priority": 2,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "등장하고 가장 먼저 사용하지 않으면 실패한다."
  },
  {
@@ -4976,6 +5578,7 @@
   "priority": 4,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 기술로부터 몸을 보호한다. 접촉 기술을 받으면 상대를 독 상태로 만든다. 연속해서 사용하면 성공률이 이전에 사용했을 때의 1/3이 된다."
  },
  {
@@ -4989,6 +5592,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 교체 불가 상태로 만든다."
  },
  {
@@ -5002,6 +5606,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 능력 변화를 무시하고 데미지를 준다."
  },
  {
@@ -5015,6 +5620,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "소리"
+  ],
   "description": "상대의 화상 상태를 회복한다."
  },
  {
@@ -5028,6 +5636,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "자신의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -5041,6 +5652,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -5054,6 +5666,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "회복"
+  ],
   "description": "상대의 공격 수치만큼 자신의 HP를 회복한다. 상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -5067,6 +5682,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "사용한 턴에 차지 상태가 되어 다음 턴에 공격한다. 쾌청 상태인 경우 차지 상태를 생략하고 바로 공격할 수 있다. 다른 날씨인 경우 위력이 1/2이 된다."
  },
  {
@@ -5080,6 +5698,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 2단계 떨어뜨린다. 상대를 독 상태로 만든다."
  },
  {
@@ -5093,6 +5712,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 지옥찌르기 상태로 만든다."
  },
  {
@@ -5106,6 +5726,10 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄",
+   "회복"
+  ],
   "description": "같은 편에게 사용하면 데미지를 주는 대신 최대 HP의 1/2만큼 같은 편의 HP를 회복한다."
  },
  {
@@ -5119,6 +5743,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 전체 필드를 사이코필드 상태로 만든다."
  },
  {
@@ -5132,6 +5757,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -5145,6 +5771,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -5158,6 +5785,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 올라간 능력 변화 1단계당 이 기술의 위력이 20씩 올라간다."
  },
  {
@@ -5171,6 +5799,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 불꽃타입이 없어진다. 사용하면 자신의 얼음 상태를 회복한다. 자신이 불꽃타입이 아닌 경우 실패한다."
  },
  {
@@ -5184,6 +5813,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신과 상대의 스피드를 바꾼다."
  },
  {
@@ -5197,6 +5827,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대에게 반드시 명중한다."
  },
  {
@@ -5210,6 +5841,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -5223,6 +5855,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 직전에 사용한 기술을 한 번 더 사용하게 한다."
  },
  {
@@ -5236,6 +5869,9 @@
   "priority": -3,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "기술을 사용하기 전에 접촉 기술을 받으면 그 상대를 화상 상태로 만든다."
  },
  {
@@ -5249,6 +5885,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "소리"
+  ],
   "description": "자신의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -5262,6 +5901,7 @@
   "priority": 0,
   "isContact": true,
   "target": 4,
+  "tags": [],
   "description": ""
  },
  {
@@ -5275,6 +5915,7 @@
   "priority": 0,
   "isContact": false,
   "target": 12,
+  "tags": [],
   "description": "5턴 동안 같은 편 필드를 오로라베일 상태로 만든다. 눈 상태인 경우에만 사용할 수 있다."
  },
  {
@@ -5288,6 +5929,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "상대 필드의 빛의장막, 리플렉터, 오로라베일 상태를 해제하고 공격한다."
  },
  {
@@ -5301,6 +5945,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "직전 턴에 자신이 행동하지 못했거나 기술이 빗나가거나 실패한 경우 위력이 2배가 된다."
  },
  {
@@ -5314,6 +5959,7 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": ""
  },
  {
@@ -5327,6 +5973,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대의 방어를 1단계 떨어뜨린다."
  },
  {
@@ -5340,6 +5987,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격, 특수공격을 1단계 떨어뜨린다. 상대의 회피율, 기술 방어 등을 무시하고 맞힐 수 있다."
  },
  {
@@ -5353,6 +6001,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -5366,6 +6015,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "기술을 끌어모으는 특성이나 기술의 영향을 무시한다. 급소업+1로 공격한다."
  },
  {
@@ -5379,6 +6029,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "무는"
+  ],
   "description": "상대와 자신을 물고버티기 상태로 만든다."
  },
  {
@@ -5392,6 +6045,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "지니고 있는 나무열매를 먹는다. 자신의 방어를 2단계 올린다. 나무열매를 지니고 있지 않다면 이 기술을 사용할 수 없다."
  },
  {
@@ -5405,6 +6059,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 공격, 방어, 특수공격, 특수방어, 스피드를 1단계 올린다. 자신은 교체 불가 상태가 된다. 등장할 때마다 단 한 번 사용할 수 있다. 두 번째 이후에는 실패한다."
  },
  {
@@ -5418,6 +6073,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "가루"
+  ],
   "description": "상대의 타입을 에스퍼타입으로 바꾼다. 풀타입 포켓몬에게는 효과가 없다."
  },
  {
@@ -5431,6 +6089,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2회 연속으로 공격한다. 상대가 2마리 있는 경우 각각 1회씩 공격한다."
  },
  {
@@ -5444,6 +6103,7 @@
   "priority": 0,
   "isContact": false,
   "target": 8,
+  "tags": [],
   "description": "필드의 전원은 각각 지니고 있는 나무열매를 먹는다."
  },
  {
@@ -5457,6 +6117,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 교체 불가 상태, 문어굳히기 상태로 만든다."
  },
  {
@@ -5470,6 +6131,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "같은 편과 상대의 필드 상태를 교체한다."
  },
  {
@@ -5483,6 +6145,10 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "소리",
+   "춤"
+  ],
   "description": "자신의 최대 HP의 1/3만큼 HP를 소비하여 자신의 공격, 방어, 특수공격, 특수방어, 스피드를 1단계 올린다. 남은 HP가 부족한 경우 실패한다."
  },
  {
@@ -5496,6 +6162,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "이 기술은 공격이 아닌 방어 수치에 따라 데미지가 결정된다."
  },
  {
@@ -5509,6 +6176,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격, 특수공격을 2단계 올린다."
  },
  {
@@ -5522,6 +6190,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -5535,6 +6204,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대를 바인드 상태로 만든다."
  },
  {
@@ -5548,6 +6218,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "10% 확률로 상대를 화상 상태로 만든다. 사용하면 자신의 얼음 상태를 회복한다."
  },
  {
@@ -5561,6 +6234,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 스피드를 1단계 올린다. 모르페코의 폼에 따라 타입이 바뀐다."
  },
  {
@@ -5574,6 +6248,7 @@
   "priority": 0,
   "isContact": true,
   "target": 5,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -5587,6 +6262,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "소리"
+  ],
   "description": ""
  },
  {
@@ -5600,6 +6278,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -5613,6 +6292,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 방어를 1단계 떨어뜨린다. 중력 상태인 경우 위력이 1.5배가 된다."
  },
  {
@@ -5626,6 +6306,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -5639,6 +6320,9 @@
   "priority": 0,
   "isContact": false,
   "target": 6,
+  "tags": [
+   "회복"
+  ],
   "description": "자신과 같은 편의 HP를 각각 최대 HP의 1/4만큼 회복한다."
  },
  {
@@ -5652,6 +6336,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 다음 턴에 자신은 반동 상태가 된다."
  },
  {
@@ -5665,6 +6350,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "공격한 다음 자신의 최대 HP의 1/2만큼 데미지를 입는다."
  },
  {
@@ -5678,6 +6364,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사이코필드 상태의 효과를 받고 있는 경우 위력이 1.5배가 되며 상대 전체를 공격한다."
  },
  {
@@ -5691,6 +6378,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "필드가 전개되어 있지 않은 경우 실패한다. 필드를 해제한다."
  },
  {
@@ -5704,6 +6392,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2~5회 연속으로 공격한다. 자신의 방어를 1단계 떨어뜨리고 스피드를 1단계 올린다."
  },
  {
@@ -5717,6 +6406,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 차지 상태가 되어 다음 턴에 공격한다. 사용한 턴에 자신의 특수공격을 1단계 올린다."
  },
  {
@@ -5730,6 +6420,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "20% 확률로 상대를 독 상태로 만든다. 물리 기술일 때 데미지가 더 높은 경우 물리 기술이 된다."
  },
  {
@@ -5743,6 +6434,9 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [
+   "폭발"
+  ],
   "description": "사용하면 자신은 기절하게 된다. 미스트필드 상태의 효과를 받고 있는 경우 위력이 1.5배가 된다."
  },
  {
@@ -5756,6 +6450,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "그래스필드 상태의 효과를 받고 있는 경우 우선도 +1이 된다."
  },
  {
@@ -5769,6 +6464,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 일렉트릭필드 상태의 효과를 받고 있는 경우 위력이 2배가 된다."
  },
  {
@@ -5782,6 +6478,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "파동"
+  ],
   "description": "자신이 필드의 효과를 받고 있는 경우 위력이 2배가 된다. 필드의 종류에 따라 타입이 바뀐다."
  },
  {
@@ -5795,6 +6494,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수공격을 1단계 떨어뜨린다."
  },
  {
@@ -5808,6 +6508,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "사용한 턴 동안 상대의 능력이 올라간 경우 상대를 화상 상태로 만든다."
  },
  {
@@ -5821,6 +6522,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴 동안 자신의 능력이 떨어진 경우 위력이 2배가 된다."
  },
  {
@@ -5834,6 +6536,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대가 도구를 지니고 있지 않은 경우 실패한다."
  },
  {
@@ -5847,6 +6550,7 @@
   "priority": 0,
   "isContact": false,
   "target": 4,
+  "tags": [],
   "description": "자신을 제외한 필드의 전원이 지니고 있는 도구를 없앤다."
  },
  {
@@ -5860,6 +6564,7 @@
   "priority": 0,
   "isContact": false,
   "target": 14,
+  "tags": [],
   "description": "같은 편의 공격, 방어를 1단계 올린다."
  },
  {
@@ -5873,6 +6578,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "공격한 다음 다른 지닌 포켓몬과 교체한다."
  },
  {
@@ -5886,6 +6592,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "첫 번째는 위력 20, 두 번째는 위력 40, 세 번째는 위력 60으로 3회 연속 공격한다. 도중에 빗나가면 공격이 끝난다."
  },
  {
@@ -5899,6 +6606,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "2회 연속으로 공격한다."
  },
  {
@@ -5912,6 +6620,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 화상 상태로 만든다. 상대의 얼음 상태를 회복한다. 사용하면 자신의 얼음 상태를 회복한다."
  },
  {
@@ -5925,6 +6634,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "상대가 마지막으로 사용한 기술의 PP를 3 줄인다."
  },
  {
@@ -5938,6 +6650,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "30% 확률로 상대를 독, 마비, 잠듦 중 하나의 상태로 만든다."
  },
  {
@@ -5951,6 +6666,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 방어를 1단계 올린다."
  },
  {
@@ -5964,6 +6680,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "상대 필드를 스텔스록 상태로 만든다."
  },
  {
@@ -5977,6 +6696,7 @@
   "priority": 0,
   "isContact": false,
   "target": 9,
+  "tags": [],
   "description": "자신은 난동 상태가 된다."
  },
  {
@@ -5990,6 +6710,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "준 데미지의 1/3만큼 자신도 데미지를 입는다."
  },
  {
@@ -6003,6 +6724,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 풀죽게 한다."
  },
  {
@@ -6016,6 +6738,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "자신의 방어, 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -6029,6 +6754,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "50% 확률로 상대를 독 상태로 만든다. 상대가 독, 맹독 상태인 경우 위력이 2배가 된다."
  },
  {
@@ -6042,6 +6768,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -6055,6 +6782,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 방어를 2단계 올린다."
  },
  {
@@ -6068,6 +6796,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "50% 확률로 상대의 방어를 1단계 떨어뜨린다. 30% 확률로 상대를 풀죽게 한다. 급소업+1로 공격한다."
  },
  {
@@ -6081,6 +6810,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 화상 상태로 만든다. 상대가 상태 이상인 경우 위력이 2배가 된다."
  },
  {
@@ -6094,6 +6824,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "상대 필드를 압정뿌리기 상태로 만든다."
  },
  {
@@ -6107,6 +6840,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 상대를 혼란 상태로 만든다. 빗나가거나 실패하면 자신의 최대 HP의 1/2만큼 데미지를 입는다."
  },
  {
@@ -6120,6 +6854,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "지닌 포켓몬이 1마리 기절할 때마다 위력이 50 올라간다."
  },
  {
@@ -6133,6 +6868,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 특수방어를 2단계 떨어뜨린다."
  },
  {
@@ -6146,6 +6882,9 @@
   "priority": 1,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": ""
  },
  {
@@ -6159,6 +6898,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 방어를 2단계 떨어뜨리고 공격을 2단계 올린다."
  },
  {
@@ -6172,6 +6912,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "1~10회 연속으로 공격한다. 도중에 빗나가면 공격이 끝난다."
  },
  {
@@ -6185,6 +6928,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "필드를 해제한다."
  },
  {
@@ -6198,6 +6942,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "다음에 자신이 행동할 때까지 자신은 무방비 상태가 된다."
  },
  {
@@ -6211,6 +6956,9 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [
+   "회복"
+  ],
   "description": "기절한 지닌 포켓몬을 최대 HP의 1/2 상태로 부활시킨다."
  },
  {
@@ -6224,6 +6972,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대를 소금절이 상태로 만든다."
  },
  {
@@ -6237,6 +6986,7 @@
   "priority": 0,
   "isContact": true,
   "target": 5,
+  "tags": [],
   "description": "자신의 바인드, 씨뿌리기 상태와 같은 편 필드의 압정뿌리기, 독압정, 끈적끈적네트, 스텔스록 상태를 해제한다. 상대를 독 상태로 만든다."
  },
  {
@@ -6250,6 +7000,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "상대에게 반드시 명중한다."
  },
  {
@@ -6263,6 +7016,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대에게 반드시 명중한다. 반드시 급소에 맞는다."
  },
  {
@@ -6276,6 +7030,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "자신의 특수공격을 1단계 올린다."
  },
  {
@@ -6289,6 +7046,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "춤"
+  ],
   "description": "자신의 스피드를 1단계 올린다."
  },
  {
@@ -6302,6 +7062,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 폼에 따라 기술의 타입이 바뀐다. 상대 필드의 리플렉터, 빛의장막, 오로라베일 상태를 해제하고 공격한다."
  },
  {
@@ -6315,6 +7076,7 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [],
   "description": "자신의 특수공격을 2단계 떨어뜨린다."
  },
  {
@@ -6328,6 +7090,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "자신의 최대 HP의 1/2만큼 HP를 소비하여 대타를 내보낸다. 이후 다른 지닌 포켓몬과 교체한다. 대타는 자신을 대신해 기술을 받는다. 최대 HP의 1/4의 데미지를 입으면 사라진다."
  },
  {
@@ -6341,6 +7104,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 눈 상태로 만든다. 다른 지닌 포켓몬과 교체한다."
  },
  {
@@ -6354,6 +7118,7 @@
   "priority": 0,
   "isContact": false,
   "target": 7,
+  "tags": [],
   "description": "전체 필드의 끈적끈적네트, 스텔스록, 대타출동, 압정뿌리기, 독압정 상태를 해제한다. 자신의 공격, 스피드를 1단계 올린다."
  },
  {
@@ -6367,6 +7132,7 @@
   "priority": 0,
   "isContact": false,
   "target": 10,
+  "tags": [],
   "description": "5턴 동안 눈 상태로 만든다."
  },
  {
@@ -6380,6 +7146,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 스피드를 1단계 떨어뜨린다."
  },
  {
@@ -6393,6 +7160,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "자신의 스피드를 1단계 올린다."
  },
  {
@@ -6406,6 +7174,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "상대의 공격을 1단계 떨어뜨린다."
  },
  {
@@ -6419,6 +7188,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "2회 연속으로 공격한다."
  },
  {
@@ -6432,6 +7202,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "기술로 데미지를 입을 때마다 위력이 50 올라간다. (최대 위력은 350) 지닌 포켓몬으로 돌아오면 위력이 원래대로 돌아온다."
  },
  {
@@ -6445,6 +7218,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "자신의 방어, 특수방어를 1단계 떨어뜨린다."
  },
  {
@@ -6458,6 +7232,10 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "베기",
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다."
  },
  {
@@ -6471,6 +7249,9 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [
+   "펀치"
+  ],
   "description": "자신의 전기타입이 없어진다. 자신이 전기타입이 아닌 경우 실패한다."
  },
  {
@@ -6484,6 +7265,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "이 기술은 2회 연속으로 사용할 수 없다."
  },
  {
@@ -6497,6 +7279,7 @@
   "priority": 0,
   "isContact": true,
   "target": 13,
+  "tags": [],
   "description": "사용한 턴에 상대의 기술로 입은 데미지를 1.5배로 돌려준다."
  },
  {
@@ -6510,6 +7293,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "베기"
+  ],
   "description": "급소업+1로 공격한다."
  },
  {
@@ -6523,6 +7309,9 @@
   "priority": 0,
   "isContact": false,
   "target": 5,
+  "tags": [
+   "회복"
+  ],
   "description": "상대에게 준 데미지의 1/2만큼 자신의 HP를 회복한다. 20% 확률로 상대를 화상 상태로 만든다."
  },
  {
@@ -6536,6 +7325,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "구슬폭탄"
+  ],
   "description": "3턴 동안 상대를 물엿범벅 상태로 만든다."
  },
  {
@@ -6549,6 +7341,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "사용한 턴에 차지 상태가 되어 다음 턴에 공격한다. 비 상태인 경우 차지 상태를 생략하고 바로 공격할 수 있다. 사용한 턴에 자신의 특수공격을 1단계 올린다."
  },
  {
@@ -6562,6 +7355,7 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [],
   "description": "30% 확률로 위력이 2배가 된다."
  },
  {
@@ -6575,6 +7369,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대의 남은 HP가 많을수록 위력이 올라간다. (위력은 1~100)"
  },
  {
@@ -6588,6 +7383,9 @@
   "priority": 0,
   "isContact": false,
   "target": 14,
+  "tags": [
+   "소리"
+  ],
   "description": "같은 편을 급소업 상태로 만든다. (드래곤타입은 +2, 그 외 타입은 +1)"
  },
  {
@@ -6601,6 +7399,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "사용한 턴 동안 상대의 능력이 올라간 경우 상대를 혼란 상태로 만든다."
  },
  {
@@ -6614,6 +7415,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "직전 턴에 자신이 행동하지 못했거나 기술이 빗나가거나 실패한 경우 위력이 2배가 된다."
  },
  {
@@ -6627,6 +7429,7 @@
   "priority": 0,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "빗나가거나 실패하면 자신의 최대 HP의 1/2만큼 데미지를 입는다. 작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다."
  },
  {
@@ -6640,6 +7443,9 @@
   "priority": 0,
   "isContact": false,
   "target": 0,
+  "tags": [
+   "소리"
+  ],
   "description": "2턴 동안 상대를 회복봉인 상태로 만든다."
  },
  {
@@ -6653,6 +7459,7 @@
   "priority": 3,
   "isContact": true,
   "target": 0,
+  "tags": [],
   "description": "상대가 선제 공격 기술을 사용하지 않은 경우 실패한다. 상대를 풀죽게 한다."
  }
 ]

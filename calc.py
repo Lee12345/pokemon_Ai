@@ -46,7 +46,9 @@ STAT_KO = {
 # ---------------------------------------------------------------------------
 ATTACKER_ABILITY = {
     "천하장사":   {"kind": "physical_power", "mult": 2.0},
+    "순수한힘":   {"kind": "physical_power", "mult": 2.0},
     "의욕":       {"kind": "attack_stat", "mult": 1.5},
+    "근성":       {"kind": "status_attack", "mult": 1.5},
     "적응력":     {"kind": "stab", "value": 2.0},
     "테크니션":   {"kind": "weak_move", "max_power": 60, "mult": 1.5},
     "단단한발톱": {"kind": "contact", "mult": 1.3},
@@ -59,14 +61,33 @@ ATTACKER_ABILITY = {
     "프리즈스킨": {"kind": "skin", "type": "얼음", "mult": 1.2},
     "페어리스킨": {"kind": "skin", "type": "페어리", "mult": 1.2},
     "드래곤스킨": {"kind": "skin", "type": "드래곤", "mult": 1.2},
+    # 기술 분류를 쓰는 것들 (moves.json 의 tags)
+    "철주먹":     {"kind": "tag_power", "tag": "펀치", "mult": 1.2},
+    "예리함":     {"kind": "tag_power", "tag": "베기", "mult": 1.5},
+    "메가런처":   {"kind": "tag_power", "tag": "파동", "mult": 1.5},
+    "옹골찬턱":   {"kind": "tag_power", "tag": "무는", "mult": 1.5},
+    "펑크록":     {"kind": "tag_power", "tag": "소리", "mult": 1.3},
+    # 특정 타입을 강화하는 것들
+    "불꽃의갈기": {"kind": "type_power", "type": "불꽃", "mult": 1.5},
+    "강철정신":   {"kind": "type_power", "type": "강철", "mult": 1.5},
+    "페어리오라": {"kind": "type_power", "type": "페어리", "mult": 1.33},
+    "수포":       {"kind": "type_power", "type": "물", "mult": 2.0},
 }
+# 방어측은 효과가 두 개인 특성이 있어서 목록으로 둔다 (예: 복슬복슬)
 DEFENDER_ABILITY = {
-    "두꺼운지방": {"kind": "resist_types", "types": ["불꽃", "얼음"], "mult": 0.5},
-    "내열":       {"kind": "resist_types", "types": ["불꽃"], "mult": 0.5},
-    "건조피부":   {"kind": "resist_types", "types": ["불꽃"], "mult": 1.25},
-    "필터":       {"kind": "resist_super", "mult": 0.75},
-    "하드록":     {"kind": "resist_super", "mult": 0.75},
-    "파동의방호": {"kind": "resist_contact", "mult": 0.5},
+    "두꺼운지방": [{"kind": "resist_types", "types": ["불꽃", "얼음"], "mult": 0.5}],
+    "내열":       [{"kind": "resist_types", "types": ["불꽃"], "mult": 0.5}],
+    "건조피부":   [{"kind": "resist_types", "types": ["불꽃"], "mult": 1.25}],
+    "수포":       [{"kind": "resist_types", "types": ["불꽃"], "mult": 0.5}],
+    "정화의소금": [{"kind": "resist_types", "types": ["고스트"], "mult": 0.5}],
+    "필터":       [{"kind": "resist_super", "mult": 0.75}],
+    "하드록":     [{"kind": "resist_super", "mult": 0.75}],
+    "파동의방호": [{"kind": "resist_contact", "mult": 0.5}],
+    "복슬복슬":   [{"kind": "resist_contact", "mult": 0.5},
+                   {"kind": "resist_types", "types": ["불꽃"], "mult": 2.0}],
+    "퍼코트":     [{"kind": "resist_category", "category": "물리", "mult": 0.5}],
+    "펑크록":     [{"kind": "resist_tag", "tag": "소리", "mult": 0.5}],
+    "멀티스케일": [{"kind": "resist_full_hp", "mult": 0.5}],
 }
 # 특성만으로 아예 안 맞는 경우. 이건 배율이 아니라 '무효'라서 따로 둔다.
 # 빠뜨리면 결과가 조금 틀리는 게 아니라 완전히 틀리므로 반드시 챙길 것.
@@ -79,16 +100,43 @@ DEFENDER_IMMUNE = {
     "건조피부":   ["물"],
     "초식":       ["풀"],
 }
+# 기술 분류째로 안 맞는 특성
+DEFENDER_IMMUNE_TAG = {
+    "방음": "소리",
+    "방탄": "구슬폭탄",
+}
 # 반대로 무효를 뚫는 특성
 IGNORE_IMMUNE = {
     "배짱": {"move_types": ["노말", "격투"], "target_type": "고스트"},
 }
 # 계산에 반영 못 하는데 데미지에 영향은 주는 것들 (경고만 띄운다)
+# 어느 쪽에 붙어 있을 때 의미가 있는지 표시해 둔다 ('공격' / '방어' / '양쪽')
+UNSUPPORTED_SIDE = {
+    "모래의힘": "공격", "선파워": "공격", "애널라이즈": "공격", "잠복": "공격",
+    "이판사판": "공격", "투쟁심": "공격", "플러스": "공격", "마이너스": "공격",
+    "까칠한피부": "방어", "탈": "방어", "옹골참": "방어", "지구력": "방어",
+    "열교환": "방어", "이상한비늘": "방어", "풀모피": "방어",
+    "곡예": "양쪽", "단순": "양쪽",
+}
 UNSUPPORTED_ABILITY = {
-    "철주먹": "펀치 기술 1.2배 — 어떤 기술이 펀치인지 데이터에 없음",
-    "옹골찬턱": "무는 기술 1.5배 — 어떤 기술이 무는 기술인지 데이터에 없음",
-    "모래의힘": "모래바람일 때만 적용 — 날씨는 아직 계산에 없음",
+    "모래의힘": "모래바람일 때만 적용 — 날씨가 아직 계산에 없음",
     "이상한비늘": "상태 이상일 때 방어 1.5배 — 상대 상태이상 입력이 아직 없음",
+    "풀모피": "그래스필드일 때 방어 1.5배 — 필드가 아직 계산에 없음",
+    "선파워": "쾌청일 때 특공 1.5배 — 날씨가 아직 계산에 없음",
+    "애널라이즈": "후공이면 위력 1.3배 — 선공/후공 판정이 아직 없음",
+    "잠복": "교체로 나온 상대에게 위력 2배 — 대전 상황 정보가 없음",
+    "이판사판": "반동 기술 위력 1.2배 — 반동 여부가 분류에 없음",
+    "투쟁심": "성별에 따라 위력이 달라짐 — 성별 정보가 없음",
+    "플러스": "같은 편이 있어야 발동 — 더블 전용",
+    "마이너스": "같은 편이 있어야 발동 — 더블 전용",
+    # 아래는 배율이 아니라 '한 번 막는' 종류라 데미지 숫자와 따로 봐야 한다
+    "탈": "둔갑한 모습이면 첫 공격 데미지를 통째로 무효 — 아래 숫자는 탈이 벗겨진 뒤 기준",
+    "옹골참": "HP가 꽉 차 있으면 한 방에 안 죽고 HP 1 남김",
+    "지구력": "맞을 때마다 방어가 1단계 올라감 — 2타 이상은 계산보다 덜 들어감",
+    "열교환": "불꽃 기술을 맞으면 공격이 1단계 올라감",
+    "까칠한피부": "접촉 기술을 쓰면 공격한 쪽이 최대 HP의 1/8을 받음",
+    "곡예": "도구가 없어지면 스피드 2배 — 스피드 판정에만 영향",
+    "단순": "랭크 변화가 2배로 적용됨",
 }
 # 노력치 배분 표기(A/B/C/D/S/H) -> 능력치 이름
 SPREAD_KEY = {"H": "hp", "A": "attack", "B": "defense",
@@ -257,7 +305,13 @@ class Build(object):
 
     @property
     def name(self):
-        return self.poke["formName"] or self.poke["name"]
+        base = self.poke["name"]
+        form = self.poke["formName"]
+        if not form:
+            return base
+        if base in form:          # '메가보만다' 처럼 이름이 이미 들어있으면 그대로
+            return form
+        return "%s(%s)" % (base, form)
 
     @property
     def types(self):
@@ -305,12 +359,14 @@ def calc_damage(dex, attacker, defender, move, critical=False,
 
     a_ab = ATTACKER_ABILITY.get(attacker.ability)
     d_ab = DEFENDER_ABILITY.get(defender.ability)
-    if attacker.ability in UNSUPPORTED_ABILITY:
-        warnings.append("공격측 특성 '%s' 는 계산에 안 들어갔습니다 (%s)"
-                        % (attacker.ability, UNSUPPORTED_ABILITY[attacker.ability]))
-    if defender.ability in UNSUPPORTED_ABILITY:
-        warnings.append("방어측 특성 '%s' 는 계산에 안 들어갔습니다 (%s)"
-                        % (defender.ability, UNSUPPORTED_ABILITY[defender.ability]))
+    for who, ab_name in (("공격", attacker.ability), ("방어", defender.ability)):
+        if ab_name not in UNSUPPORTED_ABILITY:
+            continue
+        side = UNSUPPORTED_SIDE.get(ab_name, "양쪽")
+        if side not in (who, "양쪽"):
+            continue          # 그쪽에 붙어 있어도 의미 없는 특성이면 조용히 넘어간다
+        warnings.append("%s측 특성 '%s' 는 계산에 안 들어갔습니다 (%s)"
+                        % (who, ab_name, UNSUPPORTED_ABILITY[ab_name]))
 
     # 노말 기술의 타입을 바꾸는 특성 (스카이스킨 등) — 타입 판정 전에 처리
     if a_ab and a_ab["kind"] == "skin" and move_type == "노말":
@@ -331,6 +387,11 @@ def calc_damage(dex, attacker, defender, move, critical=False,
     if a_ab and a_ab["kind"] == "attack_stat" and move["category"] == "물리":
         a = int(a * a_ab["mult"])
         notes.append("%s: 공격 %.1f배 (명중률은 0.8배)"
+                     % (attacker.ability, a_ab["mult"]))
+    if (a_ab and a_ab["kind"] == "status_attack" and move["category"] == "물리"
+            and attacker.status):
+        a = int(a * a_ab["mult"])
+        notes.append("%s: 상태 이상이라 공격 %.1f배"
                      % (attacker.ability, a_ab["mult"]))
     d = defender.stat(def_key, with_rank=not (critical and d_rank > 0))
     hp = defender.stat("hp")
@@ -353,12 +414,24 @@ def calc_damage(dex, attacker, defender, move, critical=False,
             power *= a_ab["mult"]
             notes.append("%s: HP 1/3 이하라 %s 기술 %.1f배"
                          % (attacker.ability, a_ab["type"], a_ab["mult"]))
+        elif k == "tag_power" and a_ab["tag"] in (move.get("tags") or []):
+            power *= a_ab["mult"]
+            notes.append("%s: %s 기술이라 %.2f배"
+                         % (attacker.ability, a_ab["tag"], a_ab["mult"]))
+        elif k == "type_power" and move_type == a_ab["type"]:
+            power *= a_ab["mult"]
+            notes.append("%s: %s 기술 %.2f배"
+                         % (attacker.ability, a_ab["type"], a_ab["mult"]))
 
     # 특성으로 아예 안 맞는 경우
     immune = DEFENDER_IMMUNE.get(defender.ability)
     if immune and move_type in immune:
         return {"error": "%s 의 특성 '%s' 때문에 %s 타입 기술은 통하지 않습니다." % (
             defender.name, defender.ability, move_type)}
+    tag_immune = DEFENDER_IMMUNE_TAG.get(defender.ability)
+    if tag_immune and tag_immune in (move.get("tags") or []):
+        return {"error": "%s 의 특성 '%s' 때문에 %s 기술은 통하지 않습니다." % (
+            defender.name, defender.ability, tag_immune)}
 
     eff = dex.effectiveness(move_type, defender.types)
     if eff == 0:
@@ -406,17 +479,32 @@ def calc_damage(dex, attacker, defender, move, critical=False,
 
     # 방어측 특성·도구
     guard = 1.0
-    if d_ab:
-        k = d_ab["kind"]
-        if k == "resist_types" and move_type in d_ab["types"]:
-            guard *= d_ab["mult"]
-            notes.append("%s: %s 기술 반감" % (defender.ability, move_type))
+    for ef in (d_ab or []):
+        k = ef["kind"]
+        hit = False
+        if k == "resist_types" and move_type in ef["types"]:
+            hit = True
+            label = "%s 기술" % move_type
         elif k == "resist_super" and eff > 1:
-            guard *= d_ab["mult"]
-            notes.append("%s: 효과 굉장한 기술 3/4" % defender.ability)
+            hit = True
+            label = "효과 굉장한 기술"
         elif k == "resist_contact" and move["isContact"]:
-            guard *= d_ab["mult"]
-            notes.append("%s: 접촉 기술 반감" % defender.ability)
+            hit = True
+            label = "접촉 기술"
+        elif k == "resist_category" and move["category"] == ef["category"]:
+            hit = True
+            label = "%s 기술" % ef["category"]
+        elif k == "resist_tag" and ef["tag"] in (move.get("tags") or []):
+            hit = True
+            label = "%s 기술" % ef["tag"]
+        elif k == "resist_full_hp" and defender.hp_ratio >= 1.0:
+            hit = True
+            label = "HP가 꽉 차 있어서"
+        if hit:
+            guard *= ef["mult"]
+            notes.append("%s: %s %s" % (
+                defender.ability, label,
+                "%.2f배" % ef["mult"] if ef["mult"] != 0.5 else "반감"))
     di = dex.item_effects.get(defender.item) if defender.item else None
     if di:
         if (di["kind"] == "resist_berry" and di["type"] == move_type and eff > 1) or            (di["kind"] == "resist_berry_always" and di["type"] == move_type):
