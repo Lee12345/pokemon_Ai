@@ -92,7 +92,30 @@ def build():
         kname = ko_mons.get(i)
         if kname and jname:
             poke[jname] = kname
-    # 폼 이름은 사용률 자료의 nameJa 와 pokemon.json 의 formName 으로 보충
+    # 폼 이름(메가 등)을 같이 넣는다. 구축기사는 'メガゲンガー' 처럼 적는다.
+    # 폼 라벨('003_000')이 양쪽 언어에서 같으므로 그걸로 잇는다.
+    def forms_of(doc):
+        out = {}
+        for row in doc["mSDataSet"]:
+            label = row["LabelName"]
+            if label.startswith("ZKN_FORM_"):
+                out[label[len("ZKN_FORM_"):]] = row["OriginalText"].strip()
+        return out
+
+    ja_form = forms_of(fetch("jpn_zkn_form", "rom-txt/jpn/zkn_form_syn.json"))
+    ko_form = {}
+    ko_path = os.path.join(RAW, "formname.json")
+    if os.path.exists(ko_path):
+        with open(ko_path, encoding="utf-8") as f:
+            ko_form = forms_of(json.load(f))
+    else:
+        ko_form = forms_of(fetch("kor_zkn_form", "rom-txt/kor/zkn_form_syn.json"))
+    for label, jname in ja_form.items():
+        kname = ko_form.get(label)
+        if kname and jname:
+            poke.setdefault(jname, kname)
+
+    # 사용률 자료의 nameJa 로도 보충
     for fn in ("usage_single.json", "usage_double.json"):
         q = os.path.join(OUT, fn)
         if not os.path.exists(q):

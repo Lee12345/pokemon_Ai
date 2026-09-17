@@ -1548,6 +1548,102 @@ def test_samples(dex):
     check("표본 파일이 없어도 그냥 빈 목록", empty == [] and len(bad2) == 0)
     check("보고서가 나온다", "구축기사" in samples.report(dex, empty, bad2))
 
+def test_fetch_pokesol(dex):
+    """구축기사에서 파티를 꺼내는 부분 (pokesol.app)."""
+    print("\n[32] 기사에서 파티 꺼내기")
+    import fetch_pokesol as fp
+
+    # -- turbo-stream 풀기 -------------------------------------------------
+    # 납작한 배열에 값이 있고 객체는 번호로 서로를 가리킨다.
+    flat = ["ROOT", "name", "한카리아스", "n", 42, ["D", 1789554238536],
+            ["M", 1, 2], {"_1": 2, "_3": 4}, {"_1": 5}, {"_1": 6}]
+    got = fp.unflatten(["ignored"] + flat[:0] or flat)  # flat[0] 이 루트
+    check("번호를 따라가서 객체를 만든다",
+          fp.unflatten([{"_1": 2}, "name", "한카리아스"])
+          == {"name": "한카리아스"})
+    check("음수는 특수값이라 None 으로",
+          fp.unflatten([{"_1": -2}, "name"]) == {"name": None})
+    check("['D', 숫자] 는 날짜지 번호가 아니다",
+          fp.unflatten([{"_1": 2}, "at", ["D", 1789554238536]])
+          == {"at": 1789554238536})
+    check("['M', ...] 은 Map 이다",
+          fp.unflatten([{"_1": 2}, "m", ["M", 3, 4], "k", "v"])
+          == {"m": {"k": "v"}})
+    check("모르는 자료형은 건드리지 않는다",
+          fp.unflatten([{"_1": 2}, "x", ["??", 3], "y"]) == {"x": None})
+    check("배열 안의 번호도 따라간다",
+          fp.unflatten([{"_1": 2}, "xs", [3, 4], "a", "b"])
+          == {"xs": ["a", "b"]})
+
+    # -- 제목에서 시즌·룰·순위 --------------------------------------------
+    cases = [
+        ("【S5最終1位】臥薪嘗胆アーマーガア", 5, 1, None),
+        ("【シングルM-5 最終177位 】グロス軸対面構築", None, 177, "M-5"),
+        ("【最終R1978/最高R2079】S5対戦記録", 5, None, None),
+        ("【M-Cマスター到達】耐久積み構築", None, None, "M-C"),
+        ("ただの雑記", None, None, None),
+    ]
+    for title, season, rank, rule in cases:
+        s, r, u = fp.title_info(title)
+        check("제목 '%s' -> 시즌%s %s위 %s" % (title[:18], s, r, u),
+              (s, r, u) == (season, rank, rule), (s, r, u))
+
+    # -- 카드에서 개체를 꺼낸다 -------------------------------------------
+    doc = {"routes/x": {"data": {
+        "article": {
+            "title": "【S6最終3位】테스트",
+            "publishedAt": "2026-09-10T00:00:00.000Z",
+            "body": ('<p>글</p><div data-type="pokemon-card" '
+                     'data-pokemon-id="445" data-nature-id="2" '
+                     'data-ability-ids="[24]" data-item-id="135" '
+                     'data-move-ids="[89,525]" '
+                     'data-evs="{&quot;hp&quot;:32,&quot;attack&quot;:0,'
+                     '&quot;defense&quot;:22,&quot;specialAttack&quot;:0,'
+                     '&quot;specialDefense&quot;:7,&quot;speed&quot;:5}">'
+                     '</div>')},
+        "masterData": {
+            "pokemons": [{"id": 445, "name": "ガブリアス"}],
+            "moves": [{"id": 89, "name": "じしん"},
+                      {"id": 525, "name": "ドラゴンテール"}],
+            "items": [{"id": 135, "name": "オボンのみ"}],
+            "natures": [{"id": 2, "name": "いじっぱり"}],
+            "abilities": [{"id": 24, "name": "さめはだ"}]}}}}
+    party = fp.parse_article(doc)
+    check("시즌과 순위를 읽는다",
+          (party["season"], party["rank"]) == (6, 3), party)
+    check("개체를 하나 꺼냈다", len(party["members"]) == 1, party)
+    m = party["members"][0]
+    check("이름·도구·성격·특성이 일본어로 나온다",
+          (m["name"], m["item"], m["nature"], m["ability"])
+          == ("ガブリアス", "オボンのみ", "いじっぱり", "さめはだ"), m)
+    check("기술이 나온다", m["moves"] == ["じしん", "ドラゴンテール"], m["moves"])
+    check("노력치가 숫자로 나오고 0은 빠진다",
+          m["evs"] == {"H": 32, "B": 22, "D": 7, "S": 5}, m["evs"])
+    check("노력치 합이 66", sum(m["evs"].values()) == 66, m["evs"])
+
+    # 꺼낸 것이 samples.load 를 그대로 통과하는가 (두 쪽이 붙는지 확인)
+    import json
+    import os
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump({"parties": [party]}, f, ensure_ascii=False)
+    try:
+        parties, bad = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    check("꺼낸 파티가 표본으로 그대로 읽힌다",
+          len(parties) == 1 and len(bad) == 0, bad.summary() if bad else None)
+    got = parties[0]["members"][0]
+    check("일본어가 한국어로 이어진다 (ガブリアス -> 한카리아스)",
+          got["poke"]["name"] == "한카리아스", got["poke"]["name"])
+    check("형태가 나온다 (내구형)", got["cls"] == "-", got["cls"])
+
+    # -- 카드가 없는 기사는 빈 파티 ---------------------------------------
+    empty = fp.parse_article({"data": {"article": {"title": "글", "body": "<p>글</p>"},
+                                       "masterData": {}}})
+    check("카드 없는 기사는 개체가 0", empty["members"] == [], empty)
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1584,6 +1680,7 @@ def main():
     test_forms(dex)
     test_forms_body(dex)
     test_samples(dex)
+    test_fetch_pokesol(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

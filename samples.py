@@ -106,12 +106,40 @@ class Unresolved(object):
         return by
 
 
+def _norm(text):
+    """전각/반각과 대소문자를 맞춘다.
+
+    게임 파일은 'メガリザードンＹ' 처럼 **전각** 알파벳을 쓰는데, 기사는
+    반각 'メガリザードンY' 로 적는 경우가 많다. 눈으로는 같은 글자다.
+    이걸 안 맞추면 메가가 통째로 안 잡힌다.
+    """
+    out = []
+    for ch in text or "":
+        o = ord(ch)
+        if 0xFF01 <= o <= 0xFF5E:        # 전각 ASCII -> 반각
+            ch = chr(o - 0xFEE0)
+        elif ch == "\u3000":
+            ch = " "
+        out.append(ch)
+    return "".join(out).replace(" ", "").lower()
+
+
+_NORM_CACHE = {}
+
+
 def _resolve(names, kind, value):
     """일본어면 한국어로 바꾼다. 이미 한국어면 그대로."""
     if not value:
         return None
     table = names.get(kind) or {}
-    return table.get(value, value)
+    if value in table:
+        return table[value]
+    key = id(table)
+    idx = _NORM_CACHE.get(key)
+    if idx is None:
+        idx = dict((_norm(k), v) for k, v in table.items())
+        _NORM_CACHE[key] = idx
+    return idx.get(_norm(value), value)
 
 
 def parse_evs(raw):
@@ -184,7 +212,10 @@ def load(dex, path=None, bad=None):
             })
         if members:
             out.append({"season": party.get("season"),
+                        "rule": party.get("rule"),
                         "rank": party.get("rank"),
+                        "publishedAt": party.get("publishedAt"),
+                        "title": party.get("title"),
                         "url": party.get("url"), "members": members})
     return out, bad
 
