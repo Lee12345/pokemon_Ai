@@ -32,6 +32,7 @@ CONFIG = {
     "stab": 1.5,                # 자속 보정
     "critical": 1.5,            # 급소 배율
     "burn_physical": 0.5,       # 화상일 때 물리 데미지 — 미확인
+    "paralysis_speed": 0.5,     # 마비일 때 스피드 — 미확인 (본편은 7세대부터 0.5)
     "random_min": 85,           # 데미지 난수 하한 (85~100, 16단계)
     "random_max": 100,
 }
@@ -185,8 +186,49 @@ class Dex(object):
 
         self._by_key = {p["key"]: p for p in self.pokemon}
         self._move_by_name = {m["name"]: m for m in self.moves}
+        self._move_by_id = {m["id"]: m for m in self.moves}
         self._nature_by_name = {n["name"]: n for n in self.natures}
         self.item_effects = self._parse_items()
+        self.mega_by_item = self._parse_mega_stones()
+
+    def _parse_mega_stones(self):
+        """메가스톤 -> 그 도구로 바뀌는 폼.
+
+        사용률은 기본 폼 기준으로 집계되고 메가는 '도구 채용률'로만 나타난다.
+        그래서 '1위 도구가 메가스톤' 이면 그건 사실 메가로 싸운다는 뜻이다.
+        이 표가 없으면 메가스톤을 든 기본 폼이라는, 실제로는 없는 몸으로 계산하게 된다.
+        """
+        import re
+        by_name = {}
+        for p in self.pokemon:
+            by_name.setdefault(p["name"], []).append(p)
+        megas = {}
+        for p in self.pokemon:
+            if p.get("isMega"):
+                megas.setdefault(p["dexNo"], []).append(p)
+
+        out = {}
+        for it in self.items:
+            d = it["description"]
+            m = re.match(r"^(.+?)(?:이|가) 메가진화할 수 있게 되는 도구", d)
+            if not m:
+                continue
+            # 메가가 둘인 포켓몬은 설명문 끝에 '(메가리자몽X)' 처럼 적혀 있다
+            paren = re.search(r"\((메가[^)]+)\)", d)
+            if paren:
+                hit = [p for p in self.pokemon
+                       if paren.group(1) in (p["formName"], p["name"])]
+                if len(hit) == 1:
+                    out[it["name"]] = hit[0]
+                continue
+            owner = m.group(1).split("(")[0].strip()
+            cand = by_name.get(owner)
+            if not cand:
+                continue
+            forms = megas.get(cand[0]["dexNo"], [])
+            if len(forms) == 1:
+                out[it["name"]] = forms[0]
+        return out
 
     def _parse_items(self):
         """도구 설명문에서 데미지 배율을 읽어낸다.
@@ -253,6 +295,10 @@ class Dex(object):
             raise LookupError("'%s' 은(는) 여러 개입니다: %s" % (
                 text, ", ".join(m["name"] for m in loose[:8])))
         raise LookupError("'%s' 이라는 기술을 못 찾았습니다." % text)
+
+    def move_by_id(self, move_id):
+        """사용률 데이터는 기술을 번호로 들고 있다. 이름보다 번호가 안전하다."""
+        return self._move_by_id.get(move_id)
 
     def find_nature(self, text):
         if not text:
@@ -614,6 +660,16 @@ def popular_build(dex, poke, verbose=False):
             if k in SPREAD_KEY:
                 sp[SPREAD_KEY[k]] = v
     item = u["items"][0]["name"] if u.get("items") else None
+    item_pct = u["items"][0]["pct"] if u.get("items") else None
+
+    # 1위 도구가 이 포켓몬의 메가스톤이면, 실제로는 메가로 싸운다는 뜻이다.
+    # (사용률은 기본 폼 기준으로 집계되므로 메가는 도구 채용률로만 드러난다.)
+    mega_note = None
+    mega = dex.mega_by_item.get(item)
+    if mega and not poke.get("isMega") and mega["dexNo"] == poke["dexNo"]:
+        mega_note = "%s 채용률 %.1f%% — 메가로 보고 계산한다 (나머지 %.1f%% 는 기본 폼)" % (
+            item, item_pct, 100.0 - item_pct)
+        poke = mega
 
     # 사용률은 기본 폼 기준이라 특성도 기본 폼 것이 들어있다.
     # 메가처럼 특성이 하나로 고정된 폼은 그 폼의 특성을 써야 한다.
@@ -633,6 +689,8 @@ def popular_build(dex, poke, verbose=False):
         nature["name"] if nature else "?",
         u["evs"][0]["name"] if u.get("evs") else "?",
         item or "?")
+    if mega_note:
+        note += "\n        ! " + mega_note
     return Build(dex, poke, sp=sp, nature=nature, item=item,
                  ability=ability), note
 
