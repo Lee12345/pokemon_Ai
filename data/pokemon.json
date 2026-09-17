@@ -1,0 +1,12289 @@
+[
+ {
+  "key": "0003-00",
+  "dexNo": 3,
+  "formNo": 0,
+  "name": "이상해꽃",
+  "formName": "",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 82,
+   "defense": 83,
+   "spAtk": 100,
+   "spDef": 100,
+   "speed": 80
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 34,
+    "name": "엽록소"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0003-01",
+  "dexNo": 3,
+  "formNo": 1,
+  "name": "이상해꽃",
+  "formName": "메가이상해꽃",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 100,
+   "defense": 123,
+   "spAtk": 122,
+   "spDef": 120,
+   "speed": 80
+  },
+  "baseStatTotal": 625,
+  "abilities": [
+   {
+    "id": 47,
+    "name": "두꺼운지방"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0006-00",
+  "dexNo": 6,
+  "formNo": 0,
+  "name": "리자몽",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 84,
+   "defense": 78,
+   "spAtk": 109,
+   "spDef": 85,
+   "speed": 100
+  },
+  "baseStatTotal": 534,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 94,
+    "name": "선파워"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0006-01",
+  "dexNo": 6,
+  "formNo": 1,
+  "name": "리자몽",
+  "formName": "메가리자몽X",
+  "types": [
+   "불꽃",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 130,
+   "defense": 111,
+   "spAtk": 130,
+   "spDef": 85,
+   "speed": 100
+  },
+  "baseStatTotal": 634,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0006-02",
+  "dexNo": 6,
+  "formNo": 2,
+  "name": "리자몽",
+  "formName": "메가리자몽Y",
+  "types": [
+   "불꽃",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 104,
+   "defense": 78,
+   "spAtk": 159,
+   "spDef": 115,
+   "speed": 100
+  },
+  "baseStatTotal": 634,
+  "abilities": [
+   {
+    "id": 70,
+    "name": "가뭄"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0009-00",
+  "dexNo": 9,
+  "formNo": 0,
+  "name": "거북왕",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 79,
+   "attack": 83,
+   "defense": 100,
+   "spAtk": 85,
+   "spDef": 105,
+   "speed": 78
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 44,
+    "name": "젖은접시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0009-01",
+  "dexNo": 9,
+  "formNo": 1,
+  "name": "거북왕",
+  "formName": "메가거북왕",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 79,
+   "attack": 103,
+   "defense": 120,
+   "spAtk": 135,
+   "spDef": 115,
+   "speed": 78
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 178,
+    "name": "메가런처"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0015-00",
+  "dexNo": 15,
+  "formNo": 0,
+  "name": "독침붕",
+  "formName": "",
+  "types": [
+   "벌레",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 90,
+   "defense": 40,
+   "spAtk": 45,
+   "spDef": 80,
+   "speed": 75
+  },
+  "baseStatTotal": 395,
+  "abilities": [
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 97,
+    "name": "스나이퍼"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0015-01",
+  "dexNo": 15,
+  "formNo": 1,
+  "name": "독침붕",
+  "formName": "메가독침붕",
+  "types": [
+   "벌레",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 150,
+   "defense": 40,
+   "spAtk": 15,
+   "spDef": 80,
+   "speed": 145
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 91,
+    "name": "적응력"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0018-00",
+  "dexNo": 18,
+  "formNo": 0,
+  "name": "피죤투",
+  "formName": "",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 83,
+   "attack": 80,
+   "defense": 75,
+   "spAtk": 70,
+   "spDef": 70,
+   "speed": 101
+  },
+  "baseStatTotal": 479,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 77,
+    "name": "갈지자걸음"
+   },
+   {
+    "id": 145,
+    "name": "부풀린가슴"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0018-01",
+  "dexNo": 18,
+  "formNo": 1,
+  "name": "피죤투",
+  "formName": "메가피죤투",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 83,
+   "attack": 80,
+   "defense": 80,
+   "spAtk": 135,
+   "spDef": 80,
+   "speed": 121
+  },
+  "baseStatTotal": 579,
+  "abilities": [
+   {
+    "id": 99,
+    "name": "노가드"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0024-00",
+  "dexNo": 24,
+  "formNo": 0,
+  "name": "아보크",
+  "formName": "",
+  "types": [
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 95,
+   "defense": 69,
+   "spAtk": 65,
+   "spDef": 79,
+   "speed": 80
+  },
+  "baseStatTotal": 448,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 61,
+    "name": "탈피"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0025-00",
+  "dexNo": 25,
+  "formNo": 0,
+  "name": "피카츄",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 35,
+   "attack": 55,
+   "defense": 40,
+   "spAtk": 50,
+   "spDef": 50,
+   "speed": 90
+  },
+  "baseStatTotal": 320,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 31,
+    "name": "피뢰침"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0026-00",
+  "dexNo": 26,
+  "formNo": 0,
+  "name": "라이츄",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 90,
+   "defense": 55,
+   "spAtk": 90,
+   "spDef": 80,
+   "speed": 110
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 31,
+    "name": "피뢰침"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0026-01",
+  "dexNo": 26,
+  "formNo": 1,
+  "name": "라이츄",
+  "formName": "알로라의 모습",
+  "types": [
+   "전기",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 85,
+   "defense": 50,
+   "spAtk": 95,
+   "spDef": 85,
+   "speed": 110
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 207,
+    "name": "서핑테일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0026-02",
+  "dexNo": 26,
+  "formNo": 2,
+  "name": "라이츄",
+  "formName": "메가라이츄X",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 135,
+   "defense": 95,
+   "spAtk": 90,
+   "spDef": 95,
+   "speed": 110
+  },
+  "baseStatTotal": 585,
+  "abilities": [
+   {
+    "id": 226,
+    "name": "일렉트릭메이커"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0026-03",
+  "dexNo": 26,
+  "formNo": 3,
+  "name": "라이츄",
+  "formName": "메가라이츄Y",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 100,
+   "defense": 55,
+   "spAtk": 160,
+   "spDef": 80,
+   "speed": 130
+  },
+  "baseStatTotal": 585,
+  "abilities": [
+   {
+    "id": 99,
+    "name": "노가드"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0036-00",
+  "dexNo": 36,
+  "formNo": 0,
+  "name": "픽시",
+  "formName": "",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 70,
+   "defense": 73,
+   "spAtk": 95,
+   "spDef": 90,
+   "speed": 60
+  },
+  "baseStatTotal": 483,
+  "abilities": [
+   {
+    "id": 56,
+    "name": "헤롱헤롱바디"
+   },
+   {
+    "id": 98,
+    "name": "매직가드"
+   },
+   {
+    "id": 109,
+    "name": "천진"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0036-01",
+  "dexNo": 36,
+  "formNo": 1,
+  "name": "픽시",
+  "formName": "메가픽시",
+  "types": [
+   "페어리",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 80,
+   "defense": 93,
+   "spAtk": 135,
+   "spDef": 110,
+   "speed": 70
+  },
+  "baseStatTotal": 583,
+  "abilities": [
+   {
+    "id": 156,
+    "name": "매직미러"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0038-00",
+  "dexNo": 38,
+  "formNo": 0,
+  "name": "나인테일",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 73,
+   "attack": 76,
+   "defense": 75,
+   "spAtk": 81,
+   "spDef": 100,
+   "speed": 100
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 70,
+    "name": "가뭄"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0038-01",
+  "dexNo": 38,
+  "formNo": 1,
+  "name": "나인테일",
+  "formName": "알로라의 모습",
+  "types": [
+   "얼음",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 73,
+   "attack": 67,
+   "defense": 75,
+   "spAtk": 81,
+   "spDef": 100,
+   "speed": 109
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 81,
+    "name": "눈숨기"
+   },
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0040-00",
+  "dexNo": 40,
+  "formNo": 0,
+  "name": "푸크린",
+  "formName": "",
+  "types": [
+   "노말",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 140,
+   "attack": 70,
+   "defense": 45,
+   "spAtk": 85,
+   "spDef": 50,
+   "speed": 45
+  },
+  "baseStatTotal": 435,
+  "abilities": [
+   {
+    "id": 56,
+    "name": "헤롱헤롱바디"
+   },
+   {
+    "id": 172,
+    "name": "승기"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0045-00",
+  "dexNo": 45,
+  "formNo": 0,
+  "name": "라플레시아",
+  "formName": "",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 85,
+   "spAtk": 110,
+   "spDef": 90,
+   "speed": 50
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 34,
+    "name": "엽록소"
+   },
+   {
+    "id": 27,
+    "name": "포자"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0053-00",
+  "dexNo": 53,
+  "formNo": 0,
+  "name": "페르시온",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 70,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 65,
+   "speed": 115
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0053-01",
+  "dexNo": 53,
+  "formNo": 1,
+  "name": "페르시온",
+  "formName": "알로라의 모습",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 60,
+   "spAtk": 75,
+   "spDef": 65,
+   "speed": 115
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   },
+   {
+    "id": 155,
+    "name": "주눅"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0059-00",
+  "dexNo": 59,
+  "formNo": 0,
+  "name": "윈디",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 110,
+   "defense": 80,
+   "spAtk": 100,
+   "spDef": 80,
+   "speed": 95
+  },
+  "baseStatTotal": 555,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 154,
+    "name": "정의의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0059-01",
+  "dexNo": 59,
+  "formNo": 1,
+  "name": "윈디",
+  "formName": "히스이의 모습",
+  "types": [
+   "불꽃",
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 115,
+   "defense": 80,
+   "spAtk": 95,
+   "spDef": 80,
+   "speed": 90
+  },
+  "baseStatTotal": 555,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 69,
+    "name": "돌머리"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0065-00",
+  "dexNo": 65,
+  "formNo": 0,
+  "name": "후딘",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 50,
+   "defense": 45,
+   "spAtk": 135,
+   "spDef": 95,
+   "speed": 120
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 98,
+    "name": "매직가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0065-01",
+  "dexNo": 65,
+  "formNo": 1,
+  "name": "후딘",
+  "formName": "메가후딘",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 50,
+   "defense": 65,
+   "spAtk": 175,
+   "spDef": 105,
+   "speed": 150
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 36,
+    "name": "트레이스"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0068-00",
+  "dexNo": 68,
+  "formNo": 0,
+  "name": "괴력몬",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 130,
+   "defense": 80,
+   "spAtk": 65,
+   "spDef": 85,
+   "speed": 55
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 62,
+    "name": "근성"
+   },
+   {
+    "id": 99,
+    "name": "노가드"
+   },
+   {
+    "id": 80,
+    "name": "불굴의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0071-00",
+  "dexNo": 71,
+  "formNo": 0,
+  "name": "우츠보트",
+  "formName": "",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 105,
+   "defense": 65,
+   "spAtk": 100,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 34,
+    "name": "엽록소"
+   },
+   {
+    "id": 82,
+    "name": "먹보"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0071-01",
+  "dexNo": 71,
+  "formNo": 1,
+  "name": "우츠보트",
+  "formName": "메가우츠보트",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 125,
+   "defense": 85,
+   "spAtk": 135,
+   "spDef": 95,
+   "speed": 70
+  },
+  "baseStatTotal": 590,
+  "abilities": [
+   {
+    "id": 215,
+    "name": "내용물분출"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0080-00",
+  "dexNo": 80,
+  "formNo": 0,
+  "name": "야도란",
+  "formName": "",
+  "types": [
+   "물",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 75,
+   "defense": 110,
+   "spAtk": 100,
+   "spDef": 80,
+   "speed": 30
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 12,
+    "name": "둔감"
+   },
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0080-01",
+  "dexNo": 80,
+  "formNo": 1,
+  "name": "야도란",
+  "formName": "메가야도란",
+  "types": [
+   "물",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 75,
+   "defense": 180,
+   "spAtk": 130,
+   "spDef": 80,
+   "speed": 30
+  },
+  "baseStatTotal": 590,
+  "abilities": [
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0080-02",
+  "dexNo": 80,
+  "formNo": 2,
+  "name": "야도란",
+  "formName": "가라르의 모습",
+  "types": [
+   "독",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 100,
+   "defense": 95,
+   "spAtk": 100,
+   "spDef": 70,
+   "speed": 30
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 259,
+    "name": "퀵드로"
+   },
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0083-00",
+  "dexNo": 83,
+  "formNo": 0,
+  "name": "파오리",
+  "formName": "",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 52,
+   "attack": 90,
+   "defense": 55,
+   "spAtk": 58,
+   "spDef": 62,
+   "speed": 60
+  },
+  "baseStatTotal": 377,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 128,
+    "name": "오기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0094-00",
+  "dexNo": 94,
+  "formNo": 0,
+  "name": "팬텀",
+  "formName": "",
+  "types": [
+   "고스트",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 65,
+   "defense": 60,
+   "spAtk": 130,
+   "spDef": 75,
+   "speed": 110
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0094-01",
+  "dexNo": 94,
+  "formNo": 1,
+  "name": "팬텀",
+  "formName": "메가팬텀",
+  "types": [
+   "고스트",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 65,
+   "defense": 80,
+   "spAtk": 170,
+   "spDef": 95,
+   "speed": 130
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 23,
+    "name": "그림자밟기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0115-00",
+  "dexNo": 115,
+  "formNo": 0,
+  "name": "캥카",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 105,
+   "attack": 95,
+   "defense": 80,
+   "spAtk": 40,
+   "spDef": 80,
+   "speed": 90
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 48,
+    "name": "일찍기상"
+   },
+   {
+    "id": 113,
+    "name": "배짱"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0115-01",
+  "dexNo": 115,
+  "formNo": 1,
+  "name": "캥카",
+  "formName": "메가캥카",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 105,
+   "attack": 125,
+   "defense": 100,
+   "spAtk": 60,
+   "spDef": 100,
+   "speed": 100
+  },
+  "baseStatTotal": 590,
+  "abilities": [
+   {
+    "id": 185,
+    "name": "부자유친"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0121-00",
+  "dexNo": 121,
+  "formNo": 0,
+  "name": "아쿠스타",
+  "formName": "",
+  "types": [
+   "물",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 75,
+   "defense": 85,
+   "spAtk": 100,
+   "spDef": 85,
+   "speed": 115
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 35,
+    "name": "발광"
+   },
+   {
+    "id": 30,
+    "name": "자연회복"
+   },
+   {
+    "id": 148,
+    "name": "애널라이즈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0121-01",
+  "dexNo": 121,
+  "formNo": 1,
+  "name": "아쿠스타",
+  "formName": "메가아쿠스타",
+  "types": [
+   "물",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 100,
+   "defense": 105,
+   "spAtk": 130,
+   "spDef": 105,
+   "speed": 120
+  },
+  "baseStatTotal": 620,
+  "abilities": [
+   {
+    "id": 37,
+    "name": "천하장사"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0122-00",
+  "dexNo": 122,
+  "formNo": 0,
+  "name": "마임맨",
+  "formName": "",
+  "types": [
+   "에스퍼",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 40,
+   "attack": 45,
+   "defense": 65,
+   "spAtk": 100,
+   "spDef": 120,
+   "speed": 90
+  },
+  "baseStatTotal": 460,
+  "abilities": [
+   {
+    "id": 43,
+    "name": "방음"
+   },
+   {
+    "id": 111,
+    "name": "필터"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0127-00",
+  "dexNo": 127,
+  "formNo": 0,
+  "name": "쁘사이저",
+  "formName": "",
+  "types": [
+   "벌레"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 125,
+   "defense": 100,
+   "spAtk": 55,
+   "spDef": 70,
+   "speed": 85
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 52,
+    "name": "괴력집게"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0127-01",
+  "dexNo": 127,
+  "formNo": 1,
+  "name": "쁘사이저",
+  "formName": "메가쁘사이저",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 155,
+   "defense": 120,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 105
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 184,
+    "name": "스카이스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0128-00",
+  "dexNo": 128,
+  "formNo": 0,
+  "name": "켄타로스",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 100,
+   "defense": 95,
+   "spAtk": 40,
+   "spDef": 70,
+   "speed": 110
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0128-01",
+  "dexNo": 128,
+  "formNo": 1,
+  "name": "켄타로스",
+  "formName": "팔데아의 모습/컴뱃종",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 110,
+   "defense": 105,
+   "spAtk": 30,
+   "spDef": 70,
+   "speed": 100
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   },
+   {
+    "id": 291,
+    "name": "되새김질"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0128-02",
+  "dexNo": 128,
+  "formNo": 2,
+  "name": "켄타로스",
+  "formName": "팔데아의 모습/블레이즈종",
+  "types": [
+   "격투",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 110,
+   "defense": 105,
+   "spAtk": 30,
+   "spDef": 70,
+   "speed": 100
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   },
+   {
+    "id": 291,
+    "name": "되새김질"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0128-03",
+  "dexNo": 128,
+  "formNo": 3,
+  "name": "켄타로스",
+  "formName": "팔데아의 모습/워터종",
+  "types": [
+   "격투",
+   "물"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 110,
+   "defense": 105,
+   "spAtk": 30,
+   "spDef": 70,
+   "speed": 100
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   },
+   {
+    "id": 291,
+    "name": "되새김질"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0130-00",
+  "dexNo": 130,
+  "formNo": 0,
+  "name": "갸라도스",
+  "formName": "",
+  "types": [
+   "물",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 125,
+   "defense": 79,
+   "spAtk": 60,
+   "spDef": 100,
+   "speed": 81
+  },
+  "baseStatTotal": 540,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0130-01",
+  "dexNo": 130,
+  "formNo": 1,
+  "name": "갸라도스",
+  "formName": "메가갸라도스",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 155,
+   "defense": 109,
+   "spAtk": 70,
+   "spDef": 130,
+   "speed": 81
+  },
+  "baseStatTotal": 640,
+  "abilities": [
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0132-00",
+  "dexNo": 132,
+  "formNo": 0,
+  "name": "메타몽",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 48,
+   "attack": 48,
+   "defense": 48,
+   "spAtk": 48,
+   "spDef": 48,
+   "speed": 48
+  },
+  "baseStatTotal": 288,
+  "abilities": [
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 150,
+    "name": "괴짜"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0134-00",
+  "dexNo": 134,
+  "formNo": 0,
+  "name": "샤미드",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 130,
+   "attack": 65,
+   "defense": 60,
+   "spAtk": 110,
+   "spDef": 95,
+   "speed": 65
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 11,
+    "name": "저수"
+   },
+   {
+    "id": 93,
+    "name": "촉촉바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0135-00",
+  "dexNo": 135,
+  "formNo": 0,
+  "name": "쥬피썬더",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 65,
+   "defense": 60,
+   "spAtk": 110,
+   "spDef": 95,
+   "speed": 130
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 10,
+    "name": "축전"
+   },
+   {
+    "id": 95,
+    "name": "속보"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0136-00",
+  "dexNo": 136,
+  "formNo": 0,
+  "name": "부스터",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 130,
+   "defense": 60,
+   "spAtk": 95,
+   "spDef": 110,
+   "speed": 65
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 62,
+    "name": "근성"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0142-00",
+  "dexNo": 142,
+  "formNo": 0,
+  "name": "프테라",
+  "formName": "",
+  "types": [
+   "바위",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 105,
+   "defense": 65,
+   "spAtk": 60,
+   "spDef": 75,
+   "speed": 130
+  },
+  "baseStatTotal": 515,
+  "abilities": [
+   {
+    "id": 69,
+    "name": "돌머리"
+   },
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0142-01",
+  "dexNo": 142,
+  "formNo": 1,
+  "name": "프테라",
+  "formName": "메가프테라",
+  "types": [
+   "바위",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 135,
+   "defense": 85,
+   "spAtk": 70,
+   "spDef": 95,
+   "speed": 150
+  },
+  "baseStatTotal": 615,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0143-00",
+  "dexNo": 143,
+  "formNo": 0,
+  "name": "잠만보",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 160,
+   "attack": 110,
+   "defense": 65,
+   "spAtk": 65,
+   "spDef": 110,
+   "speed": 30
+  },
+  "baseStatTotal": 540,
+  "abilities": [
+   {
+    "id": 17,
+    "name": "면역"
+   },
+   {
+    "id": 47,
+    "name": "두꺼운지방"
+   },
+   {
+    "id": 82,
+    "name": "먹보"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0149-00",
+  "dexNo": 149,
+  "formNo": 0,
+  "name": "망나뇽",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 91,
+   "attack": 134,
+   "defense": 95,
+   "spAtk": 100,
+   "spDef": 100,
+   "speed": 80
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 136,
+    "name": "멀티스케일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0149-01",
+  "dexNo": 149,
+  "formNo": 1,
+  "name": "망나뇽",
+  "formName": "메가망나뇽",
+  "types": [
+   "드래곤",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 91,
+   "attack": 124,
+   "defense": 115,
+   "spAtk": 145,
+   "spDef": 125,
+   "speed": 100
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 136,
+    "name": "멀티스케일"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0154-00",
+  "dexNo": 154,
+  "formNo": 0,
+  "name": "메가니움",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 82,
+   "defense": 100,
+   "spAtk": 83,
+   "spDef": 100,
+   "speed": 80
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 102,
+    "name": "리프가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0154-01",
+  "dexNo": 154,
+  "formNo": 1,
+  "name": "메가니움",
+  "formName": "메가메가니움",
+  "types": [
+   "풀",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 92,
+   "defense": 115,
+   "spAtk": 143,
+   "spDef": 115,
+   "speed": 80
+  },
+  "baseStatTotal": 625,
+  "abilities": [
+   {
+    "id": 315,
+    "name": "메가솔라"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0157-00",
+  "dexNo": 157,
+  "formNo": 0,
+  "name": "블레이범",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 84,
+   "defense": 78,
+   "spAtk": 109,
+   "spDef": 85,
+   "speed": 100
+  },
+  "baseStatTotal": 534,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0157-01",
+  "dexNo": 157,
+  "formNo": 1,
+  "name": "블레이범",
+  "formName": "히스이의 모습",
+  "types": [
+   "불꽃",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 73,
+   "attack": 84,
+   "defense": 78,
+   "spAtk": 119,
+   "spDef": 85,
+   "speed": 95
+  },
+  "baseStatTotal": 534,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0160-00",
+  "dexNo": 160,
+  "formNo": 0,
+  "name": "장크로다일",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 105,
+   "defense": 100,
+   "spAtk": 79,
+   "spDef": 83,
+   "speed": 78
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0160-01",
+  "dexNo": 160,
+  "formNo": 1,
+  "name": "장크로다일",
+  "formName": "메가장크로다일",
+  "types": [
+   "물",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 160,
+   "defense": 125,
+   "spAtk": 89,
+   "spDef": 93,
+   "speed": 78
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 312,
+    "name": "드래곤스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0168-00",
+  "dexNo": 168,
+  "formNo": 0,
+  "name": "아리아도스",
+  "formName": "",
+  "types": [
+   "벌레",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 90,
+   "defense": 70,
+   "spAtk": 60,
+   "spDef": 70,
+   "speed": 40
+  },
+  "baseStatTotal": 400,
+  "abilities": [
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   },
+   {
+    "id": 97,
+    "name": "스나이퍼"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0181-00",
+  "dexNo": 181,
+  "formNo": 0,
+  "name": "전룡",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 75,
+   "defense": 85,
+   "spAtk": 115,
+   "spDef": 90,
+   "speed": 55
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 57,
+    "name": "플러스"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0181-01",
+  "dexNo": 181,
+  "formNo": 1,
+  "name": "전룡",
+  "formName": "메가전룡",
+  "types": [
+   "전기",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 95,
+   "defense": 105,
+   "spAtk": 165,
+   "spDef": 110,
+   "speed": 45
+  },
+  "baseStatTotal": 610,
+  "abilities": [
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0184-00",
+  "dexNo": 184,
+  "formNo": 0,
+  "name": "마릴리",
+  "formName": "",
+  "types": [
+   "물",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 50,
+   "defense": 80,
+   "spAtk": 60,
+   "spDef": 80,
+   "speed": 50
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 47,
+    "name": "두꺼운지방"
+   },
+   {
+    "id": 37,
+    "name": "천하장사"
+   },
+   {
+    "id": 157,
+    "name": "초식"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0186-00",
+  "dexNo": 186,
+  "formNo": 0,
+  "name": "왕구리",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 75,
+   "defense": 75,
+   "spAtk": 90,
+   "spDef": 100,
+   "speed": 70
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 11,
+    "name": "저수"
+   },
+   {
+    "id": 6,
+    "name": "습기"
+   },
+   {
+    "id": 2,
+    "name": "잔비"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0196-00",
+  "dexNo": 196,
+  "formNo": 0,
+  "name": "에브이",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 65,
+   "defense": 60,
+   "spAtk": 130,
+   "spDef": 95,
+   "speed": 110
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 156,
+    "name": "매직미러"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0197-00",
+  "dexNo": 197,
+  "formNo": 0,
+  "name": "블래키",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 65,
+   "defense": 110,
+   "spAtk": 60,
+   "spDef": 130,
+   "speed": 65
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0199-00",
+  "dexNo": 199,
+  "formNo": 0,
+  "name": "야도킹",
+  "formName": "",
+  "types": [
+   "물",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 75,
+   "defense": 80,
+   "spAtk": 100,
+   "spDef": 110,
+   "speed": 30
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 12,
+    "name": "둔감"
+   },
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0199-01",
+  "dexNo": 199,
+  "formNo": 1,
+  "name": "야도킹",
+  "formName": "가라르의 모습",
+  "types": [
+   "독",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 65,
+   "defense": 80,
+   "spAtk": 110,
+   "spDef": 110,
+   "speed": 30
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 261,
+    "name": "기묘한약"
+   },
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0205-00",
+  "dexNo": 205,
+  "formNo": 0,
+  "name": "쏘콘",
+  "formName": "",
+  "types": [
+   "벌레",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 90,
+   "defense": 140,
+   "spAtk": 60,
+   "spDef": 60,
+   "speed": 40
+  },
+  "baseStatTotal": 465,
+  "abilities": [
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 142,
+    "name": "방진"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0208-00",
+  "dexNo": 208,
+  "formNo": 0,
+  "name": "강철톤",
+  "formName": "",
+  "types": [
+   "강철",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 85,
+   "defense": 200,
+   "spAtk": 55,
+   "spDef": 65,
+   "speed": 30
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 69,
+    "name": "돌머리"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0208-01",
+  "dexNo": 208,
+  "formNo": 1,
+  "name": "강철톤",
+  "formName": "메가강철톤",
+  "types": [
+   "강철",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 125,
+   "defense": 230,
+   "spAtk": 55,
+   "spDef": 95,
+   "speed": 30
+  },
+  "baseStatTotal": 610,
+  "abilities": [
+   {
+    "id": 159,
+    "name": "모래의힘"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0211-00",
+  "dexNo": 211,
+  "formNo": 0,
+  "name": "침바루",
+  "formName": "",
+  "types": [
+   "물",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 95,
+   "defense": 85,
+   "spAtk": 55,
+   "spDef": 55,
+   "speed": 85
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 38,
+    "name": "독가시"
+   },
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0212-00",
+  "dexNo": 212,
+  "formNo": 0,
+  "name": "핫삼",
+  "formName": "",
+  "types": [
+   "벌레",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 130,
+   "defense": 100,
+   "spAtk": 55,
+   "spDef": 80,
+   "speed": 65
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   },
+   {
+    "id": 135,
+    "name": "라이트메탈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0212-01",
+  "dexNo": 212,
+  "formNo": 1,
+  "name": "핫삼",
+  "formName": "메가핫삼",
+  "types": [
+   "벌레",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 150,
+   "defense": 140,
+   "spAtk": 65,
+   "spDef": 100,
+   "speed": 75
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0214-00",
+  "dexNo": 214,
+  "formNo": 0,
+  "name": "헤라크로스",
+  "formName": "",
+  "types": [
+   "벌레",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 125,
+   "defense": 75,
+   "spAtk": 40,
+   "spDef": 95,
+   "speed": 85
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 62,
+    "name": "근성"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0214-01",
+  "dexNo": 214,
+  "formNo": 1,
+  "name": "헤라크로스",
+  "formName": "메가헤라크로스",
+  "types": [
+   "벌레",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 185,
+   "defense": 115,
+   "spAtk": 40,
+   "spDef": 105,
+   "speed": 75
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 92,
+    "name": "스킬링크"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0227-00",
+  "dexNo": 227,
+  "formNo": 0,
+  "name": "무장조",
+  "formName": "",
+  "types": [
+   "강철",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 80,
+   "defense": 140,
+   "spAtk": 40,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 465,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0227-01",
+  "dexNo": 227,
+  "formNo": 1,
+  "name": "무장조",
+  "formName": "메가무장조",
+  "types": [
+   "강철",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 140,
+   "defense": 110,
+   "spAtk": 40,
+   "spDef": 100,
+   "speed": 110
+  },
+  "baseStatTotal": 565,
+  "abilities": [
+   {
+    "id": 242,
+    "name": "굳건한신념"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0229-00",
+  "dexNo": 229,
+  "formNo": 0,
+  "name": "헬가",
+  "formName": "",
+  "types": [
+   "악",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 90,
+   "defense": 50,
+   "spAtk": 110,
+   "spDef": 80,
+   "speed": 95
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 48,
+    "name": "일찍기상"
+   },
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0229-01",
+  "dexNo": 229,
+  "formNo": 1,
+  "name": "헬가",
+  "formName": "메가헬가",
+  "types": [
+   "악",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 90,
+   "defense": 90,
+   "spAtk": 140,
+   "spDef": 90,
+   "speed": 115
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 94,
+    "name": "선파워"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0248-00",
+  "dexNo": 248,
+  "formNo": 0,
+  "name": "마기라스",
+  "formName": "",
+  "types": [
+   "바위",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 134,
+   "defense": 110,
+   "spAtk": 95,
+   "spDef": 100,
+   "speed": 61
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 45,
+    "name": "모래날림"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0248-01",
+  "dexNo": 248,
+  "formNo": 1,
+  "name": "마기라스",
+  "formName": "메가마기라스",
+  "types": [
+   "바위",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 164,
+   "defense": 150,
+   "spAtk": 95,
+   "spDef": 120,
+   "speed": 71
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 45,
+    "name": "모래날림"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0254-00",
+  "dexNo": 254,
+  "formNo": 0,
+  "name": "나무킹",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 85,
+   "defense": 65,
+   "spAtk": 105,
+   "spDef": 85,
+   "speed": 120
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0254-01",
+  "dexNo": 254,
+  "formNo": 1,
+  "name": "나무킹",
+  "formName": "메가나무킹",
+  "types": [
+   "풀",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 110,
+   "defense": 75,
+   "spAtk": 145,
+   "spDef": 85,
+   "speed": 145
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 31,
+    "name": "피뢰침"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0257-00",
+  "dexNo": 257,
+  "formNo": 0,
+  "name": "번치코",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 120,
+   "defense": 70,
+   "spAtk": 110,
+   "spDef": 70,
+   "speed": 80
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 3,
+    "name": "가속"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0257-01",
+  "dexNo": 257,
+  "formNo": 1,
+  "name": "번치코",
+  "formName": "메가번치코",
+  "types": [
+   "불꽃",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 160,
+   "defense": 80,
+   "spAtk": 130,
+   "spDef": 80,
+   "speed": 100
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 3,
+    "name": "가속"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0260-00",
+  "dexNo": 260,
+  "formNo": 0,
+  "name": "대짱이",
+  "formName": "",
+  "types": [
+   "물",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 110,
+   "defense": 90,
+   "spAtk": 85,
+   "spDef": 90,
+   "speed": 60
+  },
+  "baseStatTotal": 535,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 6,
+    "name": "습기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0260-01",
+  "dexNo": 260,
+  "formNo": 1,
+  "name": "대짱이",
+  "formName": "메가대짱이",
+  "types": [
+   "물",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 150,
+   "defense": 110,
+   "spAtk": 95,
+   "spDef": 110,
+   "speed": 70
+  },
+  "baseStatTotal": 635,
+  "abilities": [
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0279-00",
+  "dexNo": 279,
+  "formNo": 0,
+  "name": "패리퍼",
+  "formName": "",
+  "types": [
+   "물",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 50,
+   "defense": 100,
+   "spAtk": 95,
+   "spDef": 70,
+   "speed": 65
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 2,
+    "name": "잔비"
+   },
+   {
+    "id": 44,
+    "name": "젖은접시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0282-00",
+  "dexNo": 282,
+  "formNo": 0,
+  "name": "가디안",
+  "formName": "",
+  "types": [
+   "에스퍼",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 65,
+   "defense": 65,
+   "spAtk": 125,
+   "spDef": 115,
+   "speed": 80
+  },
+  "baseStatTotal": 518,
+  "abilities": [
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 36,
+    "name": "트레이스"
+   },
+   {
+    "id": 140,
+    "name": "텔레파시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0282-01",
+  "dexNo": 282,
+  "formNo": 1,
+  "name": "가디안",
+  "formName": "메가가디안",
+  "types": [
+   "에스퍼",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 85,
+   "defense": 65,
+   "spAtk": 165,
+   "spDef": 135,
+   "speed": 100
+  },
+  "baseStatTotal": 618,
+  "abilities": [
+   {
+    "id": 182,
+    "name": "페어리스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0302-00",
+  "dexNo": 302,
+  "formNo": 0,
+  "name": "깜까미",
+  "formName": "",
+  "types": [
+   "악",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 75,
+   "defense": 75,
+   "spAtk": 65,
+   "spDef": 65,
+   "speed": 50
+  },
+  "baseStatTotal": 380,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 100,
+    "name": "시간벌기"
+   },
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0302-01",
+  "dexNo": 302,
+  "formNo": 1,
+  "name": "깜까미",
+  "formName": "메가깜까미",
+  "types": [
+   "악",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 85,
+   "defense": 125,
+   "spAtk": 85,
+   "spDef": 115,
+   "speed": 20
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 156,
+    "name": "매직미러"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0303-00",
+  "dexNo": 303,
+  "formNo": 0,
+  "name": "입치트",
+  "formName": "",
+  "types": [
+   "강철",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 85,
+   "defense": 85,
+   "spAtk": 55,
+   "spDef": 55,
+   "speed": 50
+  },
+  "baseStatTotal": 380,
+  "abilities": [
+   {
+    "id": 52,
+    "name": "괴력집게"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0303-01",
+  "dexNo": 303,
+  "formNo": 1,
+  "name": "입치트",
+  "formName": "메가입치트",
+  "types": [
+   "강철",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 105,
+   "defense": 125,
+   "spAtk": 55,
+   "spDef": 95,
+   "speed": 50
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 37,
+    "name": "천하장사"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0306-00",
+  "dexNo": 306,
+  "formNo": 0,
+  "name": "보스로라",
+  "formName": "",
+  "types": [
+   "강철",
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 110,
+   "defense": 180,
+   "spAtk": 60,
+   "spDef": 60,
+   "speed": 50
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 69,
+    "name": "돌머리"
+   },
+   {
+    "id": 134,
+    "name": "헤비메탈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0306-01",
+  "dexNo": 306,
+  "formNo": 1,
+  "name": "보스로라",
+  "formName": "메가보스로라",
+  "types": [
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 140,
+   "defense": 230,
+   "spAtk": 60,
+   "spDef": 80,
+   "speed": 50
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 111,
+    "name": "필터"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0308-00",
+  "dexNo": 308,
+  "formNo": 0,
+  "name": "요가램",
+  "formName": "",
+  "types": [
+   "격투",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 60,
+   "spDef": 75,
+   "speed": 80
+  },
+  "baseStatTotal": 410,
+  "abilities": [
+   {
+    "id": 74,
+    "name": "순수한힘"
+   },
+   {
+    "id": 140,
+    "name": "텔레파시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0308-01",
+  "dexNo": 308,
+  "formNo": 1,
+  "name": "요가램",
+  "formName": "메가요가램",
+  "types": [
+   "격투",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 100,
+   "defense": 85,
+   "spAtk": 80,
+   "spDef": 85,
+   "speed": 100
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 74,
+    "name": "순수한힘"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0310-00",
+  "dexNo": 310,
+  "formNo": 0,
+  "name": "썬더볼트",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 75,
+   "defense": 60,
+   "spAtk": 105,
+   "spDef": 60,
+   "speed": 105
+  },
+  "baseStatTotal": 475,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 31,
+    "name": "피뢰침"
+   },
+   {
+    "id": 58,
+    "name": "마이너스"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0310-01",
+  "dexNo": 310,
+  "formNo": 1,
+  "name": "썬더볼트",
+  "formName": "메가썬더볼트",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 75,
+   "defense": 80,
+   "spAtk": 135,
+   "spDef": 80,
+   "speed": 135
+  },
+  "baseStatTotal": 575,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0317-00",
+  "dexNo": 317,
+  "formNo": 0,
+  "name": "꿀꺽몬",
+  "formName": "",
+  "types": [
+   "독"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 73,
+   "defense": 83,
+   "spAtk": 73,
+   "spDef": 83,
+   "speed": 55
+  },
+  "baseStatTotal": 467,
+  "abilities": [
+   {
+    "id": 64,
+    "name": "해감액"
+   },
+   {
+    "id": 60,
+    "name": "점착"
+   },
+   {
+    "id": 82,
+    "name": "먹보"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0319-00",
+  "dexNo": 319,
+  "formNo": 0,
+  "name": "샤크니아",
+  "formName": "",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 120,
+   "defense": 40,
+   "spAtk": 95,
+   "spDef": 40,
+   "speed": 95
+  },
+  "baseStatTotal": 460,
+  "abilities": [
+   {
+    "id": 24,
+    "name": "까칠한피부"
+   },
+   {
+    "id": 3,
+    "name": "가속"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0319-01",
+  "dexNo": 319,
+  "formNo": 1,
+  "name": "샤크니아",
+  "formName": "메가샤크니아",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 140,
+   "defense": 70,
+   "spAtk": 110,
+   "spDef": 65,
+   "speed": 105
+  },
+  "baseStatTotal": 560,
+  "abilities": [
+   {
+    "id": 173,
+    "name": "옹골찬턱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0323-00",
+  "dexNo": 323,
+  "formNo": 0,
+  "name": "폭타",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 100,
+   "defense": 70,
+   "spAtk": 105,
+   "spDef": 75,
+   "speed": 40
+  },
+  "baseStatTotal": 460,
+  "abilities": [
+   {
+    "id": 40,
+    "name": "마그마의무장"
+   },
+   {
+    "id": 116,
+    "name": "하드록"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0323-01",
+  "dexNo": 323,
+  "formNo": 1,
+  "name": "폭타",
+  "formName": "메가폭타",
+  "types": [
+   "불꽃",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 120,
+   "defense": 100,
+   "spAtk": 145,
+   "spDef": 105,
+   "speed": 20
+  },
+  "baseStatTotal": 560,
+  "abilities": [
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0324-00",
+  "dexNo": 324,
+  "formNo": 0,
+  "name": "코터스",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 85,
+   "defense": 140,
+   "spAtk": 85,
+   "spDef": 70,
+   "speed": 20
+  },
+  "baseStatTotal": 470,
+  "abilities": [
+   {
+    "id": 73,
+    "name": "하얀연기"
+   },
+   {
+    "id": 70,
+    "name": "가뭄"
+   },
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0334-00",
+  "dexNo": 334,
+  "formNo": 0,
+  "name": "파비코리",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 70,
+   "defense": 90,
+   "spAtk": 70,
+   "spDef": 105,
+   "speed": 80
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 30,
+    "name": "자연회복"
+   },
+   {
+    "id": 13,
+    "name": "날씨부정"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0334-01",
+  "dexNo": 334,
+  "formNo": 1,
+  "name": "파비코리",
+  "formName": "메가파비코리",
+  "types": [
+   "드래곤",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 110,
+   "defense": 110,
+   "spAtk": 110,
+   "spDef": 105,
+   "speed": 80
+  },
+  "baseStatTotal": 590,
+  "abilities": [
+   {
+    "id": 182,
+    "name": "페어리스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0350-00",
+  "dexNo": 350,
+  "formNo": 0,
+  "name": "밀로틱",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 60,
+   "defense": 79,
+   "spAtk": 100,
+   "spDef": 125,
+   "speed": 81
+  },
+  "baseStatTotal": 540,
+  "abilities": [
+   {
+    "id": 63,
+    "name": "이상한비늘"
+   },
+   {
+    "id": 172,
+    "name": "승기"
+   },
+   {
+    "id": 56,
+    "name": "헤롱헤롱바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0351-00",
+  "dexNo": 351,
+  "formNo": 0,
+  "name": "캐스퐁",
+  "formName": "캐스퐁의 모습",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 70,
+   "defense": 70,
+   "spAtk": 70,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 59,
+    "name": "기분파"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0351-01",
+  "dexNo": 351,
+  "formNo": 1,
+  "name": "캐스퐁",
+  "formName": "태양의 모습",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 70,
+   "defense": 70,
+   "spAtk": 70,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 59,
+    "name": "기분파"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0351-02",
+  "dexNo": 351,
+  "formNo": 2,
+  "name": "캐스퐁",
+  "formName": "빗방울의 모습",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 70,
+   "defense": 70,
+   "spAtk": 70,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 59,
+    "name": "기분파"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0351-03",
+  "dexNo": 351,
+  "formNo": 3,
+  "name": "캐스퐁",
+  "formName": "설운의 모습",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 70,
+   "defense": 70,
+   "spAtk": 70,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 59,
+    "name": "기분파"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0354-00",
+  "dexNo": 354,
+  "formNo": 0,
+  "name": "다크펫",
+  "formName": "",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 64,
+   "attack": 115,
+   "defense": 65,
+   "spAtk": 83,
+   "spDef": 63,
+   "speed": 65
+  },
+  "baseStatTotal": 455,
+  "abilities": [
+   {
+    "id": 15,
+    "name": "불면"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0354-01",
+  "dexNo": 354,
+  "formNo": 1,
+  "name": "다크펫",
+  "formName": "메가다크펫",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 64,
+   "attack": 165,
+   "defense": 75,
+   "spAtk": 93,
+   "spDef": 83,
+   "speed": 75
+  },
+  "baseStatTotal": 555,
+  "abilities": [
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0358-00",
+  "dexNo": 358,
+  "formNo": 0,
+  "name": "치렁",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 50,
+   "defense": 80,
+   "spAtk": 95,
+   "spDef": 90,
+   "speed": 65
+  },
+  "baseStatTotal": 455,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0358-01",
+  "dexNo": 358,
+  "formNo": 1,
+  "name": "치렁",
+  "formName": "메가치렁",
+  "types": [
+   "에스퍼",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 50,
+   "defense": 110,
+   "spAtk": 135,
+   "spDef": 120,
+   "speed": 65
+  },
+  "baseStatTotal": 555,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0359-00",
+  "dexNo": 359,
+  "formNo": 0,
+  "name": "앱솔",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 130,
+   "defense": 60,
+   "spAtk": 75,
+   "spDef": 60,
+   "speed": 75
+  },
+  "baseStatTotal": 465,
+  "abilities": [
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 105,
+    "name": "대운"
+   },
+   {
+    "id": 154,
+    "name": "정의의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0359-01",
+  "dexNo": 359,
+  "formNo": 1,
+  "name": "앱솔",
+  "formName": "메가앱솔",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 150,
+   "defense": 60,
+   "spAtk": 115,
+   "spDef": 60,
+   "speed": 115
+  },
+  "baseStatTotal": 565,
+  "abilities": [
+   {
+    "id": 156,
+    "name": "매직미러"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0359-02",
+  "dexNo": 359,
+  "formNo": 2,
+  "name": "앱솔",
+  "formName": "메가앱솔Z",
+  "types": [
+   "악",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 154,
+   "defense": 60,
+   "spAtk": 75,
+   "spDef": 60,
+   "speed": 151
+  },
+  "baseStatTotal": 565,
+  "abilities": [
+   {
+    "id": 292,
+    "name": "예리함"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0362-00",
+  "dexNo": 362,
+  "formNo": 0,
+  "name": "얼음귀신",
+  "formName": "",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 80,
+   "defense": 80,
+   "spAtk": 80,
+   "spDef": 80,
+   "speed": 80
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   },
+   {
+    "id": 141,
+    "name": "변덕쟁이"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0362-01",
+  "dexNo": 362,
+  "formNo": 1,
+  "name": "얼음귀신",
+  "formName": "메가얼음귀신",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 120,
+   "defense": 80,
+   "spAtk": 120,
+   "spDef": 80,
+   "speed": 100
+  },
+  "baseStatTotal": 580,
+  "abilities": [
+   {
+    "id": 174,
+    "name": "프리즈스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0373-00",
+  "dexNo": 373,
+  "formNo": 0,
+  "name": "보만다",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 135,
+   "defense": 80,
+   "spAtk": 110,
+   "spDef": 80,
+   "speed": 100
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0373-01",
+  "dexNo": 373,
+  "formNo": 1,
+  "name": "보만다",
+  "formName": "메가보만다",
+  "types": [
+   "드래곤",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 145,
+   "defense": 130,
+   "spAtk": 120,
+   "spDef": 90,
+   "speed": 120
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 184,
+    "name": "스카이스킨"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0376-00",
+  "dexNo": 376,
+  "formNo": 0,
+  "name": "메타그로스",
+  "formName": "",
+  "types": [
+   "강철",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 135,
+   "defense": 130,
+   "spAtk": 95,
+   "spDef": 90,
+   "speed": 70
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 29,
+    "name": "클리어바디"
+   },
+   {
+    "id": 135,
+    "name": "라이트메탈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0376-01",
+  "dexNo": 376,
+  "formNo": 1,
+  "name": "메타그로스",
+  "formName": "메가메타그로스",
+  "types": [
+   "강철",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 145,
+   "defense": 150,
+   "spAtk": 105,
+   "spDef": 110,
+   "speed": 110
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0389-00",
+  "dexNo": 389,
+  "formNo": 0,
+  "name": "토대부기",
+  "formName": "",
+  "types": [
+   "풀",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 109,
+   "defense": 105,
+   "spAtk": 75,
+   "spDef": 85,
+   "speed": 56
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0392-00",
+  "dexNo": 392,
+  "formNo": 0,
+  "name": "초염몽",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 76,
+   "attack": 104,
+   "defense": 71,
+   "spAtk": 104,
+   "spDef": 71,
+   "speed": 108
+  },
+  "baseStatTotal": 534,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 89,
+    "name": "철주먹"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0395-00",
+  "dexNo": 395,
+  "formNo": 0,
+  "name": "엠페르트",
+  "formName": "",
+  "types": [
+   "물",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 84,
+   "attack": 86,
+   "defense": 88,
+   "spAtk": 111,
+   "spDef": 101,
+   "speed": 60
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 172,
+    "name": "승기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0398-00",
+  "dexNo": 398,
+  "formNo": 0,
+  "name": "찌르호크",
+  "formName": "",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 120,
+   "defense": 70,
+   "spAtk": 50,
+   "spDef": 60,
+   "speed": 100
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 120,
+    "name": "이판사판"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0398-01",
+  "dexNo": 398,
+  "formNo": 1,
+  "name": "찌르호크",
+  "formName": "메가찌르호크",
+  "types": [
+   "격투",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 140,
+   "defense": 100,
+   "spAtk": 60,
+   "spDef": 90,
+   "speed": 110
+  },
+  "baseStatTotal": 585,
+  "abilities": [
+   {
+    "id": 126,
+    "name": "심술꾸러기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0405-00",
+  "dexNo": 405,
+  "formNo": 0,
+  "name": "렌트라",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 120,
+   "defense": 79,
+   "spAtk": 95,
+   "spDef": 79,
+   "speed": 70
+  },
+  "baseStatTotal": 523,
+  "abilities": [
+   {
+    "id": 79,
+    "name": "투쟁심"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 62,
+    "name": "근성"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0407-00",
+  "dexNo": 407,
+  "formNo": 0,
+  "name": "로즈레이드",
+  "formName": "",
+  "types": [
+   "풀",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 70,
+   "defense": 65,
+   "spAtk": 125,
+   "spDef": 105,
+   "speed": 90
+  },
+  "baseStatTotal": 515,
+  "abilities": [
+   {
+    "id": 30,
+    "name": "자연회복"
+   },
+   {
+    "id": 38,
+    "name": "독가시"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0409-00",
+  "dexNo": 409,
+  "formNo": 0,
+  "name": "램펄드",
+  "formName": "",
+  "types": [
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 97,
+   "attack": 165,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 50,
+   "speed": 58
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 104,
+    "name": "틀깨기"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0411-00",
+  "dexNo": 411,
+  "formNo": 0,
+  "name": "바리톱스",
+  "formName": "",
+  "types": [
+   "바위",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 52,
+   "defense": 168,
+   "spAtk": 47,
+   "spDef": 138,
+   "speed": 30
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 43,
+    "name": "방음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0428-00",
+  "dexNo": 428,
+  "formNo": 0,
+  "name": "이어롭",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 76,
+   "defense": 84,
+   "spAtk": 54,
+   "spDef": 96,
+   "speed": 105
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 56,
+    "name": "헤롱헤롱바디"
+   },
+   {
+    "id": 103,
+    "name": "서투름"
+   },
+   {
+    "id": 7,
+    "name": "유연"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0428-01",
+  "dexNo": 428,
+  "formNo": 1,
+  "name": "이어롭",
+  "formName": "메가이어롭",
+  "types": [
+   "노말",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 136,
+   "defense": 94,
+   "spAtk": 54,
+   "spDef": 96,
+   "speed": 135
+  },
+  "baseStatTotal": 580,
+  "abilities": [
+   {
+    "id": 113,
+    "name": "배짱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0442-00",
+  "dexNo": 442,
+  "formNo": 0,
+  "name": "화강돌",
+  "formName": "",
+  "types": [
+   "고스트",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 92,
+   "defense": 108,
+   "spAtk": 92,
+   "spDef": 108,
+   "speed": 35
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0445-00",
+  "dexNo": 445,
+  "formNo": 0,
+  "name": "한카리아스",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 108,
+   "attack": 130,
+   "defense": 95,
+   "spAtk": 80,
+   "spDef": 85,
+   "speed": 102
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 8,
+    "name": "모래숨기"
+   },
+   {
+    "id": 24,
+    "name": "까칠한피부"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0445-01",
+  "dexNo": 445,
+  "formNo": 1,
+  "name": "한카리아스",
+  "formName": "메가한카리아스",
+  "types": [
+   "드래곤",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 108,
+   "attack": 170,
+   "defense": 115,
+   "spAtk": 120,
+   "spDef": 95,
+   "speed": 92
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 159,
+    "name": "모래의힘"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0445-02",
+  "dexNo": 445,
+  "formNo": 2,
+  "name": "한카리아스",
+  "formName": "메가한카리아스Z",
+  "types": [
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 108,
+   "attack": 130,
+   "defense": 85,
+   "spAtk": 141,
+   "spDef": 85,
+   "speed": 151
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0448-00",
+  "dexNo": 448,
+  "formNo": 0,
+  "name": "루카리오",
+  "formName": "",
+  "types": [
+   "격투",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 110,
+   "defense": 70,
+   "spAtk": 115,
+   "spDef": 70,
+   "speed": 90
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 80,
+    "name": "불굴의마음"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 154,
+    "name": "정의의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0448-01",
+  "dexNo": 448,
+  "formNo": 1,
+  "name": "루카리오",
+  "formName": "메가루카리오",
+  "types": [
+   "격투",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 145,
+   "defense": 88,
+   "spAtk": 140,
+   "spDef": 70,
+   "speed": 112
+  },
+  "baseStatTotal": 625,
+  "abilities": [
+   {
+    "id": 91,
+    "name": "적응력"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0448-02",
+  "dexNo": 448,
+  "formNo": 2,
+  "name": "루카리오",
+  "formName": "메가루카리오Z",
+  "types": [
+   "격투",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 100,
+   "defense": 70,
+   "spAtk": 164,
+   "spDef": 70,
+   "speed": 151
+  },
+  "baseStatTotal": 625,
+  "abilities": [
+   {
+    "id": 319,
+    "name": "파동의방호"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0450-00",
+  "dexNo": 450,
+  "formNo": 0,
+  "name": "하마돈",
+  "formName": "",
+  "types": [
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 108,
+   "attack": 112,
+   "defense": 118,
+   "spAtk": 68,
+   "spDef": 72,
+   "speed": 47
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 45,
+    "name": "모래날림"
+   },
+   {
+    "id": 159,
+    "name": "모래의힘"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0454-00",
+  "dexNo": 454,
+  "formNo": 0,
+  "name": "독개굴",
+  "formName": "",
+  "types": [
+   "독",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 83,
+   "attack": 106,
+   "defense": 65,
+   "spAtk": 86,
+   "spDef": 65,
+   "speed": 85
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 107,
+    "name": "위험예지"
+   },
+   {
+    "id": 87,
+    "name": "건조피부"
+   },
+   {
+    "id": 143,
+    "name": "독수"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0460-00",
+  "dexNo": 460,
+  "formNo": 0,
+  "name": "눈설왕",
+  "formName": "",
+  "types": [
+   "풀",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 92,
+   "defense": 75,
+   "spAtk": 92,
+   "spDef": 85,
+   "speed": 60
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   },
+   {
+    "id": 43,
+    "name": "방음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0460-01",
+  "dexNo": 460,
+  "formNo": 1,
+  "name": "눈설왕",
+  "formName": "메가눈설왕",
+  "types": [
+   "풀",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 132,
+   "defense": 105,
+   "spAtk": 132,
+   "spDef": 105,
+   "speed": 30
+  },
+  "baseStatTotal": 594,
+  "abilities": [
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0461-00",
+  "dexNo": 461,
+  "formNo": 0,
+  "name": "포푸니라",
+  "formName": "",
+  "types": [
+   "악",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 120,
+   "defense": 65,
+   "spAtk": 45,
+   "spDef": 85,
+   "speed": 125
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 124,
+    "name": "나쁜손버릇"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0464-00",
+  "dexNo": 464,
+  "formNo": 0,
+  "name": "거대코뿌리",
+  "formName": "",
+  "types": [
+   "땅",
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 115,
+   "attack": 140,
+   "defense": 130,
+   "spAtk": 55,
+   "spDef": 55,
+   "speed": 40
+  },
+  "baseStatTotal": 535,
+  "abilities": [
+   {
+    "id": 31,
+    "name": "피뢰침"
+   },
+   {
+    "id": 116,
+    "name": "하드록"
+   },
+   {
+    "id": 120,
+    "name": "이판사판"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0470-00",
+  "dexNo": 470,
+  "formNo": 0,
+  "name": "리피아",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 110,
+   "defense": 130,
+   "spAtk": 60,
+   "spDef": 65,
+   "speed": 95
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 102,
+    "name": "리프가드"
+   },
+   {
+    "id": 34,
+    "name": "엽록소"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0471-00",
+  "dexNo": 471,
+  "formNo": 0,
+  "name": "글레이시아",
+  "formName": "",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 110,
+   "spAtk": 130,
+   "spDef": 95,
+   "speed": 65
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 81,
+    "name": "눈숨기"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0472-00",
+  "dexNo": 472,
+  "formNo": 0,
+  "name": "글라이온",
+  "formName": "",
+  "types": [
+   "땅",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 95,
+   "defense": 125,
+   "spAtk": 45,
+   "spDef": 75,
+   "speed": 95
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 52,
+    "name": "괴력집게"
+   },
+   {
+    "id": 8,
+    "name": "모래숨기"
+   },
+   {
+    "id": 90,
+    "name": "포이즌힐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0473-00",
+  "dexNo": 473,
+  "formNo": 0,
+  "name": "맘모꾸리",
+  "formName": "",
+  "types": [
+   "얼음",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 130,
+   "defense": 80,
+   "spAtk": 70,
+   "spDef": 60,
+   "speed": 80
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 12,
+    "name": "둔감"
+   },
+   {
+    "id": 81,
+    "name": "눈숨기"
+   },
+   {
+    "id": 47,
+    "name": "두꺼운지방"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0475-00",
+  "dexNo": 475,
+  "formNo": 0,
+  "name": "엘레이드",
+  "formName": "",
+  "types": [
+   "에스퍼",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 125,
+   "defense": 65,
+   "spAtk": 65,
+   "spDef": 115,
+   "speed": 80
+  },
+  "baseStatTotal": 518,
+  "abilities": [
+   {
+    "id": 80,
+    "name": "불굴의마음"
+   },
+   {
+    "id": 292,
+    "name": "예리함"
+   },
+   {
+    "id": 154,
+    "name": "정의의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0475-01",
+  "dexNo": 475,
+  "formNo": 1,
+  "name": "엘레이드",
+  "formName": "메가엘레이드",
+  "types": [
+   "에스퍼",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 165,
+   "defense": 95,
+   "spAtk": 65,
+   "spDef": 115,
+   "speed": 110
+  },
+  "baseStatTotal": 618,
+  "abilities": [
+   {
+    "id": 39,
+    "name": "정신력"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0478-00",
+  "dexNo": 478,
+  "formNo": 0,
+  "name": "눈여아",
+  "formName": "",
+  "types": [
+   "얼음",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 80,
+   "defense": 70,
+   "spAtk": 80,
+   "spDef": 70,
+   "speed": 110
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 81,
+    "name": "눈숨기"
+   },
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0478-01",
+  "dexNo": 478,
+  "formNo": 1,
+  "name": "눈여아",
+  "formName": "메가눈여아",
+  "types": [
+   "얼음",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 80,
+   "defense": 70,
+   "spAtk": 140,
+   "spDef": 100,
+   "speed": 120
+  },
+  "baseStatTotal": 580,
+  "abilities": [
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0479-00",
+  "dexNo": 479,
+  "formNo": 0,
+  "name": "로토무",
+  "formName": "로토무의 모습",
+  "types": [
+   "전기",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 50,
+   "defense": 77,
+   "spAtk": 95,
+   "spDef": 77,
+   "speed": 91
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0479-01",
+  "dexNo": 479,
+  "formNo": 1,
+  "name": "로토무",
+  "formName": "히트로토무",
+  "types": [
+   "전기",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 65,
+   "defense": 107,
+   "spAtk": 105,
+   "spDef": 107,
+   "speed": 86
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0479-02",
+  "dexNo": 479,
+  "formNo": 2,
+  "name": "로토무",
+  "formName": "워시로토무",
+  "types": [
+   "전기",
+   "물"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 65,
+   "defense": 107,
+   "spAtk": 105,
+   "spDef": 107,
+   "speed": 86
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0479-03",
+  "dexNo": 479,
+  "formNo": 3,
+  "name": "로토무",
+  "formName": "프로스트로토무",
+  "types": [
+   "전기",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 65,
+   "defense": 107,
+   "spAtk": 105,
+   "spDef": 107,
+   "speed": 86
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0479-04",
+  "dexNo": 479,
+  "formNo": 4,
+  "name": "로토무",
+  "formName": "스핀로토무",
+  "types": [
+   "전기",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 65,
+   "defense": 107,
+   "spAtk": 105,
+   "spDef": 107,
+   "speed": 86
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0479-05",
+  "dexNo": 479,
+  "formNo": 5,
+  "name": "로토무",
+  "formName": "커트로토무",
+  "types": [
+   "전기",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 65,
+   "defense": 107,
+   "spAtk": 105,
+   "spDef": 107,
+   "speed": 86
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0497-00",
+  "dexNo": 497,
+  "formNo": 0,
+  "name": "샤로다",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 75,
+   "defense": 95,
+   "spAtk": 75,
+   "spDef": 95,
+   "speed": 113
+  },
+  "baseStatTotal": 528,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 126,
+    "name": "심술꾸러기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0500-00",
+  "dexNo": 500,
+  "formNo": 0,
+  "name": "염무왕",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 123,
+   "defense": 65,
+   "spAtk": 100,
+   "spDef": 65,
+   "speed": 65
+  },
+  "baseStatTotal": 528,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 120,
+    "name": "이판사판"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0500-01",
+  "dexNo": 500,
+  "formNo": 1,
+  "name": "염무왕",
+  "formName": "메가염무왕",
+  "types": [
+   "불꽃",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 148,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 110,
+   "speed": 75
+  },
+  "baseStatTotal": 628,
+  "abilities": [
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0503-00",
+  "dexNo": 503,
+  "formNo": 0,
+  "name": "대검귀",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 100,
+   "defense": 85,
+   "spAtk": 108,
+   "spDef": 70,
+   "speed": 70
+  },
+  "baseStatTotal": 528,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0503-01",
+  "dexNo": 503,
+  "formNo": 1,
+  "name": "대검귀",
+  "formName": "히스이의 모습",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 108,
+   "defense": 80,
+   "spAtk": 100,
+   "spDef": 65,
+   "speed": 85
+  },
+  "baseStatTotal": 528,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 292,
+    "name": "예리함"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0505-00",
+  "dexNo": 505,
+  "formNo": 0,
+  "name": "보르그",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 85,
+   "defense": 69,
+   "spAtk": 60,
+   "spDef": 69,
+   "speed": 77
+  },
+  "baseStatTotal": 420,
+  "abilities": [
+   {
+    "id": 35,
+    "name": "발광"
+   },
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 148,
+    "name": "애널라이즈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0510-00",
+  "dexNo": 510,
+  "formNo": 0,
+  "name": "레파르다스",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 64,
+   "attack": 88,
+   "defense": 50,
+   "spAtk": 88,
+   "spDef": 50,
+   "speed": 106
+  },
+  "baseStatTotal": 446,
+  "abilities": [
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   },
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0512-00",
+  "dexNo": 512,
+  "formNo": 0,
+  "name": "야나키",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 98,
+   "defense": 63,
+   "spAtk": 98,
+   "spDef": 63,
+   "speed": 101
+  },
+  "baseStatTotal": 498,
+  "abilities": [
+   {
+    "id": 82,
+    "name": "먹보"
+   },
+   {
+    "id": 65,
+    "name": "심록"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0514-00",
+  "dexNo": 514,
+  "formNo": 0,
+  "name": "바오키",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 98,
+   "defense": 63,
+   "spAtk": 98,
+   "spDef": 63,
+   "speed": 101
+  },
+  "baseStatTotal": 498,
+  "abilities": [
+   {
+    "id": 82,
+    "name": "먹보"
+   },
+   {
+    "id": 66,
+    "name": "맹화"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0516-00",
+  "dexNo": 516,
+  "formNo": 0,
+  "name": "앗차키",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 98,
+   "defense": 63,
+   "spAtk": 98,
+   "spDef": 63,
+   "speed": 101
+  },
+  "baseStatTotal": 498,
+  "abilities": [
+   {
+    "id": 82,
+    "name": "먹보"
+   },
+   {
+    "id": 67,
+    "name": "급류"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0518-00",
+  "dexNo": 518,
+  "formNo": 0,
+  "name": "몽얌나",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 116,
+   "attack": 55,
+   "defense": 85,
+   "spAtk": 107,
+   "spDef": 95,
+   "speed": 29
+  },
+  "baseStatTotal": 487,
+  "abilities": [
+   {
+    "id": 108,
+    "name": "예지몽"
+   },
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 140,
+    "name": "텔레파시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0530-00",
+  "dexNo": 530,
+  "formNo": 0,
+  "name": "몰드류",
+  "formName": "",
+  "types": [
+   "땅",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 135,
+   "defense": 60,
+   "spAtk": 50,
+   "spDef": 65,
+   "speed": 88
+  },
+  "baseStatTotal": 508,
+  "abilities": [
+   {
+    "id": 146,
+    "name": "모래헤치기"
+   },
+   {
+    "id": 159,
+    "name": "모래의힘"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0530-01",
+  "dexNo": 530,
+  "formNo": 1,
+  "name": "몰드류",
+  "formName": "메가몰드류",
+  "types": [
+   "땅",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 165,
+   "defense": 100,
+   "spAtk": 65,
+   "spDef": 65,
+   "speed": 103
+  },
+  "baseStatTotal": 608,
+  "abilities": [
+   {
+    "id": 311,
+    "name": "관통드릴"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0531-00",
+  "dexNo": 531,
+  "formNo": 0,
+  "name": "다부니",
+  "formName": "",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 103,
+   "attack": 60,
+   "defense": 86,
+   "spAtk": 60,
+   "spDef": 86,
+   "speed": 50
+  },
+  "baseStatTotal": 445,
+  "abilities": [
+   {
+    "id": 131,
+    "name": "치유의마음"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   },
+   {
+    "id": 103,
+    "name": "서투름"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0531-01",
+  "dexNo": 531,
+  "formNo": 1,
+  "name": "다부니",
+  "formName": "메가다부니",
+  "types": [
+   "노말",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 103,
+   "attack": 60,
+   "defense": 126,
+   "spAtk": 80,
+   "spDef": 126,
+   "speed": 50
+  },
+  "baseStatTotal": 545,
+  "abilities": [
+   {
+    "id": 131,
+    "name": "치유의마음"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0534-00",
+  "dexNo": 534,
+  "formNo": 0,
+  "name": "노보청",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 105,
+   "attack": 140,
+   "defense": 95,
+   "spAtk": 55,
+   "spDef": 65,
+   "speed": 45
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 62,
+    "name": "근성"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   },
+   {
+    "id": 89,
+    "name": "철주먹"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0545-00",
+  "dexNo": 545,
+  "formNo": 0,
+  "name": "펜드라",
+  "formName": "",
+  "types": [
+   "벌레",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 100,
+   "defense": 89,
+   "spAtk": 55,
+   "spDef": 69,
+   "speed": 112
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 38,
+    "name": "독가시"
+   },
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 3,
+    "name": "가속"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0545-01",
+  "dexNo": 545,
+  "formNo": 1,
+  "name": "펜드라",
+  "formName": "메가펜드라",
+  "types": [
+   "벌레",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 140,
+   "defense": 149,
+   "spAtk": 75,
+   "spDef": 99,
+   "speed": 62
+  },
+  "baseStatTotal": 585,
+  "abilities": [
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0547-00",
+  "dexNo": 547,
+  "formNo": 0,
+  "name": "엘풍",
+  "formName": "",
+  "types": [
+   "풀",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 67,
+   "defense": 85,
+   "spAtk": 77,
+   "spDef": 75,
+   "speed": 116
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   },
+   {
+    "id": 34,
+    "name": "엽록소"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0553-00",
+  "dexNo": 553,
+  "formNo": 0,
+  "name": "악비아르",
+  "formName": "",
+  "types": [
+   "땅",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 117,
+   "defense": 80,
+   "spAtk": 65,
+   "spDef": 70,
+   "speed": 92
+  },
+  "baseStatTotal": 519,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0560-00",
+  "dexNo": 560,
+  "formNo": 0,
+  "name": "곤율거니",
+  "formName": "",
+  "types": [
+   "악",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 90,
+   "defense": 115,
+   "spAtk": 45,
+   "spDef": 115,
+   "speed": 58
+  },
+  "baseStatTotal": 488,
+  "abilities": [
+   {
+    "id": 61,
+    "name": "탈피"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0560-01",
+  "dexNo": 560,
+  "formNo": 1,
+  "name": "곤율거니",
+  "formName": "메가곤율거니",
+  "types": [
+   "악",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 130,
+   "defense": 135,
+   "spAtk": 55,
+   "spDef": 135,
+   "speed": 68
+  },
+  "baseStatTotal": 588,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0563-00",
+  "dexNo": 563,
+  "formNo": 0,
+  "name": "데스니칸",
+  "formName": "",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 58,
+   "attack": 50,
+   "defense": 145,
+   "spAtk": 95,
+   "spDef": 105,
+   "speed": 30
+  },
+  "baseStatTotal": 483,
+  "abilities": [
+   {
+    "id": 152,
+    "name": "미라"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0569-00",
+  "dexNo": 569,
+  "formNo": 0,
+  "name": "더스트나",
+  "formName": "",
+  "types": [
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 95,
+   "defense": 82,
+   "spAtk": 60,
+   "spDef": 82,
+   "speed": 75
+  },
+  "baseStatTotal": 474,
+  "abilities": [
+   {
+    "id": 1,
+    "name": "악취"
+   },
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   },
+   {
+    "id": 106,
+    "name": "유폭"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0571-00",
+  "dexNo": 571,
+  "formNo": 0,
+  "name": "조로아크",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 105,
+   "defense": 60,
+   "spAtk": 120,
+   "spDef": 60,
+   "speed": 105
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 149,
+    "name": "일루전"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0571-01",
+  "dexNo": 571,
+  "formNo": 1,
+  "name": "조로아크",
+  "formName": "히스이의 모습",
+  "types": [
+   "노말",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 100,
+   "defense": 60,
+   "spAtk": 125,
+   "spDef": 60,
+   "speed": 110
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 149,
+    "name": "일루전"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0579-00",
+  "dexNo": 579,
+  "formNo": 0,
+  "name": "란쿨루스",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 65,
+   "defense": 75,
+   "spAtk": 125,
+   "spDef": 85,
+   "speed": 30
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 142,
+    "name": "방진"
+   },
+   {
+    "id": 98,
+    "name": "매직가드"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0584-00",
+  "dexNo": 584,
+  "formNo": 0,
+  "name": "배바닐라",
+  "formName": "",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 71,
+   "attack": 95,
+   "defense": 85,
+   "spAtk": 110,
+   "spDef": 95,
+   "speed": 79
+  },
+  "baseStatTotal": 535,
+  "abilities": [
+   {
+    "id": 115,
+    "name": "아이스바디"
+   },
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   },
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0587-00",
+  "dexNo": 587,
+  "formNo": 0,
+  "name": "에몽가",
+  "formName": "",
+  "types": [
+   "전기",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 75,
+   "defense": 60,
+   "spAtk": 75,
+   "spDef": 60,
+   "speed": 103
+  },
+  "baseStatTotal": 428,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 78,
+    "name": "전기엔진"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0604-00",
+  "dexNo": 604,
+  "formNo": 0,
+  "name": "저리더프",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 115,
+   "defense": 80,
+   "spAtk": 105,
+   "spDef": 80,
+   "speed": 50
+  },
+  "baseStatTotal": 515,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0604-01",
+  "dexNo": 604,
+  "formNo": 1,
+  "name": "저리더프",
+  "formName": "메가저리더프",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 145,
+   "defense": 80,
+   "spAtk": 135,
+   "spDef": 90,
+   "speed": 80
+  },
+  "baseStatTotal": 615,
+  "abilities": [
+   {
+    "id": 313,
+    "name": "천정부지"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0609-00",
+  "dexNo": 609,
+  "formNo": 0,
+  "name": "샹델라",
+  "formName": "",
+  "types": [
+   "고스트",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 55,
+   "defense": 90,
+   "spAtk": 145,
+   "spDef": 90,
+   "speed": 80
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 49,
+    "name": "불꽃몸"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0609-01",
+  "dexNo": 609,
+  "formNo": 1,
+  "name": "샹델라",
+  "formName": "메가샹델라",
+  "types": [
+   "고스트",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 75,
+   "defense": 110,
+   "spAtk": 175,
+   "spDef": 110,
+   "speed": 90
+  },
+  "baseStatTotal": 620,
+  "abilities": [
+   {
+    "id": 151,
+    "name": "틈새포착"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0614-00",
+  "dexNo": 614,
+  "formNo": 0,
+  "name": "툰베어",
+  "formName": "",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 130,
+   "defense": 80,
+   "spAtk": 70,
+   "spDef": 80,
+   "speed": 50
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 81,
+    "name": "눈숨기"
+   },
+   {
+    "id": 202,
+    "name": "눈치우기"
+   },
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0618-00",
+  "dexNo": 618,
+  "formNo": 0,
+  "name": "메더",
+  "formName": "",
+  "types": [
+   "땅",
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 109,
+   "attack": 66,
+   "defense": 84,
+   "spAtk": 81,
+   "spDef": 99,
+   "speed": 32
+  },
+  "baseStatTotal": 471,
+  "abilities": [
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 8,
+    "name": "모래숨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0618-01",
+  "dexNo": 618,
+  "formNo": 1,
+  "name": "메더",
+  "formName": "가라르의 모습",
+  "types": [
+   "땅",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 109,
+   "attack": 81,
+   "defense": 99,
+   "spAtk": 66,
+   "spDef": 84,
+   "speed": 32
+  },
+  "baseStatTotal": 471,
+  "abilities": [
+   {
+    "id": 250,
+    "name": "의태"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0623-00",
+  "dexNo": 623,
+  "formNo": 0,
+  "name": "골루그",
+  "formName": "",
+  "types": [
+   "땅",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 89,
+   "attack": 124,
+   "defense": 80,
+   "spAtk": 55,
+   "spDef": 80,
+   "speed": 55
+  },
+  "baseStatTotal": 483,
+  "abilities": [
+   {
+    "id": 89,
+    "name": "철주먹"
+   },
+   {
+    "id": 103,
+    "name": "서투름"
+   },
+   {
+    "id": 99,
+    "name": "노가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0623-01",
+  "dexNo": 623,
+  "formNo": 1,
+  "name": "골루그",
+  "formName": "메가골루그",
+  "types": [
+   "땅",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 89,
+   "attack": 159,
+   "defense": 105,
+   "spAtk": 70,
+   "spDef": 105,
+   "speed": 55
+  },
+  "baseStatTotal": 583,
+  "abilities": [
+   {
+    "id": 260,
+    "name": "보이지않는주먹"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0635-00",
+  "dexNo": 635,
+  "formNo": 0,
+  "name": "삼삼드래",
+  "formName": "",
+  "types": [
+   "악",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 92,
+   "attack": 105,
+   "defense": 90,
+   "spAtk": 125,
+   "spDef": 90,
+   "speed": 98
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0637-00",
+  "dexNo": 637,
+  "formNo": 0,
+  "name": "불카모스",
+  "formName": "",
+  "types": [
+   "벌레",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 60,
+   "defense": 65,
+   "spAtk": 135,
+   "spDef": 105,
+   "speed": 100
+  },
+  "baseStatTotal": 550,
+  "abilities": [
+   {
+    "id": 49,
+    "name": "불꽃몸"
+   },
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0652-00",
+  "dexNo": 652,
+  "formNo": 0,
+  "name": "브리가론",
+  "formName": "",
+  "types": [
+   "풀",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 88,
+   "attack": 107,
+   "defense": 122,
+   "spAtk": 74,
+   "spDef": 75,
+   "speed": 64
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 171,
+    "name": "방탄"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0652-01",
+  "dexNo": 652,
+  "formNo": 1,
+  "name": "브리가론",
+  "formName": "메가브리가론",
+  "types": [
+   "풀",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 88,
+   "attack": 137,
+   "defense": 172,
+   "spAtk": 74,
+   "spDef": 115,
+   "speed": 44
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 171,
+    "name": "방탄"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0655-00",
+  "dexNo": 655,
+  "formNo": 0,
+  "name": "마폭시",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 69,
+   "defense": 72,
+   "spAtk": 114,
+   "spDef": 100,
+   "speed": 104
+  },
+  "baseStatTotal": 534,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 170,
+    "name": "매지션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0655-01",
+  "dexNo": 655,
+  "formNo": 1,
+  "name": "마폭시",
+  "formName": "메가마폭시",
+  "types": [
+   "불꽃",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 69,
+   "defense": 72,
+   "spAtk": 159,
+   "spDef": 125,
+   "speed": 134
+  },
+  "baseStatTotal": 634,
+  "abilities": [
+   {
+    "id": 26,
+    "name": "부유"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0658-00",
+  "dexNo": 658,
+  "formNo": 0,
+  "name": "개굴닌자",
+  "formName": "",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 95,
+   "defense": 67,
+   "spAtk": 103,
+   "spDef": 71,
+   "speed": 122
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 168,
+    "name": "변환자재"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0658-03",
+  "dexNo": 658,
+  "formNo": 3,
+  "name": "개굴닌자",
+  "formName": "메가개굴닌자",
+  "types": [
+   "물",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 125,
+   "defense": 77,
+   "spAtk": 133,
+   "spDef": 81,
+   "speed": 142
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 168,
+    "name": "변환자재"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0660-00",
+  "dexNo": 660,
+  "formNo": 0,
+  "name": "파르토",
+  "formName": "",
+  "types": [
+   "노말",
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 56,
+   "defense": 77,
+   "spAtk": 50,
+   "spDef": 77,
+   "speed": 78
+  },
+  "baseStatTotal": 423,
+  "abilities": [
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 167,
+    "name": "볼주머니"
+   },
+   {
+    "id": 37,
+    "name": "천하장사"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0663-00",
+  "dexNo": 663,
+  "formNo": 0,
+  "name": "파이어로",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 81,
+   "defense": 71,
+   "spAtk": 74,
+   "spDef": 69,
+   "speed": 126
+  },
+  "baseStatTotal": 499,
+  "abilities": [
+   {
+    "id": 49,
+    "name": "불꽃몸"
+   },
+   {
+    "id": 177,
+    "name": "질풍날개"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-00",
+  "dexNo": 666,
+  "formNo": 0,
+  "name": "비비용",
+  "formName": "빙설의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-01",
+  "dexNo": 666,
+  "formNo": 1,
+  "name": "비비용",
+  "formName": "설국의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-02",
+  "dexNo": 666,
+  "formNo": 2,
+  "name": "비비용",
+  "formName": "설원의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-03",
+  "dexNo": 666,
+  "formNo": 3,
+  "name": "비비용",
+  "formName": "대륙의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-04",
+  "dexNo": 666,
+  "formNo": 4,
+  "name": "비비용",
+  "formName": "정원의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-05",
+  "dexNo": 666,
+  "formNo": 5,
+  "name": "비비용",
+  "formName": "우아한 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-06",
+  "dexNo": 666,
+  "formNo": 6,
+  "name": "비비용",
+  "formName": "화원의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-07",
+  "dexNo": 666,
+  "formNo": 7,
+  "name": "비비용",
+  "formName": "모던한 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-08",
+  "dexNo": 666,
+  "formNo": 8,
+  "name": "비비용",
+  "formName": "마린의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-09",
+  "dexNo": 666,
+  "formNo": 9,
+  "name": "비비용",
+  "formName": "군도의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-10",
+  "dexNo": 666,
+  "formNo": 10,
+  "name": "비비용",
+  "formName": "황야의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-11",
+  "dexNo": 666,
+  "formNo": 11,
+  "name": "비비용",
+  "formName": "사진의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-12",
+  "dexNo": 666,
+  "formNo": 12,
+  "name": "비비용",
+  "formName": "대하의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-13",
+  "dexNo": 666,
+  "formNo": 13,
+  "name": "비비용",
+  "formName": "스콜의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-14",
+  "dexNo": 666,
+  "formNo": 14,
+  "name": "비비용",
+  "formName": "사바나의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-15",
+  "dexNo": 666,
+  "formNo": 15,
+  "name": "비비용",
+  "formName": "태양의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-16",
+  "dexNo": 666,
+  "formNo": 16,
+  "name": "비비용",
+  "formName": "오션의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-17",
+  "dexNo": 666,
+  "formNo": 17,
+  "name": "비비용",
+  "formName": "정글의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-18",
+  "dexNo": 666,
+  "formNo": 18,
+  "name": "비비용",
+  "formName": "팬시한 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0666-19",
+  "dexNo": 666,
+  "formNo": 19,
+  "name": "비비용",
+  "formName": "볼의 모양",
+  "types": [
+   "벌레",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 52,
+   "defense": 50,
+   "spAtk": 90,
+   "spDef": 50,
+   "speed": 89
+  },
+  "baseStatTotal": 411,
+  "abilities": [
+   {
+    "id": 19,
+    "name": "인분"
+   },
+   {
+    "id": 14,
+    "name": "복안"
+   },
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0668-00",
+  "dexNo": 668,
+  "formNo": 0,
+  "name": "화염레오",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 86,
+   "attack": 68,
+   "defense": 72,
+   "spAtk": 109,
+   "spDef": 66,
+   "speed": 106
+  },
+  "baseStatTotal": 507,
+  "abilities": [
+   {
+    "id": 79,
+    "name": "투쟁심"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0668-01",
+  "dexNo": 668,
+  "formNo": 1,
+  "name": "화염레오",
+  "formName": "메가화염레오",
+  "types": [
+   "불꽃",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 86,
+   "attack": 88,
+   "defense": 92,
+   "spAtk": 129,
+   "spDef": 86,
+   "speed": 126
+  },
+  "baseStatTotal": 607,
+  "abilities": [
+   {
+    "id": 316,
+    "name": "불꽃의갈기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0670-05",
+  "dexNo": 670,
+  "formNo": 5,
+  "name": "플라엣테",
+  "formName": "영원의 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 65,
+   "defense": 67,
+   "spAtk": 125,
+   "spDef": 128,
+   "speed": 92
+  },
+  "baseStatTotal": 551,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0670-06",
+  "dexNo": 670,
+  "formNo": 6,
+  "name": "플라엣테",
+  "formName": "메가플라엣테",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 85,
+   "defense": 87,
+   "spAtk": 155,
+   "spDef": 148,
+   "speed": 102
+  },
+  "baseStatTotal": 651,
+  "abilities": [
+   {
+    "id": 187,
+    "name": "페어리오라"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0671-00",
+  "dexNo": 671,
+  "formNo": 0,
+  "name": "플라제스",
+  "formName": "빨간 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 65,
+   "defense": 68,
+   "spAtk": 112,
+   "spDef": 154,
+   "speed": 75
+  },
+  "baseStatTotal": 552,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0671-01",
+  "dexNo": 671,
+  "formNo": 1,
+  "name": "플라제스",
+  "formName": "노란 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 65,
+   "defense": 68,
+   "spAtk": 112,
+   "spDef": 154,
+   "speed": 75
+  },
+  "baseStatTotal": 552,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0671-02",
+  "dexNo": 671,
+  "formNo": 2,
+  "name": "플라제스",
+  "formName": "오렌지색 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 65,
+   "defense": 68,
+   "spAtk": 112,
+   "spDef": 154,
+   "speed": 75
+  },
+  "baseStatTotal": 552,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0671-03",
+  "dexNo": 671,
+  "formNo": 3,
+  "name": "플라제스",
+  "formName": "파란 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 65,
+   "defense": 68,
+   "spAtk": 112,
+   "spDef": 154,
+   "speed": 75
+  },
+  "baseStatTotal": 552,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0671-04",
+  "dexNo": 671,
+  "formNo": 4,
+  "name": "플라제스",
+  "formName": "하얀 꽃",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 65,
+   "defense": 68,
+   "spAtk": 112,
+   "spDef": 154,
+   "speed": 75
+  },
+  "baseStatTotal": 552,
+  "abilities": [
+   {
+    "id": 166,
+    "name": "플라워베일"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0673-00",
+  "dexNo": 673,
+  "formNo": 0,
+  "name": "고고트",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 123,
+   "attack": 100,
+   "defense": 62,
+   "spAtk": 97,
+   "spDef": 81,
+   "speed": 68
+  },
+  "baseStatTotal": 531,
+  "abilities": [
+   {
+    "id": 157,
+    "name": "초식"
+   },
+   {
+    "id": 179,
+    "name": "풀모피"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0675-00",
+  "dexNo": 675,
+  "formNo": 0,
+  "name": "부란다",
+  "formName": "",
+  "types": [
+   "격투",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 124,
+   "defense": 78,
+   "spAtk": 69,
+   "spDef": 71,
+   "speed": 58
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 89,
+    "name": "철주먹"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   },
+   {
+    "id": 113,
+    "name": "배짱"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-00",
+  "dexNo": 676,
+  "formNo": 0,
+  "name": "트리미앙",
+  "formName": "야생의 모습",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-01",
+  "dexNo": 676,
+  "formNo": 1,
+  "name": "트리미앙",
+  "formName": "하트컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-02",
+  "dexNo": 676,
+  "formNo": 2,
+  "name": "트리미앙",
+  "formName": "스타컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-03",
+  "dexNo": 676,
+  "formNo": 3,
+  "name": "트리미앙",
+  "formName": "다이아컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-04",
+  "dexNo": 676,
+  "formNo": 4,
+  "name": "트리미앙",
+  "formName": "레이디컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-05",
+  "dexNo": 676,
+  "formNo": 5,
+  "name": "트리미앙",
+  "formName": "마담컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-06",
+  "dexNo": 676,
+  "formNo": 6,
+  "name": "트리미앙",
+  "formName": "젠틀컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-07",
+  "dexNo": 676,
+  "formNo": 7,
+  "name": "트리미앙",
+  "formName": "퀸컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-08",
+  "dexNo": 676,
+  "formNo": 8,
+  "name": "트리미앙",
+  "formName": "가부키컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0676-09",
+  "dexNo": 676,
+  "formNo": 9,
+  "name": "트리미앙",
+  "formName": "킹덤컷",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 80,
+   "defense": 60,
+   "spAtk": 65,
+   "spDef": 90,
+   "speed": 102
+  },
+  "baseStatTotal": 472,
+  "abilities": [
+   {
+    "id": 169,
+    "name": "퍼코트"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0678-00",
+  "dexNo": 678,
+  "formNo": 0,
+  "name": "냐오닉스",
+  "formName": "수컷의 모습",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 48,
+   "defense": 76,
+   "spAtk": 83,
+   "spDef": 81,
+   "speed": 104
+  },
+  "baseStatTotal": 466,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   },
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0678-01",
+  "dexNo": 678,
+  "formNo": 1,
+  "name": "냐오닉스",
+  "formName": "암컷의 모습",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 48,
+   "defense": 76,
+   "spAtk": 83,
+   "spDef": 81,
+   "speed": 104
+  },
+  "baseStatTotal": 466,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   },
+   {
+    "id": 172,
+    "name": "승기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0678-02",
+  "dexNo": 678,
+  "formNo": 2,
+  "name": "냐오닉스",
+  "formName": "메가냐오닉스",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 48,
+   "defense": 76,
+   "spAtk": 143,
+   "spDef": 101,
+   "speed": 124
+  },
+  "baseStatTotal": 566,
+  "abilities": [
+   {
+    "id": 36,
+    "name": "트레이스"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0678-03",
+  "dexNo": 678,
+  "formNo": 3,
+  "name": "냐오닉스",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 48,
+   "defense": 76,
+   "spAtk": 143,
+   "spDef": 101,
+   "speed": 124
+  },
+  "baseStatTotal": 566,
+  "abilities": [
+   {
+    "id": 36,
+    "name": "트레이스"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0681-00",
+  "dexNo": 681,
+  "formNo": 0,
+  "name": "킬가르도",
+  "formName": "실드폼",
+  "types": [
+   "강철",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 50,
+   "defense": 140,
+   "spAtk": 50,
+   "spDef": 140,
+   "speed": 60
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 176,
+    "name": "배틀스위치"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0681-01",
+  "dexNo": 681,
+  "formNo": 1,
+  "name": "킬가르도",
+  "formName": "블레이드폼",
+  "types": [
+   "강철",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 140,
+   "defense": 50,
+   "spAtk": 140,
+   "spDef": 50,
+   "speed": 60
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 176,
+    "name": "배틀스위치"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0683-00",
+  "dexNo": 683,
+  "formNo": 0,
+  "name": "프레프티르",
+  "formName": "",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 101,
+   "attack": 72,
+   "defense": 72,
+   "spAtk": 99,
+   "spDef": 89,
+   "speed": 29
+  },
+  "baseStatTotal": 462,
+  "abilities": [
+   {
+    "id": 131,
+    "name": "치유의마음"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0685-00",
+  "dexNo": 685,
+  "formNo": 0,
+  "name": "나루림",
+  "formName": "",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 80,
+   "defense": 86,
+   "spAtk": 85,
+   "spDef": 75,
+   "speed": 72
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0687-00",
+  "dexNo": 687,
+  "formNo": 0,
+  "name": "칼라마네로",
+  "formName": "",
+  "types": [
+   "악",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 86,
+   "attack": 92,
+   "defense": 88,
+   "spAtk": 68,
+   "spDef": 75,
+   "speed": 73
+  },
+  "baseStatTotal": 482,
+  "abilities": [
+   {
+    "id": 126,
+    "name": "심술꾸러기"
+   },
+   {
+    "id": 21,
+    "name": "흡반"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0687-01",
+  "dexNo": 687,
+  "formNo": 1,
+  "name": "칼라마네로",
+  "formName": "메가칼라마네로",
+  "types": [
+   "악",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 86,
+   "attack": 102,
+   "defense": 88,
+   "spAtk": 98,
+   "spDef": 120,
+   "speed": 88
+  },
+  "baseStatTotal": 582,
+  "abilities": [
+   {
+    "id": 126,
+    "name": "심술꾸러기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0689-00",
+  "dexNo": 689,
+  "formNo": 0,
+  "name": "거북손데스",
+  "formName": "",
+  "types": [
+   "바위",
+   "물"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 105,
+   "defense": 115,
+   "spAtk": 54,
+   "spDef": 86,
+   "speed": 68
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   },
+   {
+    "id": 97,
+    "name": "스나이퍼"
+   },
+   {
+    "id": 124,
+    "name": "나쁜손버릇"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0689-01",
+  "dexNo": 689,
+  "formNo": 1,
+  "name": "거북손데스",
+  "formName": "메가거북손데스",
+  "types": [
+   "바위",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 140,
+   "defense": 130,
+   "spAtk": 64,
+   "spDef": 106,
+   "speed": 88
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0691-00",
+  "dexNo": 691,
+  "formNo": 0,
+  "name": "드래캄",
+  "formName": "",
+  "types": [
+   "독",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 75,
+   "defense": 90,
+   "spAtk": 97,
+   "spDef": 123,
+   "speed": 44
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 38,
+    "name": "독가시"
+   },
+   {
+    "id": 143,
+    "name": "독수"
+   },
+   {
+    "id": 91,
+    "name": "적응력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0691-01",
+  "dexNo": 691,
+  "formNo": 1,
+  "name": "드래캄",
+  "formName": "메가드래캄",
+  "types": [
+   "독",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 85,
+   "defense": 105,
+   "spAtk": 132,
+   "spDef": 163,
+   "speed": 44
+  },
+  "baseStatTotal": 594,
+  "abilities": [
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0693-00",
+  "dexNo": 693,
+  "formNo": 0,
+  "name": "블로스터",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 71,
+   "attack": 73,
+   "defense": 88,
+   "spAtk": 120,
+   "spDef": 89,
+   "speed": 59
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 178,
+    "name": "메가런처"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0695-00",
+  "dexNo": 695,
+  "formNo": 0,
+  "name": "일레도리자드",
+  "formName": "",
+  "types": [
+   "전기",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 62,
+   "attack": 55,
+   "defense": 52,
+   "spAtk": 109,
+   "spDef": 94,
+   "speed": 109
+  },
+  "baseStatTotal": 481,
+  "abilities": [
+   {
+    "id": 87,
+    "name": "건조피부"
+   },
+   {
+    "id": 8,
+    "name": "모래숨기"
+   },
+   {
+    "id": 94,
+    "name": "선파워"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0697-00",
+  "dexNo": 697,
+  "formNo": 0,
+  "name": "견고라스",
+  "formName": "",
+  "types": [
+   "바위",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 121,
+   "defense": 119,
+   "spAtk": 69,
+   "spDef": 59,
+   "speed": 71
+  },
+  "baseStatTotal": 521,
+  "abilities": [
+   {
+    "id": 173,
+    "name": "옹골찬턱"
+   },
+   {
+    "id": 69,
+    "name": "돌머리"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0699-00",
+  "dexNo": 699,
+  "formNo": 0,
+  "name": "아마루르가",
+  "formName": "",
+  "types": [
+   "바위",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 123,
+   "attack": 77,
+   "defense": 72,
+   "spAtk": 99,
+   "spDef": 92,
+   "speed": 58
+  },
+  "baseStatTotal": 521,
+  "abilities": [
+   {
+    "id": 174,
+    "name": "프리즈스킨"
+   },
+   {
+    "id": 117,
+    "name": "눈퍼뜨리기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0700-00",
+  "dexNo": 700,
+  "formNo": 0,
+  "name": "님피아",
+  "formName": "",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 65,
+   "defense": 65,
+   "spAtk": 110,
+   "spDef": 130,
+   "speed": 60
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 56,
+    "name": "헤롱헤롱바디"
+   },
+   {
+    "id": 182,
+    "name": "페어리스킨"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0701-00",
+  "dexNo": 701,
+  "formNo": 0,
+  "name": "루차불",
+  "formName": "",
+  "types": [
+   "격투",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 92,
+   "defense": 75,
+   "spAtk": 74,
+   "spDef": 63,
+   "speed": 118
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0701-01",
+  "dexNo": 701,
+  "formNo": 1,
+  "name": "루차불",
+  "formName": "메가루차불",
+  "types": [
+   "격투",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 137,
+   "defense": 100,
+   "spAtk": 74,
+   "spDef": 93,
+   "speed": 118
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 99,
+    "name": "노가드"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0702-00",
+  "dexNo": 702,
+  "formNo": 0,
+  "name": "데덴네",
+  "formName": "",
+  "types": [
+   "전기",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 67,
+   "attack": 58,
+   "defense": 57,
+   "spAtk": 81,
+   "spDef": 67,
+   "speed": 101
+  },
+  "baseStatTotal": 431,
+  "abilities": [
+   {
+    "id": 167,
+    "name": "볼주머니"
+   },
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 57,
+    "name": "플러스"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0706-00",
+  "dexNo": 706,
+  "formNo": 0,
+  "name": "미끄래곤",
+  "formName": "",
+  "types": [
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 100,
+   "defense": 70,
+   "spAtk": 110,
+   "spDef": 150,
+   "speed": 80
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 157,
+    "name": "초식"
+   },
+   {
+    "id": 93,
+    "name": "촉촉바디"
+   },
+   {
+    "id": 183,
+    "name": "미끈미끈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0706-01",
+  "dexNo": 706,
+  "formNo": 1,
+  "name": "미끄래곤",
+  "formName": "히스이의 모습",
+  "types": [
+   "강철",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 100,
+   "defense": 100,
+   "spAtk": 110,
+   "spDef": 150,
+   "speed": 60
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 157,
+    "name": "초식"
+   },
+   {
+    "id": 75,
+    "name": "조가비갑옷"
+   },
+   {
+    "id": 183,
+    "name": "미끈미끈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0707-00",
+  "dexNo": 707,
+  "formNo": 0,
+  "name": "클레피",
+  "formName": "",
+  "types": [
+   "강철",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 57,
+   "attack": 80,
+   "defense": 91,
+   "spAtk": 80,
+   "spDef": 87,
+   "speed": 75
+  },
+  "baseStatTotal": 470,
+  "abilities": [
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   },
+   {
+    "id": 170,
+    "name": "매지션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0709-00",
+  "dexNo": 709,
+  "formNo": 0,
+  "name": "대로트",
+  "formName": "",
+  "types": [
+   "고스트",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 110,
+   "defense": 76,
+   "spAtk": 65,
+   "spDef": 82,
+   "speed": 56
+  },
+  "baseStatTotal": 474,
+  "abilities": [
+   {
+    "id": 30,
+    "name": "자연회복"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 139,
+    "name": "수확"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0711-00",
+  "dexNo": 711,
+  "formNo": 0,
+  "name": "펌킨인",
+  "formName": "중과종",
+  "types": [
+   "고스트",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 90,
+   "defense": 122,
+   "spAtk": 58,
+   "spDef": 75,
+   "speed": 84
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0711-01",
+  "dexNo": 711,
+  "formNo": 1,
+  "name": "펌킨인",
+  "formName": "소과종",
+  "types": [
+   "고스트",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 85,
+   "defense": 122,
+   "spAtk": 58,
+   "spDef": 75,
+   "speed": 99
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0711-02",
+  "dexNo": 711,
+  "formNo": 2,
+  "name": "펌킨인",
+  "formName": "대과종",
+  "types": [
+   "고스트",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 95,
+   "defense": 122,
+   "spAtk": 58,
+   "spDef": 75,
+   "speed": 69
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0711-03",
+  "dexNo": 711,
+  "formNo": 3,
+  "name": "펌킨인",
+  "formName": "특대과종",
+  "types": [
+   "고스트",
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 100,
+   "defense": 122,
+   "spAtk": 58,
+   "spDef": 75,
+   "speed": 54
+  },
+  "baseStatTotal": 494,
+  "abilities": [
+   {
+    "id": 53,
+    "name": "픽업"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0713-00",
+  "dexNo": 713,
+  "formNo": 0,
+  "name": "크레베이스",
+  "formName": "",
+  "types": [
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 117,
+   "defense": 184,
+   "spAtk": 44,
+   "spDef": 46,
+   "speed": 28
+  },
+  "baseStatTotal": 514,
+  "abilities": [
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0713-01",
+  "dexNo": 713,
+  "formNo": 1,
+  "name": "크레베이스",
+  "formName": "히스이의 모습",
+  "types": [
+   "얼음",
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 127,
+   "defense": 184,
+   "spAtk": 34,
+   "spDef": 36,
+   "speed": 38
+  },
+  "baseStatTotal": 514,
+  "abilities": [
+   {
+    "id": 173,
+    "name": "옹골찬턱"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0715-00",
+  "dexNo": 715,
+  "formNo": 0,
+  "name": "음번",
+  "formName": "",
+  "types": [
+   "비행",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 70,
+   "defense": 80,
+   "spAtk": 97,
+   "spDef": 80,
+   "speed": 123
+  },
+  "baseStatTotal": 535,
+  "abilities": [
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   },
+   {
+    "id": 140,
+    "name": "텔레파시"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0724-00",
+  "dexNo": 724,
+  "formNo": 0,
+  "name": "모크나이퍼",
+  "formName": "",
+  "types": [
+   "풀",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 107,
+   "defense": 75,
+   "spAtk": 100,
+   "spDef": 100,
+   "speed": 70
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 203,
+    "name": "원격"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0724-01",
+  "dexNo": 724,
+  "formNo": 1,
+  "name": "모크나이퍼",
+  "formName": "히스이의 모습",
+  "types": [
+   "풀",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 88,
+   "attack": 112,
+   "defense": 80,
+   "spAtk": 95,
+   "spDef": 95,
+   "speed": 60
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 113,
+    "name": "배짱"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0727-00",
+  "dexNo": 727,
+  "formNo": 0,
+  "name": "어흥염",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 115,
+   "defense": 90,
+   "spAtk": 80,
+   "spDef": 90,
+   "speed": 60
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0730-00",
+  "dexNo": 730,
+  "formNo": 0,
+  "name": "누리레느",
+  "formName": "",
+  "types": [
+   "물",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 74,
+   "defense": 74,
+   "spAtk": 126,
+   "spDef": 116,
+   "speed": 60
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 204,
+    "name": "촉촉보이스"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0733-00",
+  "dexNo": 733,
+  "formNo": 0,
+  "name": "왕큰부리",
+  "formName": "",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 120,
+   "defense": 75,
+   "spAtk": 75,
+   "spDef": 75,
+   "speed": 60
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 92,
+    "name": "스킬링크"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0740-00",
+  "dexNo": 740,
+  "formNo": 0,
+  "name": "모단단게",
+  "formName": "",
+  "types": [
+   "격투",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 97,
+   "attack": 132,
+   "defense": 77,
+   "spAtk": 62,
+   "spDef": 67,
+   "speed": 43
+  },
+  "baseStatTotal": 478,
+  "abilities": [
+   {
+    "id": 52,
+    "name": "괴력집게"
+   },
+   {
+    "id": 89,
+    "name": "철주먹"
+   },
+   {
+    "id": 83,
+    "name": "분노의경혈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0740-01",
+  "dexNo": 740,
+  "formNo": 1,
+  "name": "모단단게",
+  "formName": "메가모단단게",
+  "types": [
+   "격투",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 97,
+   "attack": 157,
+   "defense": 122,
+   "spAtk": 62,
+   "spDef": 107,
+   "speed": 33
+  },
+  "baseStatTotal": 578,
+  "abilities": [
+   {
+    "id": 89,
+    "name": "철주먹"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0745-00",
+  "dexNo": 745,
+  "formNo": 0,
+  "name": "루가루암",
+  "formName": "한낮의 모습",
+  "types": [
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 115,
+   "defense": 65,
+   "spAtk": 55,
+   "spDef": 65,
+   "speed": 112
+  },
+  "baseStatTotal": 487,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 146,
+    "name": "모래헤치기"
+   },
+   {
+    "id": 80,
+    "name": "불굴의마음"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0745-01",
+  "dexNo": 745,
+  "formNo": 1,
+  "name": "루가루암",
+  "formName": "한밤중의 모습",
+  "types": [
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 115,
+   "defense": 75,
+   "spAtk": 55,
+   "spDef": 75,
+   "speed": 82
+  },
+  "baseStatTotal": 487,
+  "abilities": [
+   {
+    "id": 51,
+    "name": "날카로운눈"
+   },
+   {
+    "id": 72,
+    "name": "의기양양"
+   },
+   {
+    "id": 99,
+    "name": "노가드"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0745-02",
+  "dexNo": 745,
+  "formNo": 2,
+  "name": "루가루암",
+  "formName": "황혼의 모습",
+  "types": [
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 117,
+   "defense": 65,
+   "spAtk": 55,
+   "spDef": 65,
+   "speed": 110
+  },
+  "baseStatTotal": 487,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0748-00",
+  "dexNo": 748,
+  "formNo": 0,
+  "name": "더시마사리",
+  "formName": "",
+  "types": [
+   "독",
+   "물"
+  ],
+  "baseStats": {
+   "hp": 50,
+   "attack": 63,
+   "defense": 152,
+   "spAtk": 53,
+   "spDef": 142,
+   "speed": 35
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 196,
+    "name": "무도한행동"
+   },
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0750-00",
+  "dexNo": 750,
+  "formNo": 0,
+  "name": "만마드",
+  "formName": "",
+  "types": [
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 125,
+   "defense": 100,
+   "spAtk": 55,
+   "spDef": 85,
+   "speed": 35
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 192,
+    "name": "지구력"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0752-00",
+  "dexNo": 752,
+  "formNo": 0,
+  "name": "깨비물거미",
+  "formName": "",
+  "types": [
+   "물",
+   "벌레"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 70,
+   "defense": 92,
+   "spAtk": 50,
+   "spDef": 132,
+   "speed": 42
+  },
+  "baseStatTotal": 454,
+  "abilities": [
+   {
+    "id": 199,
+    "name": "수포"
+   },
+   {
+    "id": 11,
+    "name": "저수"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0758-00",
+  "dexNo": 758,
+  "formNo": 0,
+  "name": "염뉴트",
+  "formName": "",
+  "types": [
+   "독",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 68,
+   "attack": 64,
+   "defense": 60,
+   "spAtk": 111,
+   "spDef": 60,
+   "speed": 117
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 212,
+    "name": "부식"
+   },
+   {
+    "id": 12,
+    "name": "둔감"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0763-00",
+  "dexNo": 763,
+  "formNo": 0,
+  "name": "달코퀸",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 120,
+   "defense": 98,
+   "spAtk": 50,
+   "spDef": 98,
+   "speed": 72
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 102,
+    "name": "리프가드"
+   },
+   {
+    "id": 214,
+    "name": "여왕의위엄"
+   },
+   {
+    "id": 175,
+    "name": "스위트베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0765-00",
+  "dexNo": 765,
+  "formNo": 0,
+  "name": "하랑우탄",
+  "formName": "",
+  "types": [
+   "노말",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 60,
+   "defense": 80,
+   "spAtk": 90,
+   "spDef": 110,
+   "speed": 60
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 140,
+    "name": "텔레파시"
+   },
+   {
+    "id": 180,
+    "name": "공생"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0766-00",
+  "dexNo": 766,
+  "formNo": 0,
+  "name": "내던숭이",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 120,
+   "defense": 90,
+   "spAtk": 40,
+   "spDef": 60,
+   "speed": 80
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 222,
+    "name": "리시버"
+   },
+   {
+    "id": 128,
+    "name": "오기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0768-00",
+  "dexNo": 768,
+  "formNo": 0,
+  "name": "갑주무사",
+  "formName": "",
+  "types": [
+   "벌레",
+   "물"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 125,
+   "defense": 140,
+   "spAtk": 60,
+   "spDef": 90,
+   "speed": 40
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 194,
+    "name": "위기회피"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0768-01",
+  "dexNo": 768,
+  "formNo": 1,
+  "name": "갑주무사",
+  "formName": "메가갑주무사",
+  "types": [
+   "벌레",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 150,
+   "defense": 175,
+   "spAtk": 70,
+   "spDef": 120,
+   "speed": 40
+  },
+  "baseStatTotal": 630,
+  "abilities": [
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0778-00",
+  "dexNo": 778,
+  "formNo": 0,
+  "name": "따라큐",
+  "formName": "둔갑한 모습",
+  "types": [
+   "고스트",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 90,
+   "defense": 80,
+   "spAtk": 50,
+   "spDef": 105,
+   "speed": 96
+  },
+  "baseStatTotal": 476,
+  "abilities": [
+   {
+    "id": 209,
+    "name": "탈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0778-01",
+  "dexNo": 778,
+  "formNo": 1,
+  "name": "따라큐",
+  "formName": "들킨 모습",
+  "types": [
+   "고스트",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 55,
+   "attack": 90,
+   "defense": 80,
+   "spAtk": 50,
+   "spDef": 105,
+   "speed": 96
+  },
+  "baseStatTotal": 476,
+  "abilities": [
+   {
+    "id": 209,
+    "name": "탈"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0780-00",
+  "dexNo": 780,
+  "formNo": 0,
+  "name": "할비롱",
+  "formName": "",
+  "types": [
+   "노말",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 60,
+   "defense": 85,
+   "spAtk": 135,
+   "spDef": 91,
+   "speed": 36
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 201,
+    "name": "발끈"
+   },
+   {
+    "id": 157,
+    "name": "초식"
+   },
+   {
+    "id": 13,
+    "name": "날씨부정"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0780-01",
+  "dexNo": 780,
+  "formNo": 1,
+  "name": "할비롱",
+  "formName": "메가할비롱",
+  "types": [
+   "노말",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 85,
+   "defense": 110,
+   "spAtk": 160,
+   "spDef": 116,
+   "speed": 36
+  },
+  "baseStatTotal": 585,
+  "abilities": [
+   {
+    "id": 201,
+    "name": "발끈"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0784-00",
+  "dexNo": 784,
+  "formNo": 0,
+  "name": "짜랑고우거",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 110,
+   "defense": 125,
+   "spAtk": 100,
+   "spDef": 105,
+   "speed": 85
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 171,
+    "name": "방탄"
+   },
+   {
+    "id": 43,
+    "name": "방음"
+   },
+   {
+    "id": 142,
+    "name": "방진"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0812-00",
+  "dexNo": 812,
+  "formNo": 0,
+  "name": "고릴타",
+  "formName": "",
+  "types": [
+   "풀"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 125,
+   "defense": 90,
+   "spAtk": 60,
+   "spDef": 70,
+   "speed": 85
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 229,
+    "name": "그래스메이커"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0815-00",
+  "dexNo": 815,
+  "formNo": 0,
+  "name": "에이스번",
+  "formName": "",
+  "types": [
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 116,
+   "defense": 75,
+   "spAtk": 65,
+   "spDef": 75,
+   "speed": 119
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 236,
+    "name": "리베로"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0818-00",
+  "dexNo": 818,
+  "formNo": 0,
+  "name": "인텔리레온",
+  "formName": "",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 85,
+   "defense": 65,
+   "spAtk": 125,
+   "spDef": 65,
+   "speed": 120
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 97,
+    "name": "스나이퍼"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0823-00",
+  "dexNo": 823,
+  "formNo": 0,
+  "name": "아머까오",
+  "formName": "",
+  "types": [
+   "비행",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 98,
+   "attack": 87,
+   "defense": 105,
+   "spAtk": 53,
+   "spDef": 85,
+   "speed": 67
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 127,
+    "name": "긴장감"
+   },
+   {
+    "id": 240,
+    "name": "미러아머"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0828-00",
+  "dexNo": 828,
+  "formNo": 0,
+  "name": "폭슬라이",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 58,
+   "defense": 58,
+   "spAtk": 87,
+   "spDef": 92,
+   "speed": 90
+  },
+  "baseStatTotal": 455,
+  "abilities": [
+   {
+    "id": 50,
+    "name": "도주"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   },
+   {
+    "id": 198,
+    "name": "잠복"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0841-00",
+  "dexNo": 841,
+  "formNo": 0,
+  "name": "애프룡",
+  "formName": "",
+  "types": [
+   "풀",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 110,
+   "defense": 80,
+   "spAtk": 95,
+   "spDef": 60,
+   "speed": 70
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 247,
+    "name": "숙성"
+   },
+   {
+    "id": 82,
+    "name": "먹보"
+   },
+   {
+    "id": 55,
+    "name": "의욕"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0842-00",
+  "dexNo": 842,
+  "formNo": 0,
+  "name": "단지래플",
+  "formName": "",
+  "types": [
+   "풀",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 85,
+   "defense": 80,
+   "spAtk": 100,
+   "spDef": 80,
+   "speed": 30
+  },
+  "baseStatTotal": 485,
+  "abilities": [
+   {
+    "id": 247,
+    "name": "숙성"
+   },
+   {
+    "id": 82,
+    "name": "먹보"
+   },
+   {
+    "id": 47,
+    "name": "두꺼운지방"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0844-00",
+  "dexNo": 844,
+  "formNo": 0,
+  "name": "사다이사",
+  "formName": "",
+  "types": [
+   "땅"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 107,
+   "defense": 125,
+   "spAtk": 65,
+   "spDef": 70,
+   "speed": 71
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 245,
+    "name": "모래뿜기"
+   },
+   {
+    "id": 61,
+    "name": "탈피"
+   },
+   {
+    "id": 8,
+    "name": "모래숨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0849-00",
+  "dexNo": 849,
+  "formNo": 0,
+  "name": "스트린더",
+  "formName": "하이한 모습",
+  "types": [
+   "전기",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 98,
+   "defense": 70,
+   "spAtk": 114,
+   "spDef": 70,
+   "speed": 75
+  },
+  "baseStatTotal": 502,
+  "abilities": [
+   {
+    "id": 244,
+    "name": "펑크록"
+   },
+   {
+    "id": 57,
+    "name": "플러스"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0849-01",
+  "dexNo": 849,
+  "formNo": 1,
+  "name": "스트린더",
+  "formName": "로우한 모습",
+  "types": [
+   "전기",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 98,
+   "defense": 70,
+   "spAtk": 114,
+   "spDef": 70,
+   "speed": 75
+  },
+  "baseStatTotal": 502,
+  "abilities": [
+   {
+    "id": 244,
+    "name": "펑크록"
+   },
+   {
+    "id": 58,
+    "name": "마이너스"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0853-00",
+  "dexNo": 853,
+  "formNo": 0,
+  "name": "케오퍼스",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 118,
+   "defense": 90,
+   "spAtk": 70,
+   "spDef": 80,
+   "speed": 42
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 7,
+    "name": "유연"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0855-00",
+  "dexNo": 855,
+  "formNo": 0,
+  "name": "포트데스",
+  "formName": "위작폼",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 65,
+   "defense": 65,
+   "spAtk": 134,
+   "spDef": 114,
+   "speed": 70
+  },
+  "baseStatTotal": 508,
+  "abilities": [
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   },
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0855-01",
+  "dexNo": 855,
+  "formNo": 1,
+  "name": "포트데스",
+  "formName": "진작폼",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 65,
+   "defense": 65,
+   "spAtk": 134,
+   "spDef": 114,
+   "speed": 70
+  },
+  "baseStatTotal": 508,
+  "abilities": [
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   },
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0858-00",
+  "dexNo": 858,
+  "formNo": 0,
+  "name": "브리무음",
+  "formName": "",
+  "types": [
+   "에스퍼",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 57,
+   "attack": 90,
+   "defense": 95,
+   "spAtk": 136,
+   "spDef": 103,
+   "speed": 29
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 131,
+    "name": "치유의마음"
+   },
+   {
+    "id": 107,
+    "name": "위험예지"
+   },
+   {
+    "id": 156,
+    "name": "매직미러"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0861-00",
+  "dexNo": 861,
+  "formNo": 0,
+  "name": "오롱털",
+  "formName": "",
+  "types": [
+   "악",
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 120,
+   "defense": 65,
+   "spAtk": 95,
+   "spDef": 75,
+   "speed": 60
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 158,
+    "name": "짓궂은마음"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 124,
+    "name": "나쁜손버릇"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0863-00",
+  "dexNo": 863,
+  "formNo": 0,
+  "name": "나이킹",
+  "formName": "",
+  "types": [
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 110,
+   "defense": 100,
+   "spAtk": 50,
+   "spDef": 60,
+   "speed": 50
+  },
+  "baseStatTotal": 440,
+  "abilities": [
+   {
+    "id": 4,
+    "name": "전투무장"
+   },
+   {
+    "id": 181,
+    "name": "단단한발톱"
+   },
+   {
+    "id": 252,
+    "name": "강철정신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0865-00",
+  "dexNo": 865,
+  "formNo": 0,
+  "name": "창파나이트",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 62,
+   "attack": 135,
+   "defense": 95,
+   "spAtk": 68,
+   "spDef": 82,
+   "speed": 65
+  },
+  "baseStatTotal": 507,
+  "abilities": [
+   {
+    "id": 80,
+    "name": "불굴의마음"
+   },
+   {
+    "id": 113,
+    "name": "배짱"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0866-00",
+  "dexNo": 866,
+  "formNo": 0,
+  "name": "마임꽁꽁",
+  "formName": "",
+  "types": [
+   "얼음",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 85,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 100,
+   "speed": 70
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 77,
+    "name": "갈지자걸음"
+   },
+   {
+    "id": 251,
+    "name": "배리어프리"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0867-00",
+  "dexNo": 867,
+  "formNo": 0,
+  "name": "데스판",
+  "formName": "",
+  "types": [
+   "땅",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 58,
+   "attack": 95,
+   "defense": 145,
+   "spAtk": 50,
+   "spDef": 105,
+   "speed": 30
+  },
+  "baseStatTotal": 483,
+  "abilities": [
+   {
+    "id": 254,
+    "name": "떠도는영혼"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-00",
+  "dexNo": 869,
+  "formNo": 0,
+  "name": "마휘핑",
+  "formName": "밀키바닐라",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-01",
+  "dexNo": 869,
+  "formNo": 1,
+  "name": "마휘핑",
+  "formName": "밀키루비",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-02",
+  "dexNo": 869,
+  "formNo": 2,
+  "name": "마휘핑",
+  "formName": "밀키말차",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-03",
+  "dexNo": 869,
+  "formNo": 3,
+  "name": "마휘핑",
+  "formName": "밀키민트",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-04",
+  "dexNo": 869,
+  "formNo": 4,
+  "name": "마휘핑",
+  "formName": "밀키레몬",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-05",
+  "dexNo": 869,
+  "formNo": 5,
+  "name": "마휘핑",
+  "formName": "밀키솔트",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-06",
+  "dexNo": 869,
+  "formNo": 6,
+  "name": "마휘핑",
+  "formName": "루비믹스",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-07",
+  "dexNo": 869,
+  "formNo": 7,
+  "name": "마휘핑",
+  "formName": "캐러멜믹스",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0869-08",
+  "dexNo": 869,
+  "formNo": 8,
+  "name": "마휘핑",
+  "formName": "트리플믹스",
+  "types": [
+   "페어리"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 60,
+   "defense": 75,
+   "spAtk": 110,
+   "spDef": 121,
+   "speed": 64
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 175,
+    "name": "스위트베일"
+   },
+   {
+    "id": 165,
+    "name": "아로마베일"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0870-00",
+  "dexNo": 870,
+  "formNo": 0,
+  "name": "대여르",
+  "formName": "",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 100,
+   "defense": 100,
+   "spAtk": 70,
+   "spDef": 60,
+   "speed": 75
+  },
+  "baseStatTotal": 470,
+  "abilities": [
+   {
+    "id": 4,
+    "name": "전투무장"
+   },
+   {
+    "id": 128,
+    "name": "오기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0870-01",
+  "dexNo": 870,
+  "formNo": 1,
+  "name": "대여르",
+  "formName": "메가대여르",
+  "types": [
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 135,
+   "defense": 135,
+   "spAtk": 70,
+   "spDef": 65,
+   "speed": 100
+  },
+  "baseStatTotal": 570,
+  "abilities": [
+   {
+    "id": 128,
+    "name": "오기"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0871-00",
+  "dexNo": 871,
+  "formNo": 0,
+  "name": "찌르성게",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 48,
+   "attack": 101,
+   "defense": 95,
+   "spAtk": 91,
+   "spDef": 85,
+   "speed": 15
+  },
+  "baseStatTotal": 435,
+  "abilities": [
+   {
+    "id": 31,
+    "name": "피뢰침"
+   },
+   {
+    "id": 226,
+    "name": "일렉트릭메이커"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0876-00",
+  "dexNo": 876,
+  "formNo": 0,
+  "name": "에써르",
+  "formName": "수컷의 모습",
+  "types": [
+   "에스퍼",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 60,
+   "attack": 65,
+   "defense": 55,
+   "spAtk": 105,
+   "spDef": 95,
+   "speed": 95
+  },
+  "baseStatTotal": 475,
+  "abilities": [
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 227,
+    "name": "사이코메이커"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0876-01",
+  "dexNo": 876,
+  "formNo": 1,
+  "name": "에써르",
+  "formName": "암컷의 모습",
+  "types": [
+   "에스퍼",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 55,
+   "defense": 65,
+   "spAtk": 95,
+   "spDef": 105,
+   "speed": 85
+  },
+  "baseStatTotal": 475,
+  "abilities": [
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 28,
+    "name": "싱크로"
+   },
+   {
+    "id": 227,
+    "name": "사이코메이커"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0877-00",
+  "dexNo": 877,
+  "formNo": 0,
+  "name": "모르페코",
+  "formName": "배부른 모양",
+  "types": [
+   "전기",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 58,
+   "attack": 95,
+   "defense": 58,
+   "spAtk": 70,
+   "spDef": 58,
+   "speed": 97
+  },
+  "baseStatTotal": 436,
+  "abilities": [
+   {
+    "id": 258,
+    "name": "꼬르륵스위치"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0877-01",
+  "dexNo": 877,
+  "formNo": 1,
+  "name": "모르페코",
+  "formName": "배고픈 모양",
+  "types": [
+   "전기",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 58,
+   "attack": 95,
+   "defense": 58,
+   "spAtk": 70,
+   "spDef": 58,
+   "speed": 97
+  },
+  "baseStatTotal": 436,
+  "abilities": [
+   {
+    "id": 258,
+    "name": "꼬르륵스위치"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0887-00",
+  "dexNo": 887,
+  "formNo": 0,
+  "name": "드래펄트",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 88,
+   "attack": 120,
+   "defense": 75,
+   "spAtk": 100,
+   "spDef": 75,
+   "speed": 142
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 29,
+    "name": "클리어바디"
+   },
+   {
+    "id": 151,
+    "name": "틈새포착"
+   },
+   {
+    "id": 130,
+    "name": "저주받은바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0899-00",
+  "dexNo": 899,
+  "formNo": 0,
+  "name": "신비록",
+  "formName": "",
+  "types": [
+   "노말",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 103,
+   "attack": 105,
+   "defense": 72,
+   "spAtk": 105,
+   "spDef": 75,
+   "speed": 65
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 157,
+    "name": "초식"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0900-00",
+  "dexNo": 900,
+  "formNo": 0,
+  "name": "사마자르",
+  "formName": "",
+  "types": [
+   "벌레",
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 135,
+   "defense": 95,
+   "spAtk": 45,
+   "spDef": 70,
+   "speed": 85
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 68,
+    "name": "벌레의알림"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   },
+   {
+    "id": 292,
+    "name": "예리함"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0902-00",
+  "dexNo": 902,
+  "formNo": 0,
+  "name": "대쓰여너",
+  "formName": "수컷의 모습",
+  "types": [
+   "물",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 120,
+   "attack": 112,
+   "defense": 65,
+   "spAtk": 80,
+   "spDef": 75,
+   "speed": 78
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   },
+   {
+    "id": 91,
+    "name": "적응력"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0902-01",
+  "dexNo": 902,
+  "formNo": 1,
+  "name": "대쓰여너",
+  "formName": "암컷의 모습",
+  "types": [
+   "물",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 120,
+   "attack": 92,
+   "defense": 65,
+   "spAtk": 100,
+   "spDef": 75,
+   "speed": 78
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   },
+   {
+    "id": 91,
+    "name": "적응력"
+   },
+   {
+    "id": 104,
+    "name": "틀깨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0903-00",
+  "dexNo": 903,
+  "formNo": 0,
+  "name": "포푸니크",
+  "formName": "",
+  "types": [
+   "격투",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 130,
+   "defense": 60,
+   "spAtk": 40,
+   "spDef": 80,
+   "speed": 120
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 46,
+    "name": "프레셔"
+   },
+   {
+    "id": 84,
+    "name": "곡예"
+   },
+   {
+    "id": 143,
+    "name": "독수"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0904-00",
+  "dexNo": 904,
+  "formNo": 0,
+  "name": "장침바루",
+  "formName": "",
+  "types": [
+   "악",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 115,
+   "defense": 95,
+   "spAtk": 65,
+   "spDef": 65,
+   "speed": 85
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 38,
+    "name": "독가시"
+   },
+   {
+    "id": 33,
+    "name": "쓱쓱"
+   },
+   {
+    "id": 22,
+    "name": "위협"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0908-00",
+  "dexNo": 908,
+  "formNo": 0,
+  "name": "마스카나",
+  "formName": "",
+  "types": [
+   "풀",
+   "악"
+  ],
+  "baseStats": {
+   "hp": 76,
+   "attack": 110,
+   "defense": 70,
+   "spAtk": 81,
+   "spDef": 70,
+   "speed": 123
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 65,
+    "name": "심록"
+   },
+   {
+    "id": 168,
+    "name": "변환자재"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0911-00",
+  "dexNo": 911,
+  "formNo": 0,
+  "name": "라우드본",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 104,
+   "attack": 75,
+   "defense": 100,
+   "spAtk": 110,
+   "spDef": 75,
+   "speed": 66
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 66,
+    "name": "맹화"
+   },
+   {
+    "id": 109,
+    "name": "천진"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0914-00",
+  "dexNo": 914,
+  "formNo": 0,
+  "name": "웨이니발",
+  "formName": "",
+  "types": [
+   "물",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 120,
+   "defense": 80,
+   "spAtk": 85,
+   "spDef": 75,
+   "speed": 85
+  },
+  "baseStatTotal": 530,
+  "abilities": [
+   {
+    "id": 67,
+    "name": "급류"
+   },
+   {
+    "id": 153,
+    "name": "자기과신"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0923-00",
+  "dexNo": 923,
+  "formNo": 0,
+  "name": "빠르모트",
+  "formName": "",
+  "types": [
+   "전기",
+   "격투"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 115,
+   "defense": 70,
+   "spAtk": 70,
+   "spDef": 60,
+   "speed": 105
+  },
+  "baseStatTotal": 490,
+  "abilities": [
+   {
+    "id": 10,
+    "name": "축전"
+   },
+   {
+    "id": 30,
+    "name": "자연회복"
+   },
+   {
+    "id": 89,
+    "name": "철주먹"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0925-00",
+  "dexNo": 925,
+  "formNo": 0,
+  "name": "파밀리쥐",
+  "formName": "세 식구",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 75,
+   "defense": 70,
+   "spAtk": 65,
+   "spDef": 75,
+   "speed": 111
+  },
+  "baseStatTotal": 470,
+  "abilities": [
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   },
+   {
+    "id": 167,
+    "name": "볼주머니"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0925-01",
+  "dexNo": 925,
+  "formNo": 1,
+  "name": "파밀리쥐",
+  "formName": "네 식구",
+  "types": [
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 74,
+   "attack": 75,
+   "defense": 70,
+   "spAtk": 65,
+   "spDef": 75,
+   "speed": 111
+  },
+  "baseStatTotal": 470,
+  "abilities": [
+   {
+    "id": 132,
+    "name": "프렌드가드"
+   },
+   {
+    "id": 167,
+    "name": "볼주머니"
+   },
+   {
+    "id": 101,
+    "name": "테크니션"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0930-00",
+  "dexNo": 930,
+  "formNo": 0,
+  "name": "올리르바",
+  "formName": "",
+  "types": [
+   "풀",
+   "노말"
+  ],
+  "baseStats": {
+   "hp": 78,
+   "attack": 69,
+   "defense": 90,
+   "spAtk": 125,
+   "spDef": 109,
+   "speed": 39
+  },
+  "baseStatTotal": 510,
+  "abilities": [
+   {
+    "id": 269,
+    "name": "넘치는씨"
+   },
+   {
+    "id": 139,
+    "name": "수확"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0931-00",
+  "dexNo": 931,
+  "formNo": 0,
+  "name": "시비꼬",
+  "formName": "그린 페더",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 96,
+   "defense": 51,
+   "spAtk": 45,
+   "spDef": 51,
+   "speed": 92
+  },
+  "baseStatTotal": 417,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 55,
+    "name": "의욕"
+   },
+   {
+    "id": 62,
+    "name": "근성"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0931-01",
+  "dexNo": 931,
+  "formNo": 1,
+  "name": "시비꼬",
+  "formName": "블루 페더",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 96,
+   "defense": 51,
+   "spAtk": 45,
+   "spDef": 51,
+   "speed": 92
+  },
+  "baseStatTotal": 417,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 55,
+    "name": "의욕"
+   },
+   {
+    "id": 62,
+    "name": "근성"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0931-02",
+  "dexNo": 931,
+  "formNo": 2,
+  "name": "시비꼬",
+  "formName": "옐로 페더",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 96,
+   "defense": 51,
+   "spAtk": 45,
+   "spDef": 51,
+   "speed": 92
+  },
+  "baseStatTotal": 417,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 55,
+    "name": "의욕"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0931-03",
+  "dexNo": 931,
+  "formNo": 3,
+  "name": "시비꼬",
+  "formName": "화이트 페더",
+  "types": [
+   "노말",
+   "비행"
+  ],
+  "baseStats": {
+   "hp": 82,
+   "attack": 96,
+   "defense": 51,
+   "spAtk": 45,
+   "spDef": 51,
+   "speed": 92
+  },
+  "baseStatTotal": 417,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 55,
+    "name": "의욕"
+   },
+   {
+    "id": 125,
+    "name": "우격다짐"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0934-00",
+  "dexNo": 934,
+  "formNo": 0,
+  "name": "콜로솔트",
+  "formName": "",
+  "types": [
+   "바위"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 100,
+   "defense": 130,
+   "spAtk": 45,
+   "spDef": 90,
+   "speed": 35
+  },
+  "baseStatTotal": 500,
+  "abilities": [
+   {
+    "id": 272,
+    "name": "정화의소금"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 29,
+    "name": "클리어바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0936-00",
+  "dexNo": 936,
+  "formNo": 0,
+  "name": "카디나르마",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 60,
+   "defense": 100,
+   "spAtk": 125,
+   "spDef": 80,
+   "speed": 75
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0937-00",
+  "dexNo": 937,
+  "formNo": 0,
+  "name": "파라블레이즈",
+  "formName": "",
+  "types": [
+   "불꽃",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 75,
+   "attack": 125,
+   "defense": 80,
+   "spAtk": 60,
+   "spDef": 100,
+   "speed": 85
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 18,
+    "name": "타오르는불꽃"
+   },
+   {
+    "id": 133,
+    "name": "깨어진갑옷"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0939-00",
+  "dexNo": 939,
+  "formNo": 0,
+  "name": "찌리배리",
+  "formName": "",
+  "types": [
+   "전기"
+  ],
+  "baseStats": {
+   "hp": 109,
+   "attack": 64,
+   "defense": 91,
+   "spAtk": 103,
+   "spDef": 83,
+   "speed": 45
+  },
+  "baseStatTotal": 495,
+  "abilities": [
+   {
+    "id": 280,
+    "name": "전기로바꾸기"
+   },
+   {
+    "id": 9,
+    "name": "정전기"
+   },
+   {
+    "id": 6,
+    "name": "습기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0943-00",
+  "dexNo": 943,
+  "formNo": 0,
+  "name": "마피티프",
+  "formName": "",
+  "types": [
+   "악"
+  ],
+  "baseStats": {
+   "hp": 80,
+   "attack": 120,
+   "defense": 90,
+   "spAtk": 60,
+   "spDef": 70,
+   "speed": 85
+  },
+  "baseStatTotal": 505,
+  "abilities": [
+   {
+    "id": 22,
+    "name": "위협"
+   },
+   {
+    "id": 275,
+    "name": "파수견"
+   },
+   {
+    "id": 198,
+    "name": "잠복"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0952-00",
+  "dexNo": 952,
+  "formNo": 0,
+  "name": "스코빌런",
+  "formName": "",
+  "types": [
+   "풀",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 108,
+   "defense": 65,
+   "spAtk": 108,
+   "spDef": 65,
+   "speed": 75
+  },
+  "baseStatTotal": 486,
+  "abilities": [
+   {
+    "id": 34,
+    "name": "엽록소"
+   },
+   {
+    "id": 15,
+    "name": "불면"
+   },
+   {
+    "id": 141,
+    "name": "변덕쟁이"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0952-01",
+  "dexNo": 952,
+  "formNo": 1,
+  "name": "스코빌런",
+  "formName": "메가스코빌런",
+  "types": [
+   "풀",
+   "불꽃"
+  ],
+  "baseStats": {
+   "hp": 65,
+   "attack": 138,
+   "defense": 85,
+   "spAtk": 138,
+   "spDef": 85,
+   "speed": 75
+  },
+  "baseStatTotal": 586,
+  "abilities": [
+   {
+    "id": 318,
+    "name": "하바네로분출"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0956-00",
+  "dexNo": 956,
+  "formNo": 0,
+  "name": "클레스퍼트라",
+  "formName": "",
+  "types": [
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 95,
+   "attack": 60,
+   "defense": 60,
+   "spAtk": 101,
+   "spDef": 60,
+   "speed": 105
+  },
+  "baseStatTotal": 481,
+  "abilities": [
+   {
+    "id": 290,
+    "name": "편승"
+   },
+   {
+    "id": 119,
+    "name": "통찰"
+   },
+   {
+    "id": 3,
+    "name": "가속"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0959-00",
+  "dexNo": 959,
+  "formNo": 0,
+  "name": "두드리짱",
+  "formName": "",
+  "types": [
+   "페어리",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 85,
+   "attack": 75,
+   "defense": 77,
+   "spAtk": 70,
+   "spDef": 105,
+   "speed": 94
+  },
+  "baseStatTotal": 506,
+  "abilities": [
+   {
+    "id": 104,
+    "name": "틀깨기"
+   },
+   {
+    "id": 20,
+    "name": "마이페이스"
+   },
+   {
+    "id": 124,
+    "name": "나쁜손버릇"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0964-00",
+  "dexNo": 964,
+  "formNo": 0,
+  "name": "돌핀맨",
+  "formName": "나이브폼",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 70,
+   "defense": 72,
+   "spAtk": 53,
+   "spDef": 62,
+   "speed": 100
+  },
+  "baseStatTotal": 457,
+  "abilities": [
+   {
+    "id": 278,
+    "name": "마이티체인지"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0964-01",
+  "dexNo": 964,
+  "formNo": 1,
+  "name": "돌핀맨",
+  "formName": "마이티폼",
+  "types": [
+   "물"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 160,
+   "defense": 97,
+   "spAtk": 106,
+   "spDef": 87,
+   "speed": 100
+  },
+  "baseStatTotal": 650,
+  "abilities": [
+   {
+    "id": 278,
+    "name": "마이티체인지"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0968-00",
+  "dexNo": 968,
+  "formNo": 0,
+  "name": "꿈트렁",
+  "formName": "",
+  "types": [
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 70,
+   "attack": 85,
+   "defense": 145,
+   "spAtk": 60,
+   "spDef": 55,
+   "speed": 65
+  },
+  "baseStatTotal": 480,
+  "abilities": [
+   {
+    "id": 297,
+    "name": "흙먹기"
+   },
+   {
+    "id": 8,
+    "name": "모래숨기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0970-00",
+  "dexNo": 970,
+  "formNo": 0,
+  "name": "킬라플로르",
+  "formName": "",
+  "types": [
+   "바위",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 83,
+   "attack": 55,
+   "defense": 90,
+   "spAtk": 130,
+   "spDef": 81,
+   "speed": 86
+  },
+  "baseStatTotal": 525,
+  "abilities": [
+   {
+    "id": 295,
+    "name": "독치장"
+   },
+   {
+    "id": 212,
+    "name": "부식"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0970-01",
+  "dexNo": 970,
+  "formNo": 1,
+  "name": "킬라플로르",
+  "formName": "메가킬라플로르",
+  "types": [
+   "바위",
+   "독"
+  ],
+  "baseStats": {
+   "hp": 83,
+   "attack": 90,
+   "defense": 105,
+   "spAtk": 150,
+   "spDef": 96,
+   "speed": 101
+  },
+  "baseStatTotal": 625,
+  "abilities": [
+   {
+    "id": 91,
+    "name": "적응력"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "0972-00",
+  "dexNo": 972,
+  "formNo": 0,
+  "name": "묘두기",
+  "formName": "",
+  "types": [
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 72,
+   "attack": 101,
+   "defense": 100,
+   "spAtk": 50,
+   "spDef": 97,
+   "speed": 68
+  },
+  "baseStatTotal": 488,
+  "abilities": [
+   {
+    "id": 146,
+    "name": "모래헤치기"
+   },
+   {
+    "id": 218,
+    "name": "복슬복슬"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0979-00",
+  "dexNo": 979,
+  "formNo": 0,
+  "name": "저승갓숭",
+  "formName": "",
+  "types": [
+   "격투",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 110,
+   "attack": 115,
+   "defense": 80,
+   "spAtk": 50,
+   "spDef": 90,
+   "speed": 90
+  },
+  "baseStatTotal": 535,
+  "abilities": [
+   {
+    "id": 72,
+    "name": "의기양양"
+   },
+   {
+    "id": 39,
+    "name": "정신력"
+   },
+   {
+    "id": 128,
+    "name": "오기"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0981-00",
+  "dexNo": 981,
+  "formNo": 0,
+  "name": "키키링",
+  "formName": "",
+  "types": [
+   "노말",
+   "에스퍼"
+  ],
+  "baseStats": {
+   "hp": 120,
+   "attack": 90,
+   "defense": 70,
+   "spAtk": 110,
+   "spDef": 70,
+   "speed": 60
+  },
+  "baseStatTotal": 520,
+  "abilities": [
+   {
+    "id": 291,
+    "name": "되새김질"
+   },
+   {
+    "id": 296,
+    "name": "테일아머"
+   },
+   {
+    "id": 157,
+    "name": "초식"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0983-00",
+  "dexNo": 983,
+  "formNo": 0,
+  "name": "대도각참",
+  "formName": "",
+  "types": [
+   "악",
+   "강철"
+  ],
+  "baseStats": {
+   "hp": 100,
+   "attack": 135,
+   "defense": 120,
+   "spAtk": 60,
+   "spDef": 85,
+   "speed": 50
+  },
+  "baseStatTotal": 550,
+  "abilities": [
+   {
+    "id": 128,
+    "name": "오기"
+   },
+   {
+    "id": 293,
+    "name": "총대장"
+   },
+   {
+    "id": 46,
+    "name": "프레셔"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0998-00",
+  "dexNo": 998,
+  "formNo": 0,
+  "name": "드닐레이브",
+  "formName": "",
+  "types": [
+   "드래곤",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 115,
+   "attack": 145,
+   "defense": 92,
+   "spAtk": 75,
+   "spDef": 86,
+   "speed": 87
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 270,
+    "name": "열교환"
+   },
+   {
+    "id": 115,
+    "name": "아이스바디"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "0998-01",
+  "dexNo": 998,
+  "formNo": 1,
+  "name": "드닐레이브",
+  "formName": "메가드닐레이브",
+  "types": [
+   "드래곤",
+   "얼음"
+  ],
+  "baseStats": {
+   "hp": 115,
+   "attack": 175,
+   "defense": 117,
+   "spAtk": 105,
+   "spDef": 101,
+   "speed": 87
+  },
+  "baseStatTotal": 700,
+  "abilities": [
+   {
+    "id": 270,
+    "name": "열교환"
+   }
+  ],
+  "isMega": true
+ },
+ {
+  "key": "1000-00",
+  "dexNo": 1000,
+  "formNo": 0,
+  "name": "타부자고",
+  "formName": "",
+  "types": [
+   "강철",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 87,
+   "attack": 60,
+   "defense": 95,
+   "spAtk": 133,
+   "spDef": 91,
+   "speed": 84
+  },
+  "baseStatTotal": 550,
+  "abilities": [
+   {
+    "id": 283,
+    "name": "황금몸"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "1013-00",
+  "dexNo": 1013,
+  "formNo": 0,
+  "name": "그우린차",
+  "formName": "범작의 모습",
+  "types": [
+   "풀",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 71,
+   "attack": 60,
+   "defense": 106,
+   "spAtk": 121,
+   "spDef": 80,
+   "speed": 70
+  },
+  "baseStatTotal": 508,
+  "abilities": [
+   {
+    "id": 299,
+    "name": "대접"
+   },
+   {
+    "id": 85,
+    "name": "내열"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "1013-01",
+  "dexNo": 1013,
+  "formNo": 1,
+  "name": "그우린차",
+  "formName": "걸작의 모습",
+  "types": [
+   "풀",
+   "고스트"
+  ],
+  "baseStats": {
+   "hp": 71,
+   "attack": 60,
+   "defense": 106,
+   "spAtk": 121,
+   "spDef": 80,
+   "speed": 70
+  },
+  "baseStatTotal": 508,
+  "abilities": [
+   {
+    "id": 299,
+    "name": "대접"
+   },
+   {
+    "id": 85,
+    "name": "내열"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "1018-00",
+  "dexNo": 1018,
+  "formNo": 0,
+  "name": "브리두라스",
+  "formName": "",
+  "types": [
+   "강철",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 90,
+   "attack": 105,
+   "defense": 130,
+   "spAtk": 125,
+   "spDef": 65,
+   "speed": 85
+  },
+  "baseStatTotal": 600,
+  "abilities": [
+   {
+    "id": 192,
+    "name": "지구력"
+   },
+   {
+    "id": 5,
+    "name": "옹골참"
+   },
+   {
+    "id": 242,
+    "name": "굳건한신념"
+   }
+  ],
+  "isMega": false
+ },
+ {
+  "key": "1019-00",
+  "dexNo": 1019,
+  "formNo": 0,
+  "name": "과미드라",
+  "formName": "",
+  "types": [
+   "풀",
+   "드래곤"
+  ],
+  "baseStats": {
+   "hp": 106,
+   "attack": 80,
+   "defense": 110,
+   "spAtk": 120,
+   "spDef": 80,
+   "speed": 44
+  },
+  "baseStatTotal": 540,
+  "abilities": [
+   {
+    "id": 306,
+    "name": "감미로운꿀"
+   },
+   {
+    "id": 144,
+    "name": "재생력"
+   },
+   {
+    "id": 60,
+    "name": "점착"
+   }
+  ],
+  "isMega": false
+ }
+]

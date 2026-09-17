@@ -1,0 +1,42 @@
+{
+ "builtAt": "2026-09-17",
+ "source": "https://github.com/projectpokemon/champout (MIT) — 게임 ROM 덤프",
+ "typeChartSource": "pokemon_type_synergy/types_data.py (사용자 직접 검증)",
+ "note": "실전 사용률과 랭킹은 여기 없음. champs.pokedb.tokyo 수집본(로토덱스) 참고.",
+ "counts": {
+  "pokemon": 396,
+  "moves": 512,
+  "abilities": 217,
+  "items": 166,
+  "natures": 25,
+  "learnsets": 396
+ },
+ "codeMeaning": {
+  "category": {
+   "0": "물리",
+   "1": "특수",
+   "2": "변화"
+  },
+  "typeOrder": [
+   "노말",
+   "격투",
+   "비행",
+   "독",
+   "땅",
+   "바위",
+   "벌레",
+   "고스트",
+   "강철",
+   "불꽃",
+   "물",
+   "풀",
+   "전기",
+   "에스퍼",
+   "얼음",
+   "드래곤",
+   "악",
+   "페어리"
+  ],
+  "note": "기술 512개를 다른 출처와 교차검증해 확정함 (불일치 0건)"
+ }
+}

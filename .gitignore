@@ -1,0 +1,8 @@
+# 내려받은 원본 캐시 — build_data.py 로 언제든 다시 받을 수 있음
+raw/
+
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/

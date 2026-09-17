@@ -1,0 +1,327 @@
+[
+ {
+  "id": 0,
+  "name": "노력",
+  "up": null,
+  "down": null,
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 1,
+  "name": "외로움",
+  "up": "attack",
+  "down": "defense",
+  "modifiers": {
+   "attack": 1.1,
+   "defense": 0.9,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 2,
+  "name": "용감",
+  "up": "attack",
+  "down": "speed",
+  "modifiers": {
+   "attack": 1.1,
+   "defense": 1.0,
+   "speed": 0.9,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 3,
+  "name": "고집",
+  "up": "attack",
+  "down": "spAtk",
+  "modifiers": {
+   "attack": 1.1,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 0.9,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 4,
+  "name": "개구쟁이",
+  "up": "attack",
+  "down": "spDef",
+  "modifiers": {
+   "attack": 1.1,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 0.9
+  }
+ },
+ {
+  "id": 5,
+  "name": "대담",
+  "up": "defense",
+  "down": "attack",
+  "modifiers": {
+   "attack": 0.9,
+   "defense": 1.1,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 6,
+  "name": "온순",
+  "up": null,
+  "down": null,
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 7,
+  "name": "무사태평",
+  "up": "defense",
+  "down": "speed",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.1,
+   "speed": 0.9,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 8,
+  "name": "장난꾸러기",
+  "up": "defense",
+  "down": "spAtk",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.1,
+   "speed": 1.0,
+   "spAtk": 0.9,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 9,
+  "name": "촐랑",
+  "up": "defense",
+  "down": "spDef",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.1,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 0.9
+  }
+ },
+ {
+  "id": 10,
+  "name": "겁쟁이",
+  "up": "speed",
+  "down": "attack",
+  "modifiers": {
+   "attack": 0.9,
+   "defense": 1.0,
+   "speed": 1.1,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 11,
+  "name": "성급",
+  "up": "speed",
+  "down": "defense",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 0.9,
+   "speed": 1.1,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 12,
+  "name": "성실",
+  "up": null,
+  "down": null,
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 13,
+  "name": "명랑",
+  "up": "speed",
+  "down": "spAtk",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.1,
+   "spAtk": 0.9,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 14,
+  "name": "천진난만",
+  "up": "speed",
+  "down": "spDef",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.1,
+   "spAtk": 1.0,
+   "spDef": 0.9
+  }
+ },
+ {
+  "id": 15,
+  "name": "조심",
+  "up": "spAtk",
+  "down": "attack",
+  "modifiers": {
+   "attack": 0.9,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.1,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 16,
+  "name": "의젓",
+  "up": "spAtk",
+  "down": "defense",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 0.9,
+   "speed": 1.0,
+   "spAtk": 1.1,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 17,
+  "name": "냉정",
+  "up": "spAtk",
+  "down": "speed",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 0.9,
+   "spAtk": 1.1,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 18,
+  "name": "수줍음",
+  "up": null,
+  "down": null,
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ },
+ {
+  "id": 19,
+  "name": "덜렁",
+  "up": "spAtk",
+  "down": "spDef",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.1,
+   "spDef": 0.9
+  }
+ },
+ {
+  "id": 20,
+  "name": "차분",
+  "up": "spDef",
+  "down": "attack",
+  "modifiers": {
+   "attack": 0.9,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.1
+  }
+ },
+ {
+  "id": 21,
+  "name": "얌전",
+  "up": "spDef",
+  "down": "defense",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 0.9,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.1
+  }
+ },
+ {
+  "id": 22,
+  "name": "건방",
+  "up": "spDef",
+  "down": "speed",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 0.9,
+   "spAtk": 1.0,
+   "spDef": 1.1
+  }
+ },
+ {
+  "id": 23,
+  "name": "신중",
+  "up": "spDef",
+  "down": "spAtk",
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 0.9,
+   "spDef": 1.1
+  }
+ },
+ {
+  "id": 24,
+  "name": "변덕",
+  "up": null,
+  "down": null,
+  "modifiers": {
+   "attack": 1.0,
+   "defense": 1.0,
+   "speed": 1.0,
+   "spAtk": 1.0,
+   "spDef": 1.0
+  }
+ }
+]
