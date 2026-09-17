@@ -248,7 +248,8 @@ def load(dex, path=None, bad=None):
             # 시즌이 제목에 없는 기사가 많다. 그때는 게시 연월로 묶는다.
             # 메타가 언제 것인지는 어떻게든 붙들고 있어야 한다.
             when = (party.get("publishedAt") or "")[:7] or None
-            out.append({"season": party.get("season"),
+            out.append({"source": party.get("source"),
+                        "season": party.get("season"),
                         "when": when,
                         "rule": party.get("rule"),
                         "rank": party.get("rank"),
@@ -258,12 +259,64 @@ def load(dex, path=None, bad=None):
     return out, bad
 
 
-def members(parties, season=None):
+# ---------------------------------------------------------------------------
+# 기사마다 값어치가 다르다
+# ---------------------------------------------------------------------------
+#
+# **이건 측정한 것이 아니라 판단이다.** 그래서 숫자를 여기 모아 두고 바꿀 수 있게 한다.
+#
+# 어디서 온 기사인가 —
+#   champs.pokedb.tokyo 는 순위 자료와 묶여 있는 곳이고, 사용률 자료도 거기서 온다.
+#   pokesol.app 은 누구나 쓰는 메모장이라 '自分用メモ', 'BW縛り' 같은 글도 섞인다.
+#   실제로 모아 보니 pokesol 기사의 1/4 은 제목에 시즌도 순위도 없었다.
+#   그래서 champs 쪽을 더 무겁게 본다 (사용자 판단, 2026-09-17).
+#
+# 순위를 밝혔는가 —
+#   '最終1位' 라고 적힌 글은 래더에서 실제로 나온 결과다.
+#   순위가 없는 글은 시험 삼아 짠 것일 수도 있어서 반만 친다.
+#
+# ! 값어치를 매기는 것과 **마진을 갈아치우는 것은 다르다.** 여기서 하는 것은
+#   "어느 표본을 더 믿을까" 이지 "래더 분포가 이렇다" 가 아니다.
+#   마진은 끝까지 사용률 것을 쓴다.
+SOURCE_WEIGHT = {"champs": 3.0, "pokesol": 1.0}
+DEFAULT_WEIGHT = 1.0
+NO_RANK_WEIGHT = 0.5          # 순위를 안 밝힌 글
+RANK_WEIGHT = [(50, 2.0), (500, 1.5)]      # (순위 이내, 배율)
+
+
+def source_of(party):
+    """어느 사이트에서 온 기사인가. 안 적혀 있으면 주소로 짐작한다."""
+    got = party.get("source")
+    if got:
+        return got
+    url = party.get("url") or ""
+    if "champs.pokedb" in url:
+        return "champs"
+    if "pokesol" in url:
+        return "pokesol"
+    return None
+
+
+def party_weight(party):
+    """이 기사를 얼마나 무겁게 볼 것인가."""
+    w = SOURCE_WEIGHT.get(source_of(party), DEFAULT_WEIGHT)
+    rank = party.get("rank")
+    if not rank:
+        return w * NO_RANK_WEIGHT
+    for upto, mult in RANK_WEIGHT:
+        if rank <= upto:
+            return w * mult
+    return w
+
+
+def members(parties, season=None, weighted=False):
+    """개체를 하나씩. weighted 면 (개체, 값어치) 로 준다."""
     for p in parties:
         if season is not None and p.get("season") != season:
             continue
+        w = party_weight(p) if weighted else None
         for m in p["members"]:
-            yield m
+            yield (m, w) if weighted else m
 
 
 def by_pokemon(parties, season=None):
@@ -287,11 +340,16 @@ def by_pokemon(parties, season=None):
 
 import math
 
+# 격자는 넉넉히 잡는다. **끝 값이 뽑히면 진짜 값은 그 바깥일 수 있다** —
+# 처음에 좁게 잡았다가 셋이 한꺼번에 끝에 붙어서 넓혔다.
+# 보고서가 끝 값이 뽑힌 것을 따로 표시한다.
 KNOBS = {
-    "form_mismatch":          [0.02, 0.05, 0.10, 0.15, 0.25, 0.40, 0.60, 1.0],
-    "nature_mismatch":        [0.01, 0.02, 0.05, 0.10, 0.20, 0.40, 1.0],
-    "item_tendency_strength": [0.0, 0.5, 1.0, 1.5, 2.0, 3.0],
-    "mega_stat_strength":     [0.0, 0.75, 1.5, 2.5, 4.0],
+    "form_mismatch":          [0.001, 0.005, 0.02, 0.05, 0.10, 0.15,
+                               0.25, 0.40, 0.60, 1.0],
+    "nature_mismatch":        [0.001, 0.005, 0.01, 0.02, 0.05, 0.10,
+                               0.20, 0.40, 1.0],
+    "item_tendency_strength": [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.5, 6.0, 8.0],
+    "mega_stat_strength":     [0.0, 0.75, 1.5, 2.5, 4.0, 6.0, 9.0],
 }
 # 그 세기가 어느 부분의 가능도에 걸리는가
 KNOB_PART = {"form_mismatch": "moves", "nature_mismatch": "natures",
@@ -308,7 +366,7 @@ def loglik(dex, parties, part, season=None):
     """표본이 지금 설정에서 얼마나 그럴듯한가. (로그가능도, 쓴 표본 수)."""
     total, used = 0.0, 0
     eps = 1e-9
-    for m in members(parties, season):
+    for m, w in members(parties, season, weighted=True):
         poke, cls = m["poke"], m["cls"]
         if part == "moves":
             classes, weights, mv, table = forms.conditional_table(dex, poke)
@@ -320,7 +378,7 @@ def loglik(dex, parties, part, season=None):
                 continue
             for j, x in enumerate(mv):
                 p = min(1 - eps, max(eps, row[j]))
-                total += math.log(p if x["name"] in have else 1 - p)
+                total += w * math.log(p if x["name"] in have else 1 - p)
             used += 1
         else:
             want = m["nature"] if part == "natures" else m["item"]
@@ -330,7 +388,7 @@ def loglik(dex, parties, part, season=None):
             hit = [p for e, p in dist if e["name"] == want]
             if not hit:
                 continue
-            total += math.log(max(eps, hit[0]))
+            total += w * math.log(max(eps, hit[0]))
             used += 1
     return total, used
 
@@ -369,6 +427,8 @@ def move_pairs(parties, poke_name, season=None, min_count=3):
     """
     rows = [m for m in members(parties, season)
             if m["poke"]["name"] == poke_name]
+    # (기술 쌍은 세는 것이지 맞추는 것이 아니라 값어치를 안 쓴다.
+    #  몇 번 같이 나왔나를 그대로 보여 주는 편이 읽기 쉽다.)
     n = len(rows)
     if n < min_count:
         return [], n
@@ -453,6 +513,22 @@ def report(dex, parties, bad):
     L.append("  ! 표본은 **랭커가 쓴 것**이라 래더 전체와 다르다. 위 두 칸이")
     L.append("    다른 것은 오류가 아니다. 그래서 표본으로 마진을 갈아치우지 않고,")
     L.append("    **조합만** 고치는 데 쓴다.")
+
+    L.append("-" * 78)
+    L.append("  [기사 값어치] — 어느 표본을 더 믿을까 (측정이 아니라 판단이다)")
+    grp = {}
+    for p in parties:
+        src = source_of(p) or "모름"
+        key = (src, "순위 있음" if p.get("rank") else "순위 없음")
+        grp.setdefault(key, [0, 0.0])
+        grp[key][0] += 1
+        grp[key][1] += party_weight(p)
+    for (src, tag), (cnt, wsum) in sorted(grp.items(), key=lambda x: -x[1][0]):
+        L.append("    %-10s %-10s %3d파티   평균 값어치 %.2f"
+                 % (src, tag, cnt, wsum / cnt))
+    L.append("    (champs.pokedb.tokyo 기사는 %.1f배로 본다 — 순위 자료와 묶인 곳이고"
+             % SOURCE_WEIGHT.get("champs", 1.0))
+    L.append("     사용률도 거기서 온다. pokesol 은 메모까지 섞인다.)")
     L.append(line)
     return "\n".join(L)
 
@@ -469,13 +545,18 @@ def report_fit(dex, parties, season=None):
     got = fit(dex, parties, season)
     head = [("가정값", 26), ("지금", 8), ("표본이 고른 값", 16), ("표본 수", 9)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+    edge = []
     for key in sorted(KNOBS):
         pick, rows = got[key]
         used = max((r[2] for r in rows), default=0)
         now = calc.CONFIG[key]
+        grid = KNOBS[key]
         mark = ""
         if pick is not None and abs(pick - now) > 1e-9:
             mark = "   ← 바꿔야 한다"
+        if pick is not None and pick in (grid[0], grid[-1]):
+            mark += "  ! 격자 끝"
+            edge.append(key)
         if used < 200:
             mark = "   (표본 %d마리 — 200 넘어야 대충, 800 넘어야 확실)" % used
         cells = [key, "%.2f" % now,
@@ -483,9 +564,17 @@ def report_fit(dex, parties, season=None):
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip() + mark)
     L.append("-" * 78)
+    if edge:
+        L.append("  ! 격자 끝에서 뽑힌 값이 있다 (%s)." % ", ".join(edge))
+        L.append("    진짜 값은 그 바깥일 수 있다. 격자를 넓혀서 다시 재야 한다.")
+        L.append("")
     L.append("  표본이 적으면 값이 튄다. 가짜 표본으로 재 보니 200마리면 대충,")
     L.append("  800마리면 확실했다 (한 편에 6마리 -> 35편 / 130편).")
     L.append("  기술 쪽은 유사가능도다 (상위 목록 밖 기술을 못 세므로).")
+    L.append("")
+    L.append("  ! 표본은 **랭커가 쓴 것**이다. 랭커는 형태와 기술을 더 딱 맞춰")
+    L.append("    짜므로, 여기서 나온 세기는 래더 평균보다 셀 수 있다.")
+    L.append("    그래도 '아예 안 가른다(독립)' 보다는 이쪽이 실제에 가깝다.")
     L.append(line)
     return "\n".join(L)
 

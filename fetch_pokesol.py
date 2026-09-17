@@ -229,8 +229,8 @@ def parse_article(doc):
         # 제목에 시즌이 없는 기사는 이게 **언제 것인지 아는 유일한 단서**다.
         published = time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                   time.gmtime(published / 1000.0))
-    return {"season": season, "rule": rule, "rank": rank,
-            "publishedAt": published, "title": art.get("title"),
+    return {"source": "pokesol", "season": season, "rule": rule,
+            "rank": rank, "publishedAt": published, "title": art.get("title"),
             "url": None, "members": members}
 
 

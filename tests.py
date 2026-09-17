@@ -1543,6 +1543,57 @@ def test_samples(dex):
           len(list(samples.members(parties, season=6))) == 1
           and len(list(samples.members(parties))) == 2)
 
+    # -- 기사 값어치 (사용자 판단이라 숫자를 따로 모아 뒀다) --------------
+    champs = {"source": "champs", "rank": 12}
+    sol = {"source": "pokesol", "rank": 12}
+    check("champs 기사를 더 무겁게 본다",
+          samples.party_weight(champs) > samples.party_weight(sol),
+          (samples.party_weight(champs), samples.party_weight(sol)))
+    check("주소만 있어도 어디서 왔는지 안다",
+          samples.source_of({"url": "https://champs.pokedb.tokyo/article/1"})
+          == "champs")
+    check("pokesol 주소도 알아본다",
+          samples.source_of({"url": "https://pokesol.app/u/a/articles/b"})
+          == "pokesol")
+    check("순위를 안 밝힌 글은 반만 친다",
+          samples.party_weight({"source": "pokesol"})
+          < samples.party_weight({"source": "pokesol", "rank": 9999}),
+          (samples.party_weight({"source": "pokesol"}),
+           samples.party_weight({"source": "pokesol", "rank": 9999})))
+    check("상위 순위일수록 무겁다",
+          samples.party_weight({"source": "pokesol", "rank": 1})
+          > samples.party_weight({"source": "pokesol", "rank": 300})
+          > samples.party_weight({"source": "pokesol", "rank": 9999}))
+
+    # 값어치가 실제로 맞추기에 반영되는가 — champs 표본 쪽으로 끌려가야 한다
+    a = _fake_parties(dex, {"form_mismatch": 0.001}, n=10, seed=3)
+    b = _fake_parties(dex, {"form_mismatch": 1.0}, n=10, seed=4)
+    for party in a["parties"]:
+        party["source"], party["rank"] = "champs", 1
+    for party in b["parties"]:
+        party["source"] = "pokesol"
+    fd, path = tempfile.mkstemp(suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump({"parties": a["parties"] + b["parties"]}, f,
+                  ensure_ascii=False)
+    try:
+        mixed, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    grid = samples.KNOBS["form_mismatch"]
+    pick_mixed = samples.fit(dex, mixed)["form_mismatch"][0]
+    old_w = dict(samples.SOURCE_WEIGHT)
+    try:
+        samples.SOURCE_WEIGHT["champs"] = 1.0    # 값어치를 껐을 때와 비교
+        pick_flat = samples.fit(dex, mixed)["form_mismatch"][0]
+    finally:
+        samples.SOURCE_WEIGHT.clear()
+        samples.SOURCE_WEIGHT.update(old_w)
+    check("champs 표본 쪽으로 끌려간다 (%.3f vs 값어치 끄면 %.3f)"
+          % (pick_mixed, pick_flat),
+          grid.index(pick_mixed) <= grid.index(pick_flat),
+          (pick_mixed, pick_flat))
+
     # -- 표본이 없어도 안 죽는다 ------------------------------------------
     empty, bad2 = samples.load(dex, "/그런/파일/없음.json")
     check("표본 파일이 없어도 그냥 빈 목록", empty == [] and len(bad2) == 0)
