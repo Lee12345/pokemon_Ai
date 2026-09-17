@@ -92,6 +92,7 @@ class Unresolved(object):
 
     def __init__(self):
         self.rows = []
+        self.dropped = []        # 아예 다른 게임 기사로 판단해 버린 것
 
     def add(self, kind, name, where):
         self.rows.append((kind, name, where))
@@ -121,6 +122,11 @@ def _norm(text):
             ch = chr(o - 0xFEE0)
         elif ch == "\u3000":
             ch = " "
+        # 성별 표기가 사이트마다 다르다. 게임 파일은 '(オス)', 기사는 '(♂)'.
+        elif ch == "\u2642":
+            ch = "オス"
+        elif ch == "\u2640":
+            ch = "メス"
         out.append(ch)
     return "".join(out).replace(" ", "").lower()
 
@@ -159,6 +165,16 @@ def _resolve(names, kind, value, bad=None, where=None):
         return got
     if kind != "pokemon":
         return value
+    # 폼까지 맞춰 보는 표. 이름만 맞으면 폼이 날아가므로 이쪽을 먼저 본다.
+    # (대쓰여너 수컷/암컷은 공격이 20이나 다르다.)
+    keys = names.get("pokemonKey") or {}
+    kidx = _NORM_CACHE.get(id(keys))
+    if kidx is None:
+        kidx = dict((_norm(k), v) for k, v in keys.items())
+        _NORM_CACHE[id(keys)] = kidx
+    hit = keys.get(value) or kidx.get(_norm(value))
+    if hit:
+        return hit
     # 폼 표기가 다른 경우. 로토무처럼 폼이 곧 다른 포켓몬인 것만 따로 잇고,
     # 나머지는 괄호를 떼어 기본 폼으로 본다. **뗐다는 사실은 보고한다.**
     alias = _FORM_ALIAS.get(_norm(value).replace(" ", ""))
@@ -216,15 +232,18 @@ def load(dex, path=None, bad=None):
     names = load_names()
 
     out = []
+    dropped = []
     for party in doc.get("parties") or []:
         where = party.get("url") or ("시즌%s" % party.get("season"))
         members = []
+        missed = 0
         for m in party.get("members") or []:
             name = _resolve(names, "pokemon", m.get("name"), bad, where)
             try:
                 poke = dex.find_pokemon(name)
             except LookupError:
                 bad.add("포켓몬", m.get("name"), where)
+                missed += 1
                 continue
             moves = []
             for mv in m.get("moves") or []:
@@ -244,6 +263,16 @@ def load(dex, path=None, bad=None):
                     dict((calc.SPREAD_KEY[k], v) for k, v in evs.items()
                          if k in calc.SPREAD_KEY)),
             })
+        # **다른 게임 기사를 걸러낸다.** pokesol 은 챔피언스만 다루는 곳이
+        # 아니어서 SV·소드실드 구축기사도 올라온다. 그런 글은 포켓몬 절반이
+        # 우리 도감(231종)에 없다 — 'ポケモンsv S20シーズン終盤' 같은 제목이
+        # 시즌 20 으로 읽히는 것도 그래서였다.
+        # 몇 마리 못 읽은 것과 아예 다른 게임인 것은 다르게 다뤄야 한다.
+        total = len(party.get("members") or [])
+        if total >= 3 and missed >= total * 0.5:
+            dropped.append((party.get("title") or where, missed, total))
+            continue
+
         if members:
             # 시즌이 제목에 없는 기사가 많다. 그때는 게시 연월로 묶는다.
             # 메타가 언제 것인지는 어떻게든 붙들고 있어야 한다.
@@ -256,6 +285,7 @@ def load(dex, path=None, bad=None):
                         "publishedAt": party.get("publishedAt"),
                         "title": party.get("title"),
                         "url": party.get("url"), "members": members})
+    bad.dropped = dropped
     return out, bad
 
 
@@ -496,6 +526,14 @@ def report(dex, parties, bad):
             top = sorted(rows.items(), key=lambda x: -x[1])[:8]
             L.append("    %s: %s" % (kind, ", ".join(
                 "%s(%d)" % (n, c) for n, c in top)))
+    if getattr(bad, "dropped", None):
+        L.append("-" * 78)
+        L.append("  [다른 게임 기사로 보고 버린 것 %d편]" % len(bad.dropped))
+        L.append("    pokesol 은 챔피언스만 다루는 곳이 아니다. SV·소드실드")
+        L.append("    구축기사는 포켓몬 절반이 우리 도감(231종)에 없다.")
+        for title, missed, total in bad.dropped[:6]:
+            L.append("    · %s (%d/%d 마리가 챔피언스에 없음)"
+                     % (title[:44], missed, total))
 
     L.append("-" * 78)
     L.append("  [표본에 많이 나온 포켓몬]")

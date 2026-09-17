@@ -127,6 +127,22 @@ def build():
     out["pokemon"] = poke
     counts["pokemon"] = len(poke)
 
+    # 폼까지 구분되는 표. 이름만으로는 폼이 날아가기 때문이다.
+    #   イダイトウ (オス) -> 0902-00 (공격112 특공80)
+    #   イダイトウ (メス) -> 0902-01 (공격 92 특공100)
+    # 둘을 뭉개면 종족값이 20이나 틀린다. 실제로 표본에서 41마리가 걸렸다.
+    keys = {}
+    for fn in ("usage_single.json", "usage_double.json"):
+        q = os.path.join(OUT, fn)
+        if not os.path.exists(q):
+            continue
+        with open(q, encoding="utf-8") as f:
+            for row in json.load(f).get("pokemon") or []:
+                if row.get("nameJa") and row.get("key"):
+                    keys.setdefault(row["nameJa"], row["key"])
+    out["pokemonKey"] = keys
+    counts["pokemonKey"] = len(keys)
+
     with open(os.path.join(OUT, "names_ja.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1, sort_keys=True)
     print("data/names_ja.json — " + " / ".join(

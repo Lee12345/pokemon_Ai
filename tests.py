@@ -1517,9 +1517,11 @@ def test_samples(dex):
         os.unlink(path)
     rows, n = samples.move_pairs(parties, "한카리아스")
     check("기술 쌍이 나온다 (%d마리, %d쌍)" % (n, len(rows)), rows, n)
-    lift = dict(((a, b), lf) for a, b, _c, _na, _nb, lf in rows)
+    lift = dict(((a, b), lf) for a, b, _c, _na, _nb, _e, lf in rows)
     def get(a, b):
         return lift.get((a, b), lift.get((b, a)))
+    check("기대값이 작은 쌍은 아예 안 나온다",
+          all(r[5] >= 2.0 for r in rows), [r[5] for r in rows[:3]])
     both_spec = get("용성군", "화염방사")
     cross = get("용성군", "역린")
     if both_spec is not None and cross is not None:
