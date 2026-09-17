@@ -1029,6 +1029,115 @@ def test_sensitivity(dex):
     check("보고서가 나온다", "무엇을 먼저 실측" in txt)
 
 
+def test_crit_rules(dex):
+    """급소는 기술마다 다르다 — 설명문에 적혀 있는 것을 그대로 읽는다."""
+    print("\n[27] 급소 규칙")
+    by_name = dict((m["name"], m) for m in dex.moves)
+
+    always = [m["name"] for m in dex.moves if calc.move_crit(m)[0]]
+    staged = [m["name"] for m in dex.moves
+              if not calc.move_crit(m)[0] and calc.move_crit(m)[1]]
+    check("'반드시 급소' 기술을 찾아낸다 (%d개)" % len(always),
+          "트릭플라워" in always and "얼음숨결" in always, always)
+    check("'급소업' 기술을 찾아낸다 (%d개)" % len(staged),
+          "섀도클로" in staged and "스톤에지" in staged, staged[:5])
+
+    check("반드시 급소면 확률 1.0",
+          calc.crit_chance(by_name["트릭플라워"]) == 1.0)
+    check("급소업+1 은 기본보다 높다",
+          calc.crit_chance(by_name["섀도클로"])
+          > calc.crit_chance(by_name["지진"]))
+    check("아무 표기 없으면 기본 확률",
+          calc.crit_chance(by_name["지진"]) == calc.CONFIG["crit_rate"])
+
+    # 자속과 급소가 같이 걸리면 곱해진다 — 따로 확인해 둔 자리다.
+    mas = calc.Build(dex, dex.find_pokemon("마스카나"))
+    hama = calc.popular_build(dex, dex.find_pokemon("하마돈"))[0]
+    tf = by_name["트릭플라워"]
+    plain = calc.calc_damage(dex, mas, hama, tf)
+    crit = calc.calc_damage(dex, mas, hama, tf, critical=True)
+    check("트릭플라워는 자속이 붙는다 (마스카나는 풀 타입)",
+          abs(plain["stab"] - calc.CONFIG["stab"]) < 1e-9, plain["stab"])
+    check("자속 위에 급소가 또 곱해진다 (1.5배)",
+          abs(crit["rolls"][-1] / float(plain["rolls"][-1])
+              - calc.CONFIG["critical"]) < 0.02,
+          (plain["rolls"][-1], crit["rolls"][-1]))
+
+    rows = best.rate_moves(dex, mas, hama, [(tf, 100.0)])
+    check("추천표도 급소 기준으로 잰다", rows[0].get("alwaysCrit") is True, rows[0])
+
+
+def test_new_abilities(dex):
+    """사용률 상위인데 계산에 없던 특성들."""
+    print("\n[28] 뒤늦게 넣은 특성들")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    # -- 변환자재 / 리베로 : 무슨 기술을 써도 자속 -----------------------
+    hama = B("하마돈")
+    claw = [m for m in dex.moves if m["name"] == "섀도클로"][0]
+    on = calc.Build(dex, dex.find_pokemon("마스카나"), ability="변환자재")
+    off = calc.Build(dex, dex.find_pokemon("마스카나"), ability="맹화")
+    a = calc.calc_damage(dex, on, hama, claw)
+    b = calc.calc_damage(dex, off, hama, claw)
+    check("변환자재는 비자속 기술에도 자속을 붙인다",
+          a["stab"] == calc.CONFIG["stab"] and b["stab"] == 1.0,
+          (a["stab"], b["stab"]))
+    check("그만큼 데미지가 는다", a["rolls"][-1] > b["rolls"][-1],
+          (b["rolls"][-1], a["rolls"][-1]))
+
+    # -- 황금몸 : 상대의 변화 기술이 아예 안 통한다 -----------------------
+    tabu = B("타부자고")
+    check("타부자고는 황금몸", tabu.ability == "황금몸", tabu.ability)
+    bt = battle.Battle(dex, hama, tabu, rng=random.Random(1), log=True)
+    yawn = [m for m in dex.moves if m["name"] == "하품"][0]
+    bt._use_status(bt.me, bt.opp, yawn)
+    check("황금몸이 하품을 막는다",
+          any("황금몸" in r for r in bt.log) and not bt.opp.drowsy, bt.log[-2:])
+
+    # -- 미러아머 : 깎으려 한 쪽이 대신 깎인다 ---------------------------
+    kkao = calc.Build(dex, dex.find_pokemon("아머까오"), ability="미러아머")
+    gyara = calc.Build(dex, dex.find_pokemon("갸라도스"), ability="위협")
+    bt = battle.Battle(dex, gyara, kkao, rng=random.Random(1), log=True)
+    check("미러아머는 위협을 되돌린다",
+          bt.opp.ranks["attack"] == 0 and bt.me.ranks["attack"] == -1,
+          (bt.me.ranks["attack"], bt.opp.ranks["attack"]))
+    check("로그에 남는다", any("미러아머" in r for r in bt.log), bt.log[:3])
+
+    # 하얀연기 계열은 그냥 안 깎이기만 한다 (되돌리지 않는다)
+    smoke = calc.Build(dex, dex.find_pokemon("아머까오"), ability="클리어바디")
+    bt = battle.Battle(dex, gyara, smoke, rng=random.Random(1))
+    check("클리어바디는 안 깎이되 되돌리지는 않는다",
+          bt.opp.ranks["attack"] == 0 and bt.me.ranks["attack"] == 0,
+          (bt.me.ranks["attack"], bt.opp.ranks["attack"]))
+
+    # -- 독치장 : 물리로 때리면 때린 쪽에 독압정 -------------------------
+    killa = B("킬라플로르")
+    check("킬라플로르는 독치장", killa.ability == "독치장", killa.ability)
+    bt = battle.Battle(dex, B("한카리아스"), killa, rng=random.Random(1), log=True)
+    quake = [m for m in dex.moves if m["name"] == "지진"][0]
+    bt._hit(bt.me, bt.opp, quake, None)
+    check("물리로 때리면 때린 쪽에 독압정이 깔린다",
+          bt.me_party.hazards.get("독압정"), bt.me_party.hazards)
+    # 특수로 때리면 안 깔린다
+    bt2 = battle.Battle(dex, B("한카리아스"), killa, rng=random.Random(1))
+    flame = [m for m in dex.moves if m["name"] == "화염방사"][0]
+    bt2._hit(bt2.me, bt2.opp, flame, None)
+    check("특수로 때리면 안 깔린다", not bt2.me_party.hazards.get("독압정"),
+          bt2.me_party.hazards)
+
+    # -- 위기회피 : 반피가 되면 스스로 물러난다 --------------------------
+    gap = calc.Build(dex, dex.find_pokemon("갑주무사"), ability="위기회피")
+    bt = battle.Battle(dex, [gap, hama], B("메가보만다"),
+                       rng=random.Random(1), log=True)
+    bt.me.hp = bt.me.max_hp // 2
+    bt._emergency_exit()
+    check("HP 가 반 이하면 스스로 물러난다", bt.me.name != "갑주무사", bt.me.name)
+    check("왜 빠졌는지 로그에 남는다",
+          any("위기회피" in r for r in bt.log), bt.log[-3:])
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1060,6 +1169,8 @@ def main():
     test_selection(dex)
     test_opponent_switching(dex)
     test_sensitivity(dex)
+    test_crit_rules(dex)
+    test_new_abilities(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

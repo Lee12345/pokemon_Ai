@@ -75,6 +75,8 @@ ON_HIT_ABILITY = {
                    "stat": "attack", "step": 1},
     # 한카리아스(2위) 99.1% — 접촉기로 때린 쪽이 최대 HP의 1/8 을 받는다.
     "까칠한피부": {"kind": "contact_recoil", "frac": 1 / 8.0},
+    # 킬라플로르(16위) 92.7% — 물리 기술을 맞으면 상대 쪽에 독압정을 깐다
+    "독치장":     {"kind": "hazard_on_hit", "hazard": "독압정"},
 }
 # 한 번은 통째로 버티는 특성. 데미지 배율이 아니라 별도 규칙이라 여기 둔다.
 DISGUISE = "탈"          # 따라큐(11위) 100% — 첫 공격을 무효로 하고 최대 HP의 1/8 소모
@@ -93,6 +95,18 @@ INTIMIDATE_PROOF = {"파수견", "둔감", "마이페이스", "정신력"}
 PHAZE_PROOF = {"흡반", "파수견"}
 # 상대를 못 빠지게 하는 특성
 TRAP_ABILITY = {"그림자밟기", "개미지옥", "자력"}
+# 상대의 변화 기술이 아예 안 통하는 특성. 타부자고(9위) 100% 다.
+STATUS_MOVE_PROOF = {"황금몸"}
+# 능력이 깎이지 않는 특성. 미러아머는 깎은 쪽에게 되돌려준다.
+STAT_DROP_PROOF = {"하얀연기", "클리어바디", "메탈프로텍트", "꽃무늬장식"}
+MIRROR_ARMOR = "미러아머"
+# HP 가 반 이하가 되면 스스로 물러나는 특성.
+# 갑주무사(5위)의 기본 폼 특성이다. 다만 98.6% 가 메가로 가고 메가는
+# 단단한발톱이라, 실제로 이 특성으로 싸우는 것은 나머지 1.4% 다.
+# (사용률의 '특성 100%' 는 기본 폼 기준 집계라는 것을 여기서 또 확인했다.)
+EMERGENCY_EXIT = {"위기회피", "허둥지둥"}
+# 물리 기술을 맞으면 상대 쪽에 압정을 깐다. 킬라플로르(16위) 92.7% 다.
+HAZARD_ON_HIT = {"독치장": "독압정"}
 
 # 압정. 나올 때 한 번 맞는다.
 # 수치는 게임 데이터에 없어서 calc.CONFIG 에 본편 값을 모아 뒀다.
@@ -251,6 +265,11 @@ class Side(object):
         after = max(-6, min(6, before + step))
         self.ranks[stat] = after
         return after - before        # 실제로 움직인 칸수
+
+    def blocks_drop(self):
+        """상대가 내 능력을 깎는 것을 막는가."""
+        return (self.base.ability in STAT_DROP_PROOF
+                or self.base.ability == MIRROR_ARMOR)
 
     def damage(self, amount, direct=True):
         """데미지를 넣는다. 기합의띠·옹골참이 있으면 여기서 버틴다.
@@ -477,9 +496,14 @@ class Battle(object):
             return
         if ab["kind"] == "foe_rank":
             foe = self.opp if side is self.me else self.me
-            if foe.base.ability in INTIMIDATE_PROOF:
-                self._say("%s 의 %s — %s 에게는 안 통한다"
-                          % (side.name, side.base.ability, foe.name))
+            if foe.base.ability in INTIMIDATE_PROOF or foe.blocks_drop():
+                if foe.base.ability == MIRROR_ARMOR:
+                    if side.bump(ab["stat"], ab["step"]):
+                        self._say("%s 의 미러아머 — %s 의 위협을 되돌렸다"
+                                  % (foe.name, side.name))
+                else:
+                    self._say("%s 의 %s — %s 에게는 안 통한다"
+                              % (side.name, side.base.ability, foe.name))
                 return
             if foe.bump(ab["stat"], ab["step"]):
                 self._say("%s 의 %s — %s %s%+d"
@@ -575,7 +599,8 @@ class Battle(object):
             self._say("%s 의 %s — 빗나감 (명중 %d%%)" % (atk.name, move["name"], acc))
             return 0
 
-        crit = self.rng.random() < calc.CONFIG["crit_rate"]
+        # 기술마다 급소 확률이 다르다. '반드시 급소' 도 있다 (트릭플라워 등).
+        crit = self.rng.random() < calc.crit_chance(move)
         extra = self._power_scale(move, atk)
         res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(), move,
                                critical=crit, extra=extra)
@@ -611,6 +636,12 @@ class Battle(object):
                               % (dfn.name, dfn.base.ability,
                                  dfn.name, calc.STAT_KO[ab["stat"]],
                                  ab["step"], dfn.rank_text()))
+            elif ab["kind"] == "hazard_on_hit" and move["category"] == "물리":
+                foe_party = self._party_of(atk)
+                if foe_party.add_hazard(ab["hazard"]):
+                    self._say("%s 의 %s — %s 쪽에 %s (지금 %s)"
+                              % (dfn.name, dfn.base.ability, atk.name,
+                                 ab["hazard"], foe_party.hazard_text()))
             elif ab["kind"] == "contact_recoil" and move["isContact"]:
                 back = max(1, int(atk.max_hp * ab["frac"]))
                 atk.damage(back, direct=False)
@@ -663,11 +694,30 @@ class Battle(object):
 
     # -- 변화기 -------------------------------------------------------------
     def _use_status(self, user, target, move):
+        # 황금몸 — 상대가 쓰는 변화 기술이 아예 안 통한다
+        if (target is not user and move["category"] == "변화"
+                and target.base.ability in STATUS_MOVE_PROOF):
+            self._say("%s 의 %s — %s 의 %s 로 막혔다"
+                      % (user.name, move["name"], target.name,
+                         target.base.ability))
+            return
+
         for ef in move_effects(move):
             k = ef["kind"]
             if k == "rank":
                 side = user if ef["who"] == "self" else target
                 if side is target and target.protecting:
+                    continue
+                # 남이 내 능력을 깎으려 할 때만 막힌다 (내가 스스로 깎는 건 통과)
+                if side is target and ef["step"] < 0 and target.blocks_drop():
+                    if target.base.ability == MIRROR_ARMOR:
+                        if user.bump(ef["stat"], ef["step"]):
+                            self._say("%s 의 미러아머 — %s 에게 %s%+d 로 되돌렸다"
+                                      % (target.name, user.name,
+                                         calc.STAT_KO[ef["stat"]], ef["step"]))
+                    else:
+                        self._say("%s 의 %s — 능력이 안 깎인다"
+                                  % (target.name, target.base.ability))
                     continue
                 moved = side.bump(ef["stat"], ef["step"])
                 if moved:
@@ -893,6 +943,7 @@ class Battle(object):
         if self.me.alive and self.opp.alive:
             self._end_of_turn()
         self._replace_fainted()
+        self._emergency_exit()
 
     def replacement_score(self, party, side, foe, taking_hit=False):
         """이놈을 지금 내보내면 이 상대에게 무엇을 할 수 있는가.
@@ -1071,6 +1122,25 @@ class Battle(object):
     @property
     def over(self):
         return not (self.me_party.alive and self.opp_party.alive)
+
+    def _emergency_exit(self):
+        """위기회피·허둥지둥 — HP 가 반 이하로 떨어지면 스스로 물러난다.
+
+        이게 없으면 반피까지 깎아 놓고 그대로 잡을 수 있다고 계산하게 된다.
+        """
+        for party in (self.me_party, self.opp_party):
+            side = party.active
+            if (side.base.ability not in EMERGENCY_EXIT or not side.alive
+                    or side.hp > side.max_hp // 2):
+                continue
+            if not party.bench():
+                continue
+            idx = self.choose_replacement(party)
+            if idx is None:
+                continue
+            self._say("%s 의 %s — HP 가 반 이하라 물러난다"
+                      % (side.name, side.base.ability))
+            self.switch_in(party, idx, "위기회피")
 
     def _end_of_turn(self):
         """턴 끝 — 상태이상 · 날씨 칩댐 · 먹다남은음식."""

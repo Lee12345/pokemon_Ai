@@ -391,6 +391,16 @@ def rate_moves(dex, attacker, defender, moves):
             row["reason"] = res["error"]
             rows.append(row)
             continue
+        # '반드시 급소' 기술은 급소 기준으로 재야 한다 (트릭플라워 등).
+        always_crit, _ = calc.move_crit(move)
+        if always_crit:
+            res = calc.calc_damage(dex, attacker, defender, move, critical=True)
+            if "error" in res:
+                row["kind"] = "none"
+                row["reason"] = res["error"]
+                rows.append(row)
+                continue
+            row["alwaysCrit"] = True
         hp = res["hp"]
         rolls = res["rolls"]
         row["kind"] = "damage"

@@ -16,6 +16,7 @@
 import json
 import math
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,10 +28,11 @@ DATA = os.path.join(HERE, "data")
 # ---------------------------------------------------------------------------
 CONFIG = {
     "level": 50,                # 랭크배틀은 50 고정
-    # 자속·급소는 사용자가 "본편과 같은 1.5배가 맞을 것"이라고 판단한 값.
-    # 게임 데미지 숫자와 실제로 대조한 것은 아니므로, 어긋나면 여기부터 의심할 것.
-    "stab": 1.5,                # 자속 보정
-    "critical": 1.5,            # 급소 배율
+    # 자속·급소는 **사용자가 확실하다고 확인해 준 값**이다 (2026-09-17).
+    # 감도 측정 결과 이 둘이 미확인 값 중 유일하게 답을 흔드는 것이었는데,
+    # 확정되면서 그 구멍이 닫혔다 — sensitivity.py 참고.
+    "stab": 1.5,                # 자속 보정 — 확정
+    "critical": 1.5,            # 급소 배율 — 확정
     "burn_physical": 0.5,       # 화상일 때 물리 데미지 — 미확인
     "paralysis_speed": 0.5,     # 마비일 때 스피드 — 미확인 (본편은 7세대부터 0.5)
     "random_min": 85,           # 데미지 난수 하한 (85~100, 16단계)
@@ -39,6 +41,9 @@ CONFIG = {
     # 전부 본편 값을 가져다 쓴 것이고 챔피언스에서 확인한 적이 없다.
     # 실전에서 어긋나면 여기부터 의심할 것.
     "crit_rate": 1 / 24.0,      # 급소가 뜰 확률 — 미확인
+    # 급소업 단계별 확률. 0단계가 위의 crit_rate 다. 전부 미확인 (본편 7세대 이후 값).
+    # '반드시 급소' 기술은 단계와 상관없이 무조건 뜬다.
+    "crit_stage_rates": [1 / 24.0, 1 / 8.0, 0.5, 1.0],
     "paralysis_skip": 0.25,     # 마비로 그 턴 행동을 못 할 확률 — 미확인
     "burn_chip": 16,            # 화상: 턴 끝에 최대 HP의 1/N — 미확인
     "poison_chip": 8,           # 독: 턴 끝에 최대 HP의 1/N — 미확인
@@ -119,6 +124,10 @@ ATTACKER_ABILITY = {
     "강철정신":   {"kind": "type_power", "type": "강철", "mult": 1.5},
     "페어리오라": {"kind": "type_power", "type": "페어리", "mult": 1.33},
     "수포":       {"kind": "type_power", "type": "물", "mult": 2.0},
+    # 쓰는 기술의 타입으로 자기가 변한다 -> 무슨 기술을 써도 자속이 붙는다.
+    # 마스카나(12위) 87.4%, 에이스번(20위) 98.5% 라 그냥 넘길 수 없다.
+    "변환자재":   {"kind": "always_stab"},
+    "리베로":     {"kind": "always_stab"},
 }
 # 방어측은 효과가 두 개인 특성이 있어서 목록으로 둔다 (예: 복슬복슬)
 DEFENDER_ABILITY = {
@@ -159,6 +168,7 @@ IGNORE_IMMUNE = {
 # 계산에 반영 못 하는데 데미지에 영향은 주는 것들 (경고만 띄운다)
 # 어느 쪽에 붙어 있을 때 의미가 있는지 표시해 둔다 ('공격' / '방어' / '양쪽')
 UNSUPPORTED_SIDE = {
+    "배틀스위치": "양쪽", "프레셔": "방어",
     "모래의힘": "공격", "선파워": "공격", "애널라이즈": "공격", "잠복": "공격",
     "이판사판": "공격", "투쟁심": "공격", "플러스": "공격", "마이너스": "공격",
     "까칠한피부": "방어", "탈": "방어", "옹골참": "방어", "지구력": "방어",
@@ -166,6 +176,8 @@ UNSUPPORTED_SIDE = {
     "곡예": "양쪽", "단순": "양쪽",
 }
 UNSUPPORTED_ABILITY = {
+    "배틀스위치": "공격하면 블레이드폼, 킹실드를 쓰면 실드폼 — 폼에 따라 종족값이 바뀜",
+    "프레셔": "상대 기술의 PP를 더 깎음 — PP 가 모델에 없음",
     "모래의힘": "모래바람일 때만 적용 — 날씨가 아직 계산에 없음",
     "이상한비늘": "상태 이상일 때 방어 1.5배 — 상대 상태이상 입력이 아직 없음",
     "풀모피": "그래스필드일 때 방어 1.5배 — 필드가 아직 계산에 없음",
@@ -185,6 +197,31 @@ UNSUPPORTED_ABILITY = {
     "곡예": "도구가 없어지면 스피드 2배 — 스피드 판정에만 영향",
     "단순": "랭크 변화가 2배로 적용됨",
 }
+# 급소 관련 규칙은 기술 설명문에 그대로 적혀 있다.
+#   "반드시 급소에 맞는다"  -> 무조건 급소
+#   "급소업+1로 공격한다"   -> 급소 확률 한 단계 위
+_ALWAYS_CRIT = re.compile(r"반드시 급소에 맞는다")
+_CRIT_STAGE = re.compile(r"급소업\+?(\d)")
+
+
+def move_crit(move):
+    """이 기술의 급소 규칙. (항상 급소인가, 급소업 단계)."""
+    d = move.get("description") or ""
+    if _ALWAYS_CRIT.search(d):
+        return True, 0
+    m = _CRIT_STAGE.search(d)
+    return False, int(m.group(1)) if m else 0
+
+
+def crit_chance(move):
+    """이 기술로 급소가 뜰 확률."""
+    always, stage = move_crit(move)
+    if always:
+        return 1.0
+    rates = CONFIG["crit_stage_rates"]
+    return rates[min(stage, len(rates) - 1)]
+
+
 # 노력치 배분 표기(A/B/C/D/S/H) -> 능력치 이름
 SPREAD_KEY = {"H": "hp", "A": "attack", "B": "defense",
               "C": "spAtk", "D": "spDef", "S": "speed"}
@@ -556,6 +593,11 @@ def calc_damage(dex, attacker, defender, move, critical=False,
 
     if stab is None:
         stab = CONFIG["stab"] if move_type in attacker.types else 1.0
+        # 변환자재·리베로 — 쓰는 기술의 타입이 되므로 무슨 기술이든 자속이 붙는다
+        if a_ab and a_ab["kind"] == "always_stab" and stab == 1.0:
+            stab = CONFIG["stab"]
+            notes.append("%s: %s 타입이 되어 자속 %.1f배"
+                         % (attacker.ability, move_type, stab))
         if a_ab and a_ab["kind"] == "stab" and stab > 1:
             stab = a_ab["value"]
             notes.append("%s: 자속이 2배" % attacker.ability)
