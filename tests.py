@@ -14,6 +14,7 @@ import sys
 import battle
 import best
 import calc
+import forms
 import scout
 import pick as selection
 import sensitivity
@@ -1138,6 +1139,129 @@ def test_new_abilities(dex):
     check("왜 빠졌는지 로그에 남는다",
           any("위기회피" in r for r in bt.log), bt.log[-3:])
 
+def test_forms(dex):
+    """1-A — 형태를 가른다. 채용률을 '따로따로' 에서 '같이' 로."""
+    print("\n[29] 형태 추론")
+    import random
+
+    chomp = dex.find_pokemon("한카리아스")
+    mv = lambda n: dex.find_move(n)
+
+    # -- 무슨 능력치로 때리는가 ------------------------------------------
+    check("지진은 공격으로 때린다", forms.attack_stat(mv("지진")) == "attack")
+    check("용성군은 특수공격으로 때린다",
+          forms.attack_stat(mv("용성군")) == "spAtk")
+    check("바디프레스는 방어로 때린다 (설명문에서 읽는다)",
+          forms.attack_stat(mv("바디프레스")) == "defense")
+    check("변화기는 때리는 능력치가 없다",
+          forms.attack_stat(mv("스텔스록")) is None)
+    # 사이코쇼크는 '상대의 방어' 기준이라 내 능력치는 그대로 특수공격이다
+    check("사이코쇼크는 상대 방어 기준일 뿐 내 쪽은 특공",
+          forms.attack_stat(mv("사이코쇼크")) == "spAtk")
+
+    # -- 데미지가 목적이 아닌 기술 ---------------------------------------
+    check("드래곤테일은 형태로 가르면 안 된다 (강제 교체가 목적)",
+          forms.form_neutral(mv("드래곤테일")))
+    check("지진은 형태로 가른다", not forms.form_neutral(mv("지진")))
+
+    # -- 배분 -> 형태 ----------------------------------------------------
+    check("공격만 부으면 물리형",
+          forms.spread_class({"attack": 32}) == "A")
+    check("특공만 부으면 특수형",
+          forms.spread_class({"spAtk": 32}) == "C")
+    check("둘 다면 양쪽형",
+          forms.spread_class({"attack": 32, "spAtk": 32}) == "AC")
+    check("둘 다 안 부으면 내구형", forms.spread_class({}) == "-")
+    check("조금만 부은 건 투자로 안 친다",
+          forms.spread_class({"attack": 2}) == "-")
+
+    w = forms.class_weights(dex, chomp)
+    check("형태 비중의 합이 1", abs(sum(w.values()) - 1.0) < 1e-9, w)
+
+    # -- 합격 조건: 갈라 놓고도 원본이 나온다 -----------------------------
+    worst = 0.0
+    for name in ("한카리아스", "보만다", "하마돈", "누리레느", "망나뇽",
+                 "킬가르도", "갑주무사", "따라큐"):
+        worst = max(worst, forms.mix_error(dex, dex.find_pokemon(name)))
+    check("섞으면 원래 채용률이 그대로 나온다 (최대 %.3f%%p)" % (worst * 100),
+          worst < 0.005, worst)
+
+    # -- 실제로 갈리는가 -------------------------------------------------
+    classes, weights, moves, table = forms.conditional_table(dex, chomp)
+    idx = dict((m["name"], j) for j, m in enumerate(moves))
+    phys = classes.index("A")
+    spec = classes.index("C")
+    check("특수형이 물리형보다 용성군을 많이 든다",
+          table[spec][idx["용성군"]] > table[phys][idx["용성군"]] + 0.20,
+          (table[phys][idx["용성군"]], table[spec][idx["용성군"]]))
+    check("물리형이 특수형보다 역린을 많이 든다",
+          table[phys][idx["역린"]] > table[spec][idx["역린"]] + 0.20,
+          (table[phys][idx["역린"]], table[spec][idx["역린"]]))
+    check("드래곤테일은 형태로 안 갈린다",
+          abs(table[phys][idx["드래곤테일"]]
+              - table[spec][idx["드래곤테일"]]) < 0.10,
+          (table[phys][idx["드래곤테일"]], table[spec][idx["드래곤테일"]]))
+
+    # 어느 형태든 이 목록에서 쓰는 칸수는 같다 (누구나 기술칸 4개)
+    sums = [sum(row) for row in table]
+    check("형태마다 쓰는 칸수가 같다 (%.2f ~ %.2f)" % (min(sums), max(sums)),
+          max(sums) - min(sums) < 0.05, sums)
+
+    # -- 형태가 하나뿐이면 갈리지 않는다 ---------------------------------
+    hama = dex.find_pokemon("하마돈")
+    hclasses, hweights, hmoves, htable = forms.conditional_table(dex, hama)
+    check("하마돈은 전부 내구형이라 갈릴 것이 없다",
+          hclasses == ["-"], hclasses)
+
+    # -- 본 것으로 형태가 좁혀진다 ---------------------------------------
+    base = forms.form_posterior(dex, chomp, set())
+    check("본 것이 없으면 사전 분포 그대로",
+          abs(base["C"] - w["C"]) < 1e-9, (base["C"], w["C"]))
+    after = forms.form_posterior(dex, chomp, {"용성군"})
+    check("용성군을 보면 특수형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
+          % (base["C"] * 100, after["C"] * 100),
+          after["C"] > base["C"] + 0.15, (base["C"], after["C"]))
+    after2 = forms.form_posterior(dex, chomp, {"역린"})
+    check("역린을 보면 물리형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
+          % (base["A"] * 100, after2["A"] * 100),
+          after2["A"] > base["A"] + 0.15, (base["A"], after2["A"]))
+
+    # -- 안 본 기술의 확률까지 같이 움직인다 (1-A 의 수확) ----------------
+    ev = scout.Evidence(seen_moves={"용성군"})
+    before = dict((m["name"], p) for m, p in scout.move_probabilities(dex, chomp))
+    now = dict((m["name"], p)
+               for m, p in scout.narrowed_probabilities(dex, chomp, ev))
+    check("용성군을 보면 지진 확률이 내려간다 (%.0f%% -> %.0f%%)"
+          % (before["지진"] * 100, now["지진"] * 100),
+          now["지진"] < before["지진"] - 0.05,
+          (before["지진"], now["지진"]))
+    check("같이 화염방사 확률은 올라간다 (%.0f%% -> %.0f%%)"
+          % (before["화염방사"] * 100, now["화염방사"] * 100),
+          now["화염방사"] > before["화염방사"] + 0.03,
+          (before["화염방사"], now["화염방사"]))
+    check("본 기술 자체는 100%", abs(now["용성군"] - 1.0) < 1e-9)
+
+    # -- 뽑아 보면 형태와 기술이 어긋나지 않는다 --------------------------
+    rng = random.Random(11)
+    cnt = {"A": [0, 0.0], "C": [0, 0.0]}
+    for _ in range(600):
+        b, ms = scout.sample_opponent(dex, chomp, rng)
+        cls = forms.spread_class(b.sp)
+        if cls not in cnt:
+            continue
+        cnt[cls][0] += 1
+        cnt[cls][1] += sum(1 for m in ms if m["category"] == "특수")
+    ratio_a = cnt["A"][1] / max(1, cnt["A"][0])
+    ratio_c = cnt["C"][1] / max(1, cnt["C"][0])
+    check("뽑힌 특수형이 물리형보다 특수기를 많이 든다 (%.2f vs %.2f)"
+          % (ratio_a, ratio_c), ratio_c > ratio_a + 0.5, (ratio_a, ratio_c))
+
+    # -- 갈라 놓고도 전체 채용률이 재현된다 (최종 확인) -------------------
+    rows = scout.check_joint(dex, chomp, trials=3000, seed=4)
+    err = max(abs(a - b) for _, a, b in rows)
+    check("뽑은 결과를 다 세면 원래 채용률로 돌아온다 (오차 %.1f%%p)" % err,
+          err < 3.0, [(n, round(a, 1), round(b, 1)) for n, a, b in rows[:3]])
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1171,6 +1295,7 @@ def main():
     test_sensitivity(dex)
     test_crit_rules(dex)
     test_new_abilities(dex)
+    test_forms(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

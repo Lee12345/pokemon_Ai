@@ -30,6 +30,7 @@
 import random
 
 import calc
+import forms
 
 # 한 포켓몬이 들 수 있는 기술 칸 수
 SLOTS = 4
@@ -112,21 +113,21 @@ class Evidence(object):
 # ---------------------------------------------------------------------------
 # 기술 — 4칸에 무엇이 들어 있을까
 # ---------------------------------------------------------------------------
-def move_probabilities(dex, poke, evidence=None):
+def move_probabilities(dex, poke, evidence=None, cls=None):
     """기술별로 '상대가 그걸 들고 있을 확률'. (기술, 확률) 목록.
 
-    채용률을 그대로 쓴다. 본 기술은 1.0 으로 올린다.
+    cls 에 형태를 주면 **그 형태일 때의 확률**을 쓴다 (forms.py, 1-A).
+    안 주면 형태를 모른다는 뜻이고, 그때는 원래 채용률 그대로다.
+    본 기술은 1.0 으로 올린다.
     """
     ev = evidence or Evidence()
-    u = usage_of(dex, poke)
     out = []
-    if not u or not u.get("moves"):
+    base = forms.probs_for_class(dex, poke, cls)
+    if not base:
         return out
-    for entry in u["moves"]:
-        mv = dex.move_by_id(entry["id"])
-        if mv is None:
-            continue
-        p = 1.0 if mv["name"] in ev.seen_moves else entry["pct"] / 100.0
+    for mv, p in base:
+        if mv["name"] in ev.seen_moves:
+            p = 1.0
         out.append((mv, min(1.0, p)))
     # 본 기술인데 상위 10개 밖이면 목록에 없다. 그것도 넣어 준다.
     known = {m["name"] for m, _ in out}
@@ -253,16 +254,17 @@ def fit_weights(probs, slots=SLOTS, rounds=400, damp=0.5):
 _WEIGHT_CACHE = {}
 
 
-def sample_moveset(dex, poke, rng, evidence=None):
+def sample_moveset(dex, poke, rng, evidence=None, cls=None):
     """상대의 기술 4칸을 한 번 뽑는다.
 
-    채용률이 그대로 재현되도록 맞춘 가중치로 뽑고, 4칸을 넘으면 다시 뽑는다.
+    채용률이 그대로 재현되도록 맞춘 가중치로 뽑는다.
+    cls 를 주면 그 형태에 맞는 기술이 나온다 — 특수형이면 지진을 덜 든다.
     """
-    probs = move_probabilities(dex, poke, evidence)
+    probs = move_probabilities(dex, poke, evidence, cls)
     if not probs:
         return []
 
-    key = (poke["key"], tuple(round(p, 4) for _, p in probs))
+    key = (poke["key"], cls, tuple(round(p, 4) for _, p in probs))
     w = _WEIGHT_CACHE.get(key)
     if w is None:
         w = fit_weights([p for _, p in probs])
@@ -275,6 +277,50 @@ def sample_moveset(dex, poke, rng, evidence=None):
 # ---------------------------------------------------------------------------
 # 몸 — 성격·노력치·도구·특성
 # ---------------------------------------------------------------------------
+def narrowed_probabilities(dex, poke, evidence=None):
+    """본 것을 반영한 기술별 확률. (기술, 확률) 목록.
+
+    `move_probabilities` 와 다른 점은 **안 본 기술까지 움직인다**는 것이다.
+    용성군을 봤으면 그놈은 특수형 쪽이고, 그러면 지진 확률이 내려간다.
+    형태를 안 가르던 때는 본 기술만 100% 가 되고 나머지는 그대로였다 (1-A).
+    """
+    ev = evidence or Evidence()
+    classes, weights, moves, table = forms.conditional_table(dex, poke)
+    if not table:
+        return move_probabilities(dex, poke, ev)
+    post = forms.form_posterior(dex, poke, ev.seen_moves)
+    out = []
+    for j, mv in enumerate(moves):
+        if mv["name"] in ev.seen_moves:
+            out.append((mv, 1.0))
+            continue
+        p = sum(post.get(c, 0.0) * table[i][j] for i, c in enumerate(classes))
+        out.append((mv, min(1.0, p)))
+    known = {m["name"] for m, _ in out}
+    for name in ev.seen_moves:
+        if name in known:
+            continue
+        try:
+            out.append((dex.find_move(name), 1.0))
+        except LookupError:
+            pass
+    out.sort(key=lambda x: -x[1])
+    return out
+
+
+def pick_form(dex, poke, rng, evidence=None):
+    """형태를 하나 뽑는다. 본 기술이 있으면 그쪽으로 쏠린다.
+
+    **상대의 노력치 배분은 대전 시작 때 공개되지 않는다.** 그래서 형태는
+    끝까지 숨은 값이고, 본 것으로 조금씩 좁혀 갈 뿐이다.
+    용성군을 쓰는 걸 봤으면 특수형 쪽으로 확 쏠린다.
+    """
+    post = forms.form_posterior(dex, poke, (evidence or Evidence()).seen_moves)
+    if not post:
+        return None
+    return _weighted_pick(rng, sorted(post.items()))
+
+
 def sample_build(dex, poke, rng, evidence=None, speed_of=None):
     """있을 법한 상대 한 마리를 뽑는다.
 
@@ -296,9 +342,14 @@ def sample_build(dex, poke, rng, evidence=None, speed_of=None):
                 nature = dex.find_nature(pick["name"])
             except LookupError:
                 nature = None
+        # 형태를 먼저 뽑고, 그 안에서 배분을 고른다.
+        # 본 기술이 있으면 형태가 이미 좁혀져 있다 (forms.form_posterior).
+        # 배분은 처음에 공개되지 않으므로 **끝까지 추론 대상**이다.
         sp = {}
         if u.get("evs"):
-            pick = _weighted_pick(rng, _normalized(u["evs"]))
+            cls = pick_form(dex, poke, rng, ev)
+            rows = forms.spread_range(dex, poke, cls) if cls else []
+            pick = _weighted_pick(rng, rows or _normalized(u["evs"]))
             for k, v in (pick or {}).get("spread", {}).items():
                 if k in calc.SPREAD_KEY:
                     sp[calc.SPREAD_KEY[k]] = v
@@ -340,11 +391,17 @@ def sample_build(dex, poke, rng, evidence=None, speed_of=None):
 
 
 def sample_opponent(dex, poke, rng, evidence=None, speed_of=None):
-    """몸과 기술을 함께 뽑아 돌려준다."""
+    """몸과 기술을 함께 뽑아 돌려준다.
+
+    **몸과 기술을 따로 뽑지 않는다.** 먼저 몸을 뽑고, 그 몸의 배분에서
+    형태를 되읽어 기술에 물려 준다. 그래야 특수형인데 지진을 든 놈이
+    안 나온다 (1-A). 스피드 관찰로 몸이 걸러지면 형태도 같이 걸러진다.
+    """
     build = sample_build(dex, poke, rng, evidence, speed_of)
-    moves = sample_moveset(dex, build.poke, rng, evidence)
+    cls = forms.spread_class(build.sp)
+    moves = sample_moveset(dex, build.poke, rng, evidence, cls)
     if not moves:
-        moves = sample_moveset(dex, poke, rng, evidence)
+        moves = sample_moveset(dex, poke, rng, evidence, cls)
     return build, moves
 
 
@@ -361,6 +418,26 @@ def check_marginals(dex, poke, trials=4000, seed=1):
     got = {}
     for _ in range(trials):
         for mv in sample_moveset(dex, poke, rng):
+            got[mv["name"]] = got.get(mv["name"], 0) + 1
+    rows = []
+    for mv, p in move_probabilities(dex, poke):
+        rows.append((mv["name"], p * 100.0,
+                     got.get(mv["name"], 0) * 100.0 / trials))
+    return rows
+
+
+def check_joint(dex, poke, trials=4000, seed=1):
+    """형태를 갈라 놓고도 원래 채용률이 나오는가 (1-A 의 합격 조건).
+
+    형태별로 확률을 다르게 줬으므로, **섞었을 때 원본으로 돌아와야** 한다.
+    안 돌아오면 데이터를 해석한 게 아니라 망가뜨린 것이다.
+    sample_opponent 를 그대로 돌려서 잰다 — 중간 계산이 아니라 최종 결과다.
+    """
+    rng = random.Random(seed)
+    got = {}
+    for _ in range(trials):
+        _, moves = sample_opponent(dex, poke, rng)
+        for mv in moves:
             got[mv["name"]] = got.get(mv["name"], 0) + 1
     rows = []
     for mv, p in move_probabilities(dex, poke):

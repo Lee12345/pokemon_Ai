@@ -26,6 +26,7 @@ import sys
 import battle
 import best
 import calc
+import scout
 
 # 각 가정값을 무엇으로 바꿔 볼 것인가.
 # 대부분 '본편의 다른 세대 값' 이다. 챔피언스가 어느 쪽인지 모르므로,
@@ -79,6 +80,25 @@ TOUCHED_BY = {
 }
 
 
+# 형태 가정값은 위 목록에 못 넣는다. 저 목록은 **상대를 하나로 고정해 놓고**
+# 재는데, 형태는 상대를 분포로 뽑을 때만 작동하기 때문이다.
+# (거기 넣으면 0.0%p 가 나오는데, 그건 '안 중요' 가 아니라 '안 걸림' 이다.)
+# 그래서 따로 잰다 — 아래 measure_forms.
+FORM_ALTERNATIVES = [
+    (0.05, "형태를 더 믿는다 0.15 → 0.05"),
+    (0.40, "형태를 덜 믿는다 0.15 → 0.40"),
+    (1.00, "형태를 아예 안 가른다 0.15 → 1.0 (1-A 이전)"),
+]
+
+# 형태로 기술이 크게 갈리는 상대들. forms.py 의 조사 결과에서 골랐다.
+FORM_PAIRS = [
+    ("메가보만다", "한카리아스"),     # 42%p 갈림
+    ("루카리오", "망나뇽"),           # 54%p 갈림
+    ("드닐레이브", "킬가르도"),       # 52%p 갈림
+    ("하마돈", "리자몽"),             # 50%p 갈림
+]
+
+
 def rank_plans(dex, me, opp, plans, opp_plan, trials, seed=3):
     """계획들을 줄 세우고 1등과 그 승률을 돌려준다."""
     rows = []
@@ -129,6 +149,87 @@ def measure(dex, pairs, trials=150):
                     "orderMoves": order_moves, "swing": swing,
                     "of": len(setups)})
     return out, setups
+
+
+def measure_forms(dex, pairs=None, trials=200, seed=5):
+    """형태 가정값(`form_mismatch`)이 답을 바꾸는가.
+
+    이 값은 **데이터로 확인할 방법이 없다.** 사용률에 조합 정보가 없어서,
+    "특수형이 지진을 들 승산을 얼마나 깎을 것인가" 는 아무도 안 알려준다.
+    확인이 안 되면 최소한 **얼마나 중요한지는** 재 둬야 한다.
+    """
+    import forms
+
+    pairs = pairs or FORM_PAIRS
+    setups = []
+    for a, b in pairs:
+        try:
+            me, _ = calc.popular_build(dex, dex.find_pokemon(a))
+            opp_poke = dex.find_pokemon(b)
+        except LookupError:
+            continue
+        opp, _ = calc.popular_build(dex, opp_poke)
+        plans, _ = battle.build_plans(dex, me, opp)
+        if not plans:
+            continue
+        setups.append({"names": (a, b), "me": me, "poke": opp_poke,
+                       "plans": plans})
+
+    def rank(st):
+        rows = []
+        for pl in st["plans"]:
+            r = battle.evaluate_vs_distribution(dex, st["me"], st["poke"], pl,
+                                                trials=trials, seed=seed)
+            rows.append((r["winRate"], " → ".join(r["plan"])))
+        rows.sort(key=lambda x: -x[0])
+        return rows[0][1], rows[0][0]
+
+    old = calc.CONFIG["form_mismatch"]
+    base = []
+    try:
+        for st in setups:
+            base.append(rank(st))
+        out = []
+        for alt, why in FORM_ALTERNATIVES:
+            calc.CONFIG["form_mismatch"] = alt
+            forms._TABLE_CACHE.clear()
+            scout._WEIGHT_CACHE.clear()
+            flips, swing = 0, 0.0
+            for st, (top0, win0) in zip(setups, base):
+                top, win = rank(st)
+                if top != top0:
+                    flips += 1
+                swing = max(swing, abs(win - win0))
+            out.append({"why": why, "flips": flips, "swing": swing,
+                        "of": len(setups)})
+    finally:
+        calc.CONFIG["form_mismatch"] = old
+        forms._TABLE_CACHE.clear()
+        scout._WEIGHT_CACHE.clear()
+    return out, setups, base
+
+
+def report_forms(rows, setups, base, trials):
+    L = []
+    line = "=" * 78
+    L.append(line)
+    L.append("  형태 가정값 감도 (1-A)   ·   대면 %d개 x %d판"
+             % (len(setups), trials))
+    L.append(line)
+    for st, (top, win) in zip(setups, base):
+        L.append("  %s vs %s — 기본 1등 '%s' (%.0f%%)"
+                 % (st["names"][0], st["names"][1], top, win * 100))
+    L.append("-" * 78)
+    head = [("바꿔 본 값", 40), ("추천이 바뀐 대면", 18), ("승률 최대 흔들림", 18)]
+    L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+    for r in rows:
+        cells = [r["why"], "%d / %d" % (r["flips"], r["of"]),
+                 "%.1f%%p" % (r["swing"] * 100)]
+        mark = "   ← 추천이 바뀐다" if r["flips"] else ""
+        L.append("  " + "".join(best._pad(c, w)
+                                for c, (h, w) in zip(cells, head)).rstrip() + mark)
+    L.append(line)
+    return "\n".join(L)
 
 
 def report(rows, setups, trials):
@@ -200,6 +301,11 @@ def main():
             rest.append(args[i]); i += 1
 
     dex = calc.Dex()
+    if "--형태" in args:
+        sys.stderr.write("  형태 가정값을 재는 중...\n")
+        rows, setups, base = measure_forms(dex, trials=trials)
+        print(report_forms(rows, setups, base, trials))
+        return
     pairs = [(rest[0], rest[1])] if len(rest) >= 2 else DEFAULT_PAIRS
     sys.stderr.write("  대면 %d개 x 가정값 %d개를 재는 중...\n"
                      % (len(pairs), len(ALTERNATIVES)))
