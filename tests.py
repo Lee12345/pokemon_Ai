@@ -136,6 +136,29 @@ def test_type_chart(dex):
     check("바위 → 불꽃/비행 은 4배", eff == 4, "계산값 %s" % eff)
 
 
+def test_real_game(dex):
+    """실제 게임 화면에서 읽은 능력치와 맞는지.
+
+    이게 이 프로젝트에서 가장 중요한 검사다.
+    다른 검사들은 '우리 식끼리 앞뒤가 맞는지'만 보지만,
+    이건 게임이 실제로 보여준 숫자와 대조하는 유일한 기준점이다.
+
+    출처: 2026-09-17 사용자가 게임 화면을 직접 확인해 알려준 값.
+          한카리아스 / 성격 장난꾸러기 / 노력치 H32 B32 S2 (화면 표기 66/66)
+    """
+    print("\n[0] 실제 게임 화면과 대조  ← 가장 중요")
+    b = calc.Build(dex, dex.find_pokemon("한카리아스"),
+                   sp={"hp": 32, "defense": 32, "speed": 2},
+                   nature=dex.find_nature("장난꾸러기"))
+    screen = {"hp": 215, "attack": 150, "defense": 161,
+              "spAtk": 90, "spDef": 105, "speed": 124}
+    for k, want in screen.items():
+        got = b.stat(k)
+        check("한카리아스 %s = %d" % (calc.STAT_KO[k], want), got == want,
+              "계산값 %d" % got)
+    check("노력치 합계 66", b.sp_total() == 66, b.sp_total())
+
+
 def test_known_cases(dex):
     """직접 손으로 확인할 수 있는 값들."""
     print("\n[5] 알려진 값 확인")
@@ -215,6 +238,7 @@ def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
           % (len(dex.pokemon), len(dex.moves), len(dex.abilities), len(dex.items)))
+    test_real_game(dex)
     test_stat_formula()
     test_sp_budget()
     test_type_chart(dex)
