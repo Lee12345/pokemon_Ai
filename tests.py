@@ -11,6 +11,7 @@ import itertools
 import math
 import sys
 
+import battle
 import best
 import calc
 
@@ -367,6 +368,168 @@ def test_analyze(dex):
               % (odd[0]["formName"] or odd[0]["name"]), len(mv) > 0, len(mv))
 
 
+def test_move_effects(dex):
+    """변화기 효과를 설명문에서 제대로 읽는가.
+
+    여기가 틀리면 조용히 틀린다. 실제로 두 번 물렸다.
+      · '올린' 은 '올리' 로 시작하지 않는다 (한글은 '린'과 '리'가 다른 글자)
+        -> 부호가 뒤집혀 용의춤이 공격 -1 이 됐다
+      · 받침에 따라 조사가 '공격을' / '방어를' 로 갈린다
+        -> '을' 을 안 받아서 칼춤·나쁜음모가 통째로 안 읽혔다
+    """
+    print("\n[12] 변화기 효과 읽기")
+
+    def eff(name):
+        return [(e.get("stat"), e.get("step"))
+                for e in battle.move_effects(dex.find_move(name))
+                if e["kind"] == "rank"]
+
+    check("용의춤 = 공격+1 스피드+1",
+          eff("용의춤") == [("attack", 1), ("speed", 1)], eff("용의춤"))
+    check("칼춤 = 공격+2 ('공격을' 의 조사)",
+          eff("칼춤") == [("attack", 2)], eff("칼춤"))
+    check("나쁜음모 = 특공+2",
+          eff("나쁜음모") == [("spAtk", 2)], eff("나쁜음모"))
+    check("저주 = 스피드-1 공격+1 방어+1 (한 문장에 올리고+떨어뜨리고)",
+          eff("저주") == [("speed", -1), ("attack", 1), ("defense", 1)],
+          eff("저주"))
+    check("암석봉인 = 상대 스피드-1",
+          [e["who"] for e in battle.move_effects(dex.find_move("암석봉인"))
+           if e["kind"] == "rank"] == ["foe"])
+
+    kinds = lambda n: {e["kind"] for e in battle.move_effects(dex.find_move(n))}
+    check("HP회복 = 회복", "heal" in kinds("HP회복"))
+    check("하품 = 상태 이상", "status" in kinds("하품"))
+    check("킹실드 = 막기", "protect" in kinds("킹실드"))
+    check("날려버리기 = 강제 교체", "phaze" in kinds("날려버리기"))
+    check("스텔스록 = 압정", "hazard" in kinds("스텔스록"))
+    check("모래바람 = 날씨", "weather" in kinds("모래바람"))
+
+    # 상위 20마리가 실제로 쓰는 변화기는 거의 다 읽혀야 한다
+    used = set()
+    for p in dex.pokemon:
+        u = dex.usage.get(p["key"])
+        if not u or u.get("rank", 999) > 20:
+            continue
+        for m in u["moves"]:
+            if m["category"] == "변화" and m["pct"] >= 10:
+                mv = dex.move_by_id(m["id"])
+                if mv:
+                    used.add(mv["name"])
+    bad = [n for n in used
+           if battle.move_effects(dex.find_move(n))[0].get("kind") == "unknown"]
+    check("상위20이 쓰는 변화기 %d개를 다 읽음" % len(used), not bad, bad)
+
+
+def test_battle_rules(dex):
+    """턴 루프의 규칙들. 손으로 확인할 수 있는 것만 골랐다."""
+    print("\n[13] 턴 루프 규칙")
+    import random
+
+    chomp = dex.find_pokemon("한카리아스")
+    hippo = dex.find_pokemon("하마돈")
+
+    # 랭크는 위아래로 6이 한계
+    side = battle.Side(dex, calc.Build(dex, chomp))
+    for _ in range(5):
+        side.bump("attack", 2)
+    check("랭크 상한 +6", side.ranks["attack"] == 6, side.ranks["attack"])
+    check("6을 넘겨 올리면 움직인 칸수가 0", side.bump("attack", 2) == 0)
+
+    # 용의춤을 쓰면 공격 실능이 정확히 랭크표대로 오른다
+    b0 = calc.Build(dex, chomp, sp={"attack": 32})
+    b1 = calc.Build(dex, chomp, sp={"attack": 32}, ranks={"attack": 1})
+    check("공격 1랭크 = 1.5배",
+          b1.stat("attack") == int(b0.stat("attack") * 1.5), b1.stat("attack"))
+
+    # 기합의띠 — HP가 꽉 차 있으면 즉사기를 맞아도 1 남는다
+    s = battle.Side(dex, calc.Build(dex, chomp, item="기합의띠"))
+    s.damage(99999)
+    check("기합의띠로 HP 1 남김", s.hp == 1, s.hp)
+    s.damage(99999)
+    check("기합의띠는 한 번만", s.hp == 0, s.hp)
+
+    # 자뭉열매 — 반피 이하로 떨어지면 최대 HP의 1/4 회복
+    bt = battle.Battle(dex, calc.Build(dex, chomp),
+                       calc.Build(dex, hippo, item="자뭉열매"),
+                       rng=random.Random(1))
+    opp = bt.opp
+    opp.hp = opp.max_hp // 2
+    bt._pinch_berry(opp)
+    check("자뭉열매가 최대 HP의 1/4 회복",
+          opp.hp == opp.max_hp // 2 + int(opp.max_hp / 4.0), opp.hp)
+    check("자뭉열매는 한 번만", opp.item_used)
+
+    # 하마돈은 나오기만 해도 모래바람을 깐다 (모래날림 99.8%)
+    mine, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
+    theirs, _ = calc.popular_build(dex, hippo)
+    bt = battle.Battle(dex, mine, theirs, rng=random.Random(1))
+    check("하마돈 등장만으로 모래바람", bt.field.weather == "모래바람",
+          bt.field.weather)
+
+
+def test_battle_result(dex):
+    """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
+
+    이게 이 단계의 설계 결정이다. 승패만 내놓으면 랭크업의 값어치가
+    후속 포켓몬까지 이어지는 것을 영영 못 본다.
+    """
+    print("\n[14] 끝났을 때의 상태가 남는가  ← 4-B 의 설계 결정")
+    import random
+
+    mine, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
+    theirs, _ = calc.popular_build(dex, dex.find_pokemon("하마돈"))
+    opp_plan, _, _ = battle.opponent_plan(dex, theirs, mine)
+
+    dance = [dex.find_move("용의춤"), dex.find_move("용의춤"),
+             dex.find_move("이판사판태클")]
+    plain = [dex.find_move("이판사판태클")]
+
+    a = battle.evaluate(dex, mine, theirs, dance, opp_plan, trials=60, seed=3)
+    b = battle.evaluate(dex, mine, theirs, plain, opp_plan, trials=60, seed=3)
+
+    check("이기고 나서 랭크가 남는다",
+          a["avgRanksWhenWin"].get("attack", 0) > 1.5, a["avgRanksWhenWin"])
+    check("그냥 때리면 랭크가 안 남는다",
+          not b["avgRanksWhenWin"], b["avgRanksWhenWin"])
+    check("랭크가 남는 쪽의 '남는 몸' 점수가 더 높다",
+          a["carry"] > b["carry"], "%.0f vs %.0f" % (a["carry"], b["carry"]))
+    check("하마돈은 메가보만다를 못 잡는다 (지진 무효)",
+          a["winRate"] > 0.9, a["winRate"])
+
+
+def test_battle_hand_check(dex):
+    """손으로 검산 — 4-B 의 완료 조건.
+
+    회복기는 '얼마나 더 버티게 만드는가' 가 값어치다. 산수로 확인한다.
+    회복기가 없으면 N턴에 죽는데, 매 턴 최대 HP의 1/2 을 회복하면
+    한 방에 반 이상을 못 깎는 이상 영원히 안 죽어야 한다.
+    """
+    print("\n[15] 손으로 검산  ← 4-B 완료 조건")
+    import random
+
+    # 한카리아스(지진)로 하마돈을 친다. 하마돈은 게으름피우기(1/2 회복)만 쓴다.
+    atk, _ = calc.popular_build(dex, dex.find_pokemon("한카리아스"))
+    dfn, _ = calc.popular_build(dex, dex.find_pokemon("하마돈"))
+    quake = dex.find_move("지진")
+    heal = dex.find_move("게으름피우기")
+
+    res = calc.calc_damage(dex, atk, dfn, quake)
+    half = dfn.stat("hp") / 2.0
+    check("전제: 지진 최대 데미지(%d)가 하마돈 반피(%.0f)보다 작다"
+          % (res["max"], half), res["max"] < half)
+
+    r_heal = battle.run_once(dex, atk, dfn, [quake], [heal], random.Random(5))
+    r_bare = battle.run_once(dex, atk, dfn, [quake], [dex.find_move("막치기")],
+                             random.Random(5))
+    check("회복만 하면 안 죽는다 (%d턴까지 안 끝남)" % battle.MAX_TURNS,
+          r_heal["result"] == "안 끝남", r_heal["result"])
+    check("회복을 안 하면 죽는다", r_bare["result"] == "이김", r_bare["result"])
+    check("회복 쪽이 더 오래 버틴다",
+          r_heal["turns"] > r_bare["turns"],
+          "%d vs %d" % (r_heal["turns"], r_bare["turns"]))
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -383,6 +546,10 @@ def main():
     test_race()
     test_move_caveats(dex)
     test_analyze(dex)
+    test_move_effects(dex)
+    test_battle_rules(dex)
+    test_battle_result(dex)
+    test_battle_hand_check(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
