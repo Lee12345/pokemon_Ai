@@ -30,6 +30,7 @@
 import random
 
 import calc
+import combos
 import forms
 
 # 한 포켓몬이 들 수 있는 기술 칸 수
@@ -113,16 +114,20 @@ class Evidence(object):
 # ---------------------------------------------------------------------------
 # 기술 — 4칸에 무엇이 들어 있을까
 # ---------------------------------------------------------------------------
-def move_probabilities(dex, poke, evidence=None, cls=None):
+def move_probabilities(dex, poke, evidence=None, cls=None, arch=None):
     """기술별로 '상대가 그걸 들고 있을 확률'. (기술, 확률) 목록.
 
     cls 에 형태를 주면 **그 형태일 때의 확률**을 쓴다 (forms.py, 1-A).
-    안 주면 형태를 모른다는 뜻이고, 그때는 원래 채용률 그대로다.
+    arch 까지 주면 **그 갈래일 때**를 쓴다 (combos.py, 1-C) — 사용률 상위 10개
+    밖의 기술(칼춤·압정뿌리기 등)도 여기서만 나온다.
+    안 주면 모른다는 뜻이고, 그때는 원래 채용률 그대로다.
     본 기술은 1.0 으로 올린다.
     """
     ev = evidence or Evidence()
     out = []
-    base = forms.probs_for_class(dex, poke, cls)
+    base = combos.probs_for(dex, poke, cls, arch) if arch is not None else []
+    if not base:
+        base = forms.probs_for_class(dex, poke, cls)
     if not base:
         return out
     for mv, p in base:
@@ -254,17 +259,17 @@ def fit_weights(probs, slots=SLOTS, rounds=400, damp=0.5):
 _WEIGHT_CACHE = {}
 
 
-def sample_moveset(dex, poke, rng, evidence=None, cls=None):
+def sample_moveset(dex, poke, rng, evidence=None, cls=None, arch=None):
     """상대의 기술 4칸을 한 번 뽑는다.
 
     채용률이 그대로 재현되도록 맞춘 가중치로 뽑는다.
     cls 를 주면 그 형태에 맞는 기술이 나온다 — 특수형이면 지진을 덜 든다.
     """
-    probs = move_probabilities(dex, poke, evidence, cls)
+    probs = move_probabilities(dex, poke, evidence, cls, arch)
     if not probs:
         return []
 
-    key = (poke["key"], cls, tuple(round(p, 4) for _, p in probs))
+    key = (poke["key"], cls, arch, tuple(round(p, 4) for _, p in probs))
     w = _WEIGHT_CACHE.get(key)
     if w is None:
         w = fit_weights([p for _, p in probs])
@@ -308,21 +313,50 @@ def narrowed_probabilities(dex, poke, evidence=None):
     return out
 
 
+def pick_cell(dex, poke, rng, evidence=None):
+    """(형태, 갈래) 를 같이 뽑는다. 표본이 있는 포켓몬만 (1-C).
+
+    형태와 기술 구성을 따로 뽑으면 **특수형인데 역린을 든 놈**이 나온다.
+    표본에서 찾은 갈래를 같이 뽑으면 그런 것이 안 나온다.
+    돌려주는 것: (형태, 갈래 번호) 또는 None.
+    """
+    ev = evidence or Evidence()
+    got = combos.full_table(dex, poke)
+    if not got:
+        return None
+    classes, _k, cells, _w, _m, _t, _s = got
+    post = combos.joint_posterior(dex, poke, ev.seen_moves, ev.item)
+    if not post:
+        return None
+    n = _weighted_pick(rng, list(enumerate(post)))
+    if n is None:
+        return None
+    i, a = cells[n]
+    return classes[i], a
+
+
 def pick_form(dex, poke, rng, evidence=None):
-    """형태를 하나 뽑는다. 본 기술이 있으면 그쪽으로 쏠린다.
+    """형태를 하나 뽑는다. 본 것이 있으면 그쪽으로 쏠린다.
 
     **상대의 노력치 배분은 대전 시작 때 공개되지 않는다.** 그래서 형태는
     끝까지 숨은 값이고, 본 것으로 조금씩 좁혀 갈 뿐이다.
     용성군을 쓰는 걸 봤으면 특수형 쪽으로 확 쏠린다.
+
+    표본이 있는 포켓몬이면 갈래까지 거쳐서 좁힌다 (1-C). 그쪽이 더 세다 —
+    1-A 는 기술을 물리/특수로만 가르므로 스텔스록을 봐도 형태가 안 움직이는데,
+    갈래를 거치면 내구형이 19% 에서 38% 로 올라간다.
     """
     ev = evidence or Evidence()
-    post = forms.form_posterior(dex, poke, ev.seen_moves, ev.item)
+    post = combos.form_posterior(dex, poke, ev.seen_moves, ev.item)
+    if not post:
+        post = forms.form_posterior(dex, poke, ev.seen_moves, ev.item)
     if not post:
         return None
     return _weighted_pick(rng, sorted(post.items()))
 
 
-def sample_build(dex, poke, rng, evidence=None, speed_of=None):
+def sample_build(dex, poke, rng, evidence=None, speed_of=None,
+                 out_cell=None):
     """있을 법한 상대 한 마리를 뽑는다.
 
     성격·노력치·도구·특성을 각각 채용률로 뽑아서 조립한다.
@@ -339,7 +373,10 @@ def sample_build(dex, poke, rng, evidence=None, speed_of=None):
         # **형태를 제일 먼저 뽑는다.** 성격·배분·도구가 전부 여기에 딸려 온다.
         # 배분은 처음에 공개되지 않으므로 형태는 끝까지 추론 대상이다.
         # 본 기술·본 도구가 있으면 이미 좁혀져 있다 (forms.form_posterior).
-        cls = pick_form(dex, poke, rng, ev)
+        cell = pick_cell(dex, poke, rng, ev)
+        cls = cell[0] if cell else pick_form(dex, poke, rng, ev)
+        if out_cell is not None:
+            out_cell[:] = [cell]
 
         nature = None
         if u.get("natures"):
@@ -401,11 +438,15 @@ def sample_opponent(dex, poke, rng, evidence=None, speed_of=None):
     형태를 되읽어 기술에 물려 준다. 그래야 특수형인데 지진을 든 놈이
     안 나온다 (1-A). 스피드 관찰로 몸이 걸러지면 형태도 같이 걸러진다.
     """
-    build = sample_build(dex, poke, rng, evidence, speed_of)
+    holder = []
+    build = sample_build(dex, poke, rng, evidence, speed_of, holder)
     cls = forms.spread_class(build.sp)
-    moves = sample_moveset(dex, build.poke, rng, evidence, cls)
+    cell = holder[0] if holder else None
+    # 배분에서 되읽은 형태가 뽑을 때 쓴 형태와 같을 때만 갈래를 물려준다
+    arch = cell[1] if (cell and cell[0] == cls) else None
+    moves = sample_moveset(dex, build.poke, rng, evidence, cls, arch)
     if not moves:
-        moves = sample_moveset(dex, poke, rng, evidence, cls)
+        moves = sample_moveset(dex, poke, rng, evidence, cls, arch)
     return build, moves
 
 

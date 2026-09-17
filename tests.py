@@ -14,6 +14,7 @@ import sys
 import battle
 import best
 import calc
+import combos
 import forms
 import scout
 import pick as selection
@@ -1697,6 +1698,140 @@ def test_fetch_pokesol(dex):
                                        "masterData": {}}})
     check("카드 없는 기사는 개체가 0", empty["members"] == [], empty)
 
+def test_combos(dex):
+    """1-C — 표본으로 기술 구성을 고친다 (목록 밖 기술 + 조합)."""
+    print("\n[33] 기술 구성 갈래")
+    import random
+
+    chomp = dex.find_pokemon("한카리아스")
+    if combos.full_table(dex, chomp) is None:
+        check("표본이 없어 갈래 모델을 건너뜀 (data/samples.json 필요)", True)
+        return
+
+    # -- 어휘: 사용률 목록 밖 기술이 되살아났는가 --------------------------
+    rows = samples.by_pokemon(combos.loaded(dex)).get("한카리아스") or []
+    vocab = combos.vocabulary(dex, chomp, rows)
+    by = dict((mv["name"], (t, src)) for mv, t, src in vocab)
+    check("사용률 목록 기술은 채용률 그대로",
+          abs(by["지진"][0] - 0.670) < 1e-9, by.get("지진"))
+    check("목록 밖 기술이 목록에 들어왔다 (칼춤)",
+          "칼춤" in by and by["칼춤"][1] == "표본", by.get("칼춤"))
+    check("목록 밖 기술도 확률이 0 이 아니다 (%.1f%%)"
+          % (by["칼춤"][0] * 100), by["칼춤"][0] > 0.05)
+    total = sum(t for _, t, _ in vocab)
+    check("어휘 전체 채용률 합이 기술칸 4개에 맞는다 (%.2f)" % total,
+          abs(total - combos.SLOTS) < 0.02, total)
+
+    # -- 갈래를 찾았는가 --------------------------------------------------
+    got = combos.archetypes(dex, chomp)
+    moves, w, table, where = got
+    check("갈래가 두 개 이상 나왔다 (%d개)" % len(w), len(w) >= 2, len(w))
+    check("갈래 비중의 합이 1", abs(sum(w) - 1.0) < 1e-6, w)
+    idx = dict((mv["name"], j) for j, mv in enumerate(moves))
+    rock = [table[i][idx["스텔스록"]] for i in range(len(w))]
+    out = [table[i][idx["역린"]] for i in range(len(w))]
+    check("스텔스록이 한 갈래에 몰린다 (%.0f%% vs %.0f%%)"
+          % (max(rock) * 100, min(rock) * 100),
+          max(rock) - min(rock) > 0.5, rock)
+    check("역린도 한 갈래에 몰린다", max(out) - min(out) > 0.4, out)
+    check("스텔스록과 역린은 다른 갈래다",
+          rock.index(max(rock)) != out.index(max(out)), (rock, out))
+
+    # -- 두 마진이 다 지켜지는가 (제일 중요) -------------------------------
+    worst = 0.0
+    names = []
+    for nm, rws in samples.by_pokemon(combos.loaded(dex)).items():
+        if len(rws) < combos.MIN_SAMPLES:
+            continue
+        try:
+            pk = dex.find_pokemon(nm)
+        except LookupError:
+            continue
+        if combos.full_table(dex, pk) is None:
+            continue
+        names.append(nm)
+        worst = max(worst, combos.mix_error_full(dex, pk))
+    check("기술 마진이 지켜진다 — %d종 최대 오차 %.3f%%p"
+          % (len(names), worst * 100), worst < 0.005, worst)
+
+    classes, cond = combos.archetype_by_form(dex, chomp)
+    check("각 형태에서 갈래 확률의 합이 1",
+          all(abs(sum(r) - 1.0) < 1e-6 for r in cond), cond)
+    wmap = forms.class_weights(dex, chomp)
+    _c, _k, cells, weights, _m, _t, _s = combos.full_table(dex, chomp)
+    bad = 0.0
+    for c in classes:
+        got_w = sum(weights[n] for n, (i, a) in enumerate(cells)
+                    if classes[i] == c)
+        bad = max(bad, abs(got_w - wmap[c]))
+    check("노력치 마진도 지켜진다 (최대 오차 %.4f)" % bad, bad < 1e-6, bad)
+
+    # -- 형태와 갈래가 어긋나지 않는가 ------------------------------------
+    ai = classes.index("AS")
+    ci = classes.index("CS")
+    phys = max(range(len(w)), key=lambda a: table[a][idx["역린"]])
+    spec = max(range(len(w)), key=lambda a: table[a][idx["용성군"]])
+    check("AS형은 역린 갈래 쪽, CS형은 용성군 갈래 쪽",
+          cond[ai][phys] > cond[ai][spec]
+          and cond[ci][spec] > cond[ci][phys],
+          (cond[ai], cond[ci]))
+
+    # -- 본 것으로 좁히기가 1-A 보다 센가 ---------------------------------
+    def both(seen):
+        return (forms.form_posterior(dex, chomp, seen),
+                combos.form_posterior(dex, chomp, seen))
+    base = combos.form_posterior(dex, chomp, set())
+    a1, c1 = both({"스텔스록"})
+    check("스텔스록을 보면 내구형이 올라간다 (1-A %.0f%% -> 1-C %.0f%%)"
+          % (a1["-"] * 100, c1["-"] * 100),
+          c1["-"] > a1["-"] + 0.10, (a1["-"], c1["-"]))
+    a2, c2 = both({"역린"})
+    check("역린을 보면 CS형이 내려간다 (1-A %.0f%% -> 1-C %.0f%%)"
+          % (a2["CS"] * 100, c2["CS"] * 100),
+          c2["CS"] <= a2["CS"], (a2["CS"], c2["CS"]))
+    a3, c3 = both({"용성군"})
+    check("용성군을 보면 CS형이 올라간다 (1-A %.0f%% -> 1-C %.0f%%)"
+          % (a3["CS"] * 100, c3["CS"] * 100),
+          c3["CS"] > a3["CS"], (a3["CS"], c3["CS"]))
+    c4 = combos.form_posterior(dex, chomp, {"칼춤"})
+    check("목록 밖 기술(칼춤)로도 형태가 좁혀진다 (AS %.0f%% -> %.0f%%)"
+          % (base["AS"] * 100, c4["AS"] * 100),
+          c4["AS"] > base["AS"] + 0.15, (base["AS"], c4["AS"]))
+
+    # -- 뽑아 보면 어긋난 놈이 안 나오는가 --------------------------------
+    rng = random.Random(11)
+    n = wrong = 0
+    for _ in range(500):
+        b, mv = scout.sample_opponent(dex, chomp, rng)
+        cls = forms.spread_class(b.sp)
+        names_ = set(x["name"] for x in mv)
+        if cls == "CS":
+            n += 1
+            if "역린" in names_ or "칼춤" in names_:
+                wrong += 1
+    check("CS형인데 역린·칼춤을 든 놈이 거의 없다 (%d/%d)" % (wrong, n),
+          n == 0 or wrong <= n * 0.08, (wrong, n))
+
+    # -- 전체 파이프라인에서도 마진이 지켜지는가 ---------------------------
+    rws = scout.check_joint(dex, chomp, trials=3000, seed=4)
+    err = max(abs(a - b) for _, a, b in rws)
+    check("뽑은 결과를 다 세면 사용률로 돌아온다 (오차 %.1f%%p)" % err,
+          err < 3.0, [(x[0], round(x[1], 1), round(x[2], 1)) for x in rws[:3]])
+
+    # -- 표본이 적은 포켓몬은 갈래 모델이 안 붙는다 ------------------------
+    thin = None
+    for nm, rws2 in samples.by_pokemon(combos.loaded(dex)).items():
+        if len(rws2) < 8:
+            thin = nm
+            break
+    if thin:
+        try:
+            pk = dex.find_pokemon(thin)
+            check("표본이 적으면 갈래 모델을 안 만든다 (%s)" % thin,
+                  combos.full_table(dex, pk) is None)
+        except LookupError:
+            pass
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1734,6 +1869,7 @@ def main():
     test_forms_body(dex)
     test_samples(dex)
     test_fetch_pokesol(dex)
+    test_combos(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
