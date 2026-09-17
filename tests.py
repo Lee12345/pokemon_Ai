@@ -865,6 +865,68 @@ def test_policy(dex):
           got["id"] in learn, got["name"])
 
 
+def test_replacement_choice(dex):
+    """쓰러진 자리에 누구를 낼지 — **HP 만으로는 못 정한다.**
+
+    필요한 HP 는 상대마다 다르다. 물어야 할 것은
+    "이 상대를 상대하려면 몇 대를 버텨야 하고, 지금 HP 로 그게 되는가" 다.
+
+      · 따라큐는 탈이 살아 있으면 한 대를 통째로 막고 야습(우선도 +1)으로 때린다.
+        HP 30% 여도 확실히 두 대는 넣는다.
+      · 느리고 한 방에 죽는 놈은 HP 100% 여도 한 대도 못 넣는다.
+    """
+    print("\n[23] 쓰러진 자리에 누구를 낼까")
+    import random
+
+    def B(name):
+        return calc.popular_build(dex, dex.find_pokemon(name))[0]
+
+    bt = battle.Battle(
+        dex, [B("메가보만다"), B("따라큐"), B("누리레느"), B("킬라플로르")],
+        [B("브리두라스")], rng=random.Random(1))
+    mimi = bt.me_party.members[1]
+    mimi.hp = int(mimi.max_hp * 0.3)          # 따라큐는 HP 30% 로 깎아 둔다
+    foe = bt.opp
+    score = {}
+    for i, side in bt.me_party.bench():
+        score[side.name] = bt.replacement_score(bt.me_party, side, foe)
+
+    hp_pick = max(bt.me_party.bench(), key=lambda x: x[1].hp_ratio)[1].name
+    real_pick = bt.me_party.members[bt.choose_replacement(bt.me_party)].name
+    check("HP 순으로는 누리레느(100%)를 고르게 된다",
+          hp_pick == "누리레느", hp_pick)
+    check("실제로는 그놈을 안 고른다 — HP 만으로 정하지 않는다",
+          real_pick != "누리레느", real_pick)
+    check("HP 30% 따라큐가 HP 100% 누리레느보다 높게 쳐진다",
+          score["따라큐(둔갑한 모습)"] > score["누리레느"],
+          "%.2f vs %.2f" % (score["따라큐(둔갑한 모습)"], score["누리레느"]))
+
+    # 탈이 벗겨지면 값이 떨어진다 (같은 HP 인데도)
+    before = bt.replacement_score(bt.me_party, mimi, foe)
+    mimi.disguise = False
+    after = bt.replacement_score(bt.me_party, mimi, foe)
+    check("탈이 벗겨지면 같은 HP 라도 값이 떨어진다", after < before,
+          "%.2f -> %.2f" % (before, after))
+
+    # 나오자마자 압정에 죽는 놈은 최하
+    bt2 = battle.Battle(dex, [B("메가보만다"), B("메가보만다")], [B("브리두라스")],
+                        rng=random.Random(1))
+    bt2.me_party.hazards["스텔스록"] = 1
+    weak = bt2.me_party.members[1]
+    weak.hp = 1
+    check("압정에 죽을 놈은 최하로 친다",
+          bt2.replacement_score(bt2.me_party, weak, bt2.opp) < 0,
+          bt2.replacement_score(bt2.me_party, weak, bt2.opp))
+
+    # 판단 근거가 로그에 남는다
+    bt3 = battle.Battle(dex, [B("메가보만다"), B("따라큐")], [B("브리두라스")],
+                        rng=random.Random(1), log=True)
+    bt3.me_party.members[0].hp = 0
+    bt3._replace_fainted()
+    check("왜 그놈을 골랐는지 로그에 남는다",
+          any("누구를 낼까" in r for r in bt3.log), bt3.log[-2:])
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -892,6 +954,7 @@ def main():
     test_intimidate(dex)
     test_sacrifice(dex)
     test_policy(dex)
+    test_replacement_choice(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

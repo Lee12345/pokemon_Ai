@@ -22,6 +22,7 @@
 결과만 출력하고 근거를 안 남기면 그 분석이 불가능하다.
 """
 
+import math
 import random
 import re
 import sys
@@ -890,17 +891,119 @@ class Battle(object):
             self._end_of_turn()
         self._replace_fainted()
 
+    def replacement_score(self, party, side, foe):
+        """이놈을 지금 내보내면 이 상대에게 무엇을 할 수 있는가.
+
+        **'HP 비율이 제일 높은 놈' 은 틀린 기준이다.** 필요한 HP 는 상대마다 다르다.
+        물어야 할 것은 "이 상대를 상대하려면 몇 대를 버텨야 하고,
+        지금 HP 로 그게 되는가" 다.
+
+          · 따라큐는 탈이 살아 있으면 한 대를 통째로 막고, 야습(우선도 +1, 95.3%)
+            으로 스피드와 상관없이 때린다. HP 가 적어도 확실히 두 대는 넣는다.
+          · 느리고 한 방에 죽는 놈은 HP 가 꽉 차 있어도 한 대도 못 넣는다.
+
+        그래서 양쪽 타수를 재고, 선공 여부와 묶어 **죽기 전에 몇 대나 넣는지**를 센다.
+        best.race 와 같은 셈법이다.
+        """
+        # 1) 나오면서 압정을 밟는다. 밟고 죽으면 최악.
+        hp = side.hp
+        if party.hazards.get("스텔스록"):
+            eff = self.dex.effectiveness("바위", side.base.types)
+            hp -= max(1, int(side.max_hp * eff / calc.CONFIG["rock_hazard"]))
+        if hp <= 0:
+            return -1.0
+
+        me_build = side.as_build()
+        foe_build = foe.as_build()
+
+        # 2) 내가 이 상대를 잡는 데 몇 대가 드는가
+        my_rows = best.rate_moves(
+            self.dex, me_build, foe_build,
+            best.candidate_moves(self.dex, side.base.poke))
+        mine = best.best_threat(my_rows)
+        if mine is None:
+            return 0.0                      # 때릴 수단이 없다
+        my_move = mine["move"]
+        per_hit = mine["expected"] / float(foe.hp or 1)
+        my_hits = max(1, int(math.ceil(1.0 / per_hit))) if per_hit > 0 else best.NEVER
+
+        # 3) 상대가 나를 잡는 데 몇 대가 드는가 — **지금 내 HP 기준**이다
+        foe_rows = best.rate_moves(
+            self.dex, foe_build, me_build,
+            realistic_moveset(self.dex, foe.base.poke))
+        threat = best.best_threat(foe_rows)
+        if threat is None:
+            foe_hits = best.NEVER
+            first = "나"
+        else:
+            hurt = threat["expected"]
+            foe_hits = (max(1, int(math.ceil(hp / hurt))) if hurt > 0 else best.NEVER)
+            # 탈·옹골참·기합의띠는 한 대를 통째로 벌어 준다
+            if side.disguise:
+                foe_hits += 1
+            elif (hp == side.max_hp
+                    and (side.base.ability == ENDURE_FULL
+                         or (side.item == "기합의띠" and not side.item_used))):
+                foe_hits += 1
+            order = best.turn_order(self.dex, me_build, my_move,
+                                    foe_build, threat["move"])
+            first = order["first"]
+
+        # 4) 죽기 전에 몇 대나 넣는가.
+        #    선공이면 내가 쓰러지는 턴에도 한 대 넣는다. 후공이면 그만큼 못 넣는다.
+        if first == "나":
+            chances = foe_hits
+        elif first == "동시":
+            chances = foe_hits - 0.5
+        else:
+            chances = foe_hits - 1
+        chances = max(0.0, min(chances, my_hits))
+
+        dealt = min(1.0, chances * per_hit)
+        kills = chances >= my_hits
+        survives = kills and first == "나" or foe_hits > my_hits
+
+        score = dealt                      # 깎아 놓는 것만으로도 값이 있다
+        if kills:
+            score += 1.0                   # 잡으면 확실히 이득
+        if survives:
+            score += 0.3 * (hp / float(side.max_hp))
+        return score
+
+    def choose_replacement(self, party, explain=False):
+        """쓰러진 자리에 누구를 낼지 고른다.
+
+        explain 을 켜면 왜 그렇게 골랐는지 같이 돌려준다.
+        (이 프로젝트는 판단 근거를 남긴다 — 나중에 지고 나서 되짚어야 하므로.)
+        """
+        bench = party.bench()
+        if not bench:
+            return (None, []) if explain else None
+        foe = self.opp if party is self.me_party else self.me
+        if not foe.alive:
+            idx = max(bench, key=lambda x: x[1].hp_ratio)[0]
+            return (idx, []) if explain else idx
+        scored = [(self.replacement_score(party, side, foe), -i, i, side)
+                  for i, side in bench]
+        best_one = max(scored)
+        if explain:
+            rows = sorted(((sc, sd) for sc, _, _, sd in scored),
+                          key=lambda x: -x[0])
+            return best_one[2], rows
+        return best_one[2]
+
     def _replace_fainted(self):
         """쓰러진 자리에 다음 놈을 내보낸다. 나오면서 압정을 밟는다."""
         for party in (self.me_party, self.opp_party):
             if party.active.alive or not party.alive:
                 continue
-            bench = party.bench()
-            if not bench:
+            idx, rows = self.choose_replacement(party, explain=True)
+            if idx is None:
                 continue
-            # 지금은 남은 것 중 HP 비율이 제일 높은 놈을 낸다.
-            # 무엇을 내보낼지 고르는 것 자체가 하나의 판단이라 나중에 손볼 자리다.
-            idx = max(bench, key=lambda x: x[1].hp_ratio)[0]
+            if rows and self.log is not None:
+                self._say("누구를 낼까 — " + " / ".join(
+                    "%s(HP %d%%) %.2f" % (sd.name, sd.hp_ratio * 100, sc)
+                    for sc, sd in rows))
             self.switch_in(party, idx, "쓰러진 자리")
 
     @property
