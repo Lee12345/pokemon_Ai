@@ -28,6 +28,7 @@ import sys
 
 import best
 import calc
+import scout
 
 # ---------------------------------------------------------------------------
 # 능력치 이름 — 게임 설명문의 표기를 우리 키로 옮긴다
@@ -777,6 +778,84 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400, seed=7):
     }
 
 
+def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
+                             seed=7, evidence=None):
+    """4-C — 상대를 하나로 고정하지 않고, 매 판 새로 뽑아서 싸운다.
+
+    '사용률 1위 배분에 제일 아픈 기술' 하나를 상대로 삼으면
+    채용률 4% 짜리 기술을 100% 확정으로 놓는 셈이 된다.
+    여기서는 채용률대로 상대를 뽑으므로, 나오는 승률이
+    **실제로 만날 상대들을 평균한 값**이 된다.
+
+    덤으로 '졌을 때 상대가 뭘 들고 있었나' 를 센다. 이게 착취 전략의 재료다.
+    """
+    rng = random.Random(seed)
+    speed_of = lambda b: best.effective_speed(dex, b)[0]
+    wins = 0
+    carry_sum = 0.0
+    turns = 0.0
+    warnings = []
+    # 무엇이 나를 이겼나 / 전체에서는 얼마나 나왔나
+    seen = {"기술": {}, "도구": {}, "특성": {}}
+    lost = {"기술": {}, "도구": {}, "특성": {}}
+
+    for _ in range(trials):
+        opp_build, opp_moves = scout.sample_opponent(
+            dex, opp_poke, rng, evidence, speed_of)
+        rows = best.rate_moves(dex, opp_build, me_build,
+                               [(m, None) for m in opp_moves])
+        threat = best.best_threat(rows)
+        if threat:
+            opp_plan = [threat["move"]]
+        else:
+            opp_plan = [opp_moves[0]] if opp_moves else [dex.find_move("막치기")]
+
+        r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng)
+        won = r["result"] == "이김"
+        if won:
+            wins += 1
+            carry_sum += (r["me"]["hpPct"]
+                          + sum(r["me"]["ranks"].values()) * RANK_VALUE)
+        turns += r["turns"]
+        for w in r["warnings"]:
+            if w not in warnings:
+                warnings.append(w)
+
+        tags = [("기술", m["name"]) for m in opp_moves]
+        if opp_build.item:
+            tags.append(("도구", opp_build.item))
+        if opp_build.ability:
+            tags.append(("특성", opp_build.ability))
+        for kind, name in tags:
+            seen[kind][name] = seen[kind].get(name, 0) + 1
+            if not won:
+                lost[kind][name] = lost[kind].get(name, 0) + 1
+
+    losses = trials - wins
+    blame = []
+    for kind in ("기술", "도구", "특성"):
+        for name, n_lost in lost[kind].items():
+            n_seen = seen[kind][name]
+            # 졌을 때 이게 있었을 비율 vs 평소 있을 비율
+            share_lost = n_lost / float(losses) if losses else 0.0
+            share_all = n_seen / float(trials)
+            if share_all <= 0 or n_lost < 3:
+                continue
+            blame.append({"kind": kind, "name": name,
+                          "inLosses": share_lost, "overall": share_all,
+                          "lift": share_lost / share_all})
+    blame.sort(key=lambda x: -(x["lift"] * x["inLosses"]))
+
+    return {
+        "plan": [m["name"] for m in my_plan],
+        "winRate": wins / float(trials),
+        "avgTurns": turns / float(trials),
+        "carry": (carry_sum / wins) if wins else 0.0,
+        "blame": blame, "trials": trials, "warnings": warnings,
+        "distribution": True,
+    }
+
+
 def build_plans(dex, me_build, opp_build, my_moves=None):
     """비교해 볼 계획들을 만든다.
 
@@ -919,21 +998,85 @@ def report(dex, me_build, opp_build, results, opp_plan_moves, opp_pool, trials):
 # ---------------------------------------------------------------------------
 # 명령줄
 # ---------------------------------------------------------------------------
+def report_distribution(dex, me_build, opp_poke, results, evidence, trials):
+    """4-C 보고서 — 상대를 분포로 봤을 때."""
+    L = []
+    line = "=" * 78
+    L.append(line)
+    L.append("  4-C  상대를 하나가 아니라 분포로   ·   각 계획 %d판" % trials)
+    L.append(line)
+    L.append("  나   " + me_build.describe())
+    L.append("  상대 %s — 매 판 사용률대로 새로 뽑는다"
+             % (opp_poke["formName"] or opp_poke["name"]))
+    L.append("       본 것: %s" % evidence.describe())
+    L.append("")
+    L.append("  [상대가 들고 있을 확률]")
+    probs = scout.move_probabilities(dex, opp_poke, evidence)
+    L.append("    " + "  ·  ".join("%s %.0f%%" % (mv["name"], pr * 100)
+                                   for mv, pr in probs[:8]))
+    L.append("-" * 78)
+
+    head = [("계획", 36), ("승률", 10), ("평균턴", 8), ("이겼을 때 남는 몸", 18)]
+    L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+    for r in results:
+        cells = [" → ".join(r["plan"]), "%.1f%%" % (r["winRate"] * 100),
+                 "%.1f" % r["avgTurns"],
+                 "%.0f" % r["carry"] if r["winRate"] else "-"]
+        L.append("  " + "".join(best._pad(c, w)
+                                for c, (h, w) in zip(cells, head)).rstrip())
+
+    L.append("-" * 78)
+    top = results[0]
+    L.append("  추천   %s   (승률 %.1f%%)"
+             % (" → ".join(top["plan"]), top["winRate"] * 100))
+
+    hits = [b for b in top["blame"][:6] if b["lift"] >= 1.3]
+    if hits:
+        L.append("")
+        L.append("  [졌을 때 상대는 이랬다]  ← 여기가 이 프로젝트의 무기다")
+        for b in hits:
+            L.append("    · %s '%s' — 졌을 때 %.0f%% 에 있었다 (평소 %.0f%%, %.1f배)"
+                     % (b["kind"], b["name"], b["inLosses"] * 100,
+                        b["overall"] * 100, b["lift"]))
+        L.append("    평소 잘 안 나오는 것이 위에 있으면 '운 나쁘면 지는' 경우이고,")
+        L.append("    자주 나오는 것이 위에 있으면 진짜로 불리한 대면이다.")
+
+    warns = []
+    for r in results:
+        for w in r["warnings"]:
+            if w not in warns:
+                warns.append(w)
+    if warns:
+        L.append("")
+        L.append("  [아직 계산에 안 들어간 것]")
+        for w in warns[:6]:
+            L.append("    ! %s" % w)
+    L.append("")
+    L.append("  ! 성격·노력치·도구·기술을 서로 독립이라고 보고 뽑은 근사다.")
+    L.append("    실제로는 형태별로 몰려 다닌다 (한카리아스 AS형은 드래곤테일을 잘 안 듦).")
+    L.append(line)
+    return "\n".join(L)
+
+
 USAGE = """사용법: python battle.py <내 포켓몬> <상대 포켓몬> [옵션]
 
+  --분포                       상대를 사용률대로 매 판 새로 뽑는다 (4-C)
+  --봤다 지진,하품             상대가 쓰는 걸 본 기술 — 확률 100%로 확정된다
   --계획 용의춤,이판사판태클   이 순서대로 쓰는 계획 하나만 돌려본다
   --판수 1000                  기본 400
   --기록                       한 판을 턴별로 찍어서 보여준다
   --최악                       상대가 채용률 낮은 기술까지 다 들고 있다고 본다
 
   예 : python battle.py 메가보만다 하마돈
-       python battle.py 메가보만다 하마돈 --기록
+       python battle.py 메가보만다 하마돈 --분포
+       python battle.py 메가보만다 하마돈 --분포 --봤다 얼음엄니
 """
 
 
 def main():
     args = sys.argv[1:]
     trials, plan_arg, show_log, worst = 400, None, False, False
+    use_dist, seen = False, []
     rest = []
     i = 0
     while i < len(args):
@@ -946,6 +1089,11 @@ def main():
             show_log = True; i += 1
         elif a == "--최악":
             worst = True; i += 1
+        elif a == "--분포":
+            use_dist = True; i += 1
+        elif a == "--봤다" and i + 1 < len(args):
+            seen = [x.strip() for x in args[i + 1].split(",") if x.strip()]
+            use_dist = True; i += 2
         else:
             rest.append(a); i += 1
 
@@ -970,10 +1118,19 @@ def main():
         print("  데미지가 들어가는 기술이 없습니다. 교체를 봐야 합니다 (5단계).")
         return
 
-    results = [evaluate(dex, me, opp, p, opp_plan, trials=trials) for p in plans]
     # 승률이 먼저, 같으면 '이기고 나서 남는 몸' 으로 가른다
-    results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
-    print(report(dex, me, opp, results, opp_plan, opp_pool, trials))
+    if use_dist:
+        ev = scout.Evidence(seen_moves=seen)
+        results = [evaluate_vs_distribution(dex, me, opp.poke, p,
+                                            trials=trials, evidence=ev)
+                   for p in plans]
+        results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
+        print(report_distribution(dex, me, opp.poke, results, ev, trials))
+    else:
+        results = [evaluate(dex, me, opp, p, opp_plan, trials=trials)
+                   for p in plans]
+        results.sort(key=lambda r: (-r["winRate"], -r["carry"]))
+        print(report(dex, me, opp, results, opp_plan, opp_pool, trials))
 
     if show_log:
         r = run_once(dex, me, opp, plans[0], opp_plan, random.Random(1), log=True)

@@ -14,6 +14,7 @@ import sys
 import battle
 import best
 import calc
+import scout
 
 FAIL = []
 
@@ -602,6 +603,83 @@ def test_status(dex):
           {e["kind"] for e in eff} == {"heal", "self_status"}, eff)
 
 
+def test_scout(dex):
+    """4-C — 상대를 채용률대로 뽑는다.
+
+    제일 중요한 건 '뽑은 결과가 원래 채용률과 같은가' 다.
+    여기가 틀리면 승률이 통째로 어긋나는데, 숫자만 봐서는 알 수가 없다.
+    """
+    print("\n[17] 상대를 분포로 뽑기")
+    import random
+
+    # 기술칸이 4개라는 제약 아래에서도 채용률이 재현돼야 한다.
+    # 하마돈은 채용률 합이 398% 라 4칸이 거의 꽉 찬다 — 제일 까다로운 경우.
+    worst = 0.0
+    for name in ("하마돈", "킬가르도", "한카리아스", "보만다"):
+        for _, want, got in scout.check_marginals(dex, dex.find_pokemon(name),
+                                                  trials=4000, seed=2):
+            worst = max(worst, abs(got - want))
+    check("채용률이 2%%p 안쪽으로 재현됨 (최대 %.1f%%p)" % worst, worst < 2.0, worst)
+
+    # 4칸을 절대 넘지 않는다
+    rng = random.Random(3)
+    over = 0
+    for _ in range(600):
+        if len(scout.sample_moveset(dex, dex.find_pokemon("하마돈"), rng)) > 4:
+            over += 1
+    check("기술칸 4개를 안 넘는다", over == 0, over)
+
+    # 조건부 뽑기가 제약을 지키는가 (다시 던지는 방식이 아니라 직접 뽑는다)
+    w = [0.9] * 8
+    sizes = {len(scout.sample_conditional(rng, w, 4)) for _ in range(300)}
+    check("조건부 뽑기가 4칸 이하만 낸다", max(sizes) <= 4, sizes)
+
+    # 본 기술은 확률 100%
+    ev = scout.Evidence(seen_moves=["얼음엄니"])
+    probs = dict((m["name"], p) for m, p in
+                 scout.move_probabilities(dex, dex.find_pokemon("하마돈"), ev))
+    check("본 기술은 확률 100%", probs["얼음엄니"] == 1.0, probs["얼음엄니"])
+    always = all("얼음엄니" in [m["name"] for m in
+                 scout.sample_moveset(dex, dex.find_pokemon("하마돈"), rng, ev)]
+                 for _ in range(200))
+    check("본 기술은 항상 뽑힌다", always)
+
+    # 한 칸을 두고 경쟁하는 것들은 정규화된다 (노력치는 원본 합이 ~162%)
+    u = scout.usage_of(dex, dex.find_pokemon("하마돈"))
+    tot = sum(p for _, p in scout._normalized(u["evs"]))
+    check("노력치 분포가 합계 1로 정규화됨", abs(tot - 1.0) < 1e-6, tot)
+
+    # 메가스톤을 뽑으면 그 메가로 싸운다
+    rng = random.Random(9)
+    forms = set()
+    for _ in range(80):
+        b = scout.sample_build(dex, dex.find_pokemon("보만다"), rng)
+        forms.add(b.poke.get("isMega", False))
+    check("보만다는 대부분 메가로 뽑힌다 (보만다나이트 97.7%)", True in forms, forms)
+
+
+def test_scout_narrowing(dex):
+    """관찰하면 범위가 좁아지는가 — 설계 문서 3-4(2)."""
+    print("\n[18] 관찰로 좁히기")
+    me, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
+    opp_poke = dex.find_pokemon("하마돈")
+    plan = [dex.find_move("이판사판태클")]
+
+    blind = battle.evaluate_vs_distribution(dex, me, opp_poke, plan,
+                                            trials=150, seed=4)
+    seen = battle.evaluate_vs_distribution(
+        dex, me, opp_poke, plan, trials=150, seed=4,
+        evidence=scout.Evidence(seen_moves=["얼음엄니"]))
+    check("아무것도 모를 때는 이긴다 (하마돈 지진은 비행에 무효)",
+          blind["winRate"] > 0.8, blind["winRate"])
+    check("얼음엄니를 봤다면 승률이 확 떨어진다",
+          seen["winRate"] < blind["winRate"] - 0.3,
+          "%.2f -> %.2f" % (blind["winRate"], seen["winRate"]))
+    check("졌을 때 무엇이 있었는지 센다",
+          any(b["name"] == "얼음엄니" for b in blind["blame"]),
+          [b["name"] for b in blind["blame"][:3]])
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -623,6 +701,8 @@ def main():
     test_battle_result(dex)
     test_battle_hand_check(dex)
     test_status(dex)
+    test_scout(dex)
+    test_scout_narrowing(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
