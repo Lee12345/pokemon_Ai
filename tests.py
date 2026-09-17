@@ -530,6 +530,78 @@ def test_battle_hand_check(dex):
           "%d vs %d" % (r_heal["turns"], r_bare["turns"]))
 
 
+def test_status(dex):
+    """상태 이상 — 무엇이 걸리고 무엇이 막히는가.
+
+    출처를 두 가지로 나눠서 본다.
+      · 게임 데이터에 적혀 있는 것 — 특성 면역 9개, 기술별 타입 면역 4개
+      · 게임 데이터에 없는 것 — '불꽃은 화상에 안 걸린다' 같은 타입 면역 일반 규칙.
+        본편 값을 가정했고 calc.STATUS_TYPE_IMMUNE 한 곳에 모아 경고를 띄운다.
+    """
+    print("\n[16] 상태 이상")
+    import random
+
+    im = battle.status_immune_abilities(dex)
+    check("특성 면역을 설명문에서 9개 읽음", len(im) == 9, sorted(im))
+    check("유연 = 마비 면역", im.get("유연") == {"마비"}, im.get("유연"))
+    check("불면 = 잠듦·졸음 면역", im.get("불면") == {"잠듦", "졸음"}, im.get("불면"))
+    check("스위트베일도 잠듦·졸음 ('같은 편은' 이 앞에 붙는 문장)",
+          im.get("스위트베일") == {"잠듦", "졸음"}, im.get("스위트베일"))
+    check("전기자석파는 땅타입에게 안 통한다 (설명문)",
+          battle.move_type_immunity(dex.find_move("전기자석파")) == ["땅"])
+
+    def fight(a, b, seed=1):
+        return battle.Battle(dex, calc.Build(dex, dex.find_pokemon(a)),
+                             calc.Build(dex, dex.find_pokemon(b)),
+                             rng=random.Random(seed), log=True)
+
+    # 기술 설명문에 적힌 타입 면역
+    bt = fight("썬더볼트", "한카리아스")
+    bt.step(dex.find_move("전기자석파"), dex.find_move("칼춤"))
+    check("땅타입은 전기자석파에 안 걸린다", bt.opp.status is None, bt.opp.status)
+
+    # 본편 규칙을 가정한 타입 면역
+    bt = fight("하마돈", "리자몽")
+    bt.step(dex.find_move("도깨비불"), dex.find_move("날개쉬기"))
+    check("불꽃타입은 화상에 안 걸린다", bt.opp.status is None, bt.opp.status)
+    check("그때 '데이터에 없는 가정' 이라고 경고한다",
+          any("본편 규칙 가정" in w for w in bt.warnings), bt.warnings)
+
+    # 특성 면역
+    bt = fight("하마돈", "리자몽")
+    bt.opp.base.ability = "유연"
+    bt.step(dex.find_move("전기자석파"), dex.find_move("날개쉬기"))
+    check("특성 '유연' 이 마비를 막는다", bt.opp.status is None, bt.opp.status)
+
+    # 하품 -> 졸음 -> 잠듦
+    bt = fight("하마돈", "보만다")
+    bt.step(dex.find_move("하품"), dex.find_move("칼춤"))
+    check("하품은 바로 재우지 않고 졸음부터",
+          bt.opp.status is None and bt.opp.drowsy, bt.opp.status)
+    bt.step(dex.find_move("하품"), dex.find_move("칼춤"))
+    check("다음 턴에 잠든다", bt.opp.status == "잠듦", bt.opp.status)
+    check("잠듦 지속이 %d~%d턴 안" % (calc.CONFIG["sleep_min"],
+                                     calc.CONFIG["sleep_max"]),
+          calc.CONFIG["sleep_min"] - 1 <= bt.opp.status_turns
+          <= calc.CONFIG["sleep_max"], bt.opp.status_turns)
+
+    # 맹독은 턴마다 세진다
+    bt = fight("한카리아스", "보만다")
+    bt.step(dex.find_move("맹독"), dex.find_move("칼춤"))
+    mx = bt.opp.max_hp
+    first = mx - bt.opp.hp
+    bt.step(dex.find_move("칼춤"), dex.find_move("칼춤"))
+    second = mx - bt.opp.hp - first
+    check("맹독 1턴째 = 최대HP/16", first == mx // 16, "%d vs %d" % (first, mx // 16))
+    check("맹독 2턴째 = 그 두 배", second == mx * 2 // 16,
+          "%d vs %d" % (second, mx * 2 // 16))
+
+    # 잠자기는 게임 설명문대로 2턴 (본편은 3턴이라 다르다)
+    eff = battle.move_effects(dex.find_move("잠자기"))
+    check("잠자기 = 전체 회복 + 스스로 잠듦",
+          {e["kind"] for e in eff} == {"heal", "self_status"}, eff)
+
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -550,6 +622,7 @@ def main():
     test_battle_rules(dex)
     test_battle_result(dex)
     test_battle_hand_check(dex)
+    test_status(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

@@ -53,7 +53,14 @@ TERRAIN_WEAKEN = {"미스트필드": "드래곤"}      # 미스트필드는 드�
 SAND_IMMUNE = {"땅", "바위", "강철"}
 
 # 계산에 넣은 상태 이상. 나머지는 이름만 붙고 효과가 없다 (경고를 띄운다).
-STATUS_DONE = {"화상", "마비", "독"}
+STATUS_DONE = {"화상", "마비", "독", "맹독", "잠듦", "졸음", "얼음", "혼란"}
+# 한 번에 하나만 걸리는 것들 (혼란·졸음은 여기 끼지 않고 따로 붙는다)
+MAJOR_STATUS = {"화상", "마비", "독", "맹독", "잠듦", "얼음"}
+
+# 기술 설명문에 적힌 타입 면역. '풀타입 포켓몬에게는 효과가 없다' 같은 문장.
+_MOVE_TYPE_IMMUNE = re.compile(r"([가-힣]+)타입 포켓몬에게는 효과가 없다")
+# 특성 설명문에 적힌 상태이상 면역. '마비 상태가 되지 않는다' 같은 문장.
+_ABILITY_IMMUNE = re.compile(r"([가-힣,\s]+?) 상태가 되지 않는다")
 
 # 맞을 때마다 뭔가 일어나는 특성.
 # 배율이 아니라 '턴마다 벌어지는 일' 이라 calc.py 로는 못 다뤘던 것들이다.
@@ -139,6 +146,29 @@ def move_effects(move):
     return out
 
 
+def status_immune_abilities(dex):
+    """특성 설명문에서 '무슨 상태가 안 걸리는지' 를 읽어낸다.
+
+    게임 데이터에 그대로 적혀 있다 — 유연(마비), 불면·의기양양(잠듦·졸음),
+    면역(독·맹독), 마그마의무장(얼음), 수포·열교환(화상) 등.
+    """
+    out = {}
+    for a in dex.abilities:
+        for chunk in _ABILITY_IMMUNE.findall(a["description"]):
+            # '자신과 같은 편은 잠듦, 졸음' 처럼 앞에 말이 붙는 경우가 있으므로
+            # 쉼표뿐 아니라 공백으로도 쪼갠 뒤 아는 이름만 고른다.
+            names = re.split(r"[,\s]+", chunk.strip())
+            got = {n for n in names if n in STATUS_DONE or n == "헤롱헤롱"}
+            if got:
+                out.setdefault(a["name"], set()).update(got)
+    return out
+
+
+def move_type_immunity(move):
+    """이 기술이 안 통하는 타입. 설명문에 적혀 있는 것만."""
+    return _MOVE_TYPE_IMMUNE.findall(move.get("description") or "")
+
+
 def move_recoil(move):
     """반동으로 자신이 받는 비율. 없으면 0."""
     m = _RECOIL.search(move.get("description") or "")
@@ -166,6 +196,11 @@ class Side(object):
         self.protecting = False
         # 따라큐의 탈. 첫 공격을 한 번 통째로 막는다.
         self.disguise = (build.ability == DISGUISE)
+        # 상태 이상 부속 — 잠듦/얼음 남은 턴, 맹독 누적, 혼란, 졸음
+        self.status_turns = 0
+        self.toxic_n = 0
+        self.confused = 0
+        self.drowsy = 0
 
     @property
     def name(self):
@@ -232,7 +267,7 @@ class Side(object):
             # '0이 여섯 개 남았다' 를 구분할 수 없다.
             "ranks": {k: v for k, v in self.ranks.items() if v},
             "status": self.status, "itemUsed": self.item_used,
-            "alive": self.alive,
+            "confused": self.confused > 0, "alive": self.alive,
         }
 
 
@@ -285,6 +320,7 @@ class Battle(object):
         self.turn = 0
         self.log = [] if log else None
         self.warnings = []
+        self._immune_abilities = status_immune_abilities(dex)
         self._entry_weather()
 
     def _say(self, text):
@@ -296,8 +332,15 @@ class Battle(object):
             self.warnings.append(text)
 
     def _entry_weather(self):
-        """등장만으로 날씨를 까는 특성. 상위권에 99.8% 로 깔려 있다."""
-        for side, who in ((self.me, "나"), (self.opp, "상대")):
+        """등장만으로 날씨를 까는 특성. 상위권에 99.8% 로 깔려 있다.
+
+        둘 다 갖고 있으면 **느린 쪽이 나중에 발동해서 이긴다** (본편 규칙).
+        빠른 순서대로 깔면 느린 쪽 것이 남는다.
+        """
+        order = sorted(
+            ((self.me, "나"), (self.opp, "상대")),
+            key=lambda x: -best.effective_speed(self.dex, x[0].as_build())[0])
+        for side, who in order:
             w = WEATHER_ABILITY.get(side.base.ability)
             if w:
                 self.field.set(w)
@@ -443,22 +486,15 @@ class Battle(object):
                 self._say("%s 의 %s — %d 회복 (HP %d/%d)"
                           % (user.name, move["name"], got, user.hp, user.max_hp))
             elif k == "self_status":
+                # 잠자기 — 스스로 잠든다. 면역 판정을 거치지 않는다.
                 user.status = ef["status"]
-                self._say("%s 는 %s 상태가 됐다" % (user.name, ef["status"]))
-                if ef["status"] not in STATUS_DONE:
-                    self._warn("'%s' 상태의 효과는 아직 계산에 없습니다 (이름만 붙습니다)"
-                               % ef["status"])
+                # 게임 설명문이 '2턴 동안' 이라고 못박고 있다 (본편은 3턴).
+                user.status_turns = 2
+                self._say("%s 는 %s 상태가 됐다 (2턴)" % (user.name, ef["status"]))
             elif k == "status":
                 if target.protecting:
                     continue
-                if target.status:
-                    self._say("%s 는 이미 %s 상태" % (target.name, target.status))
-                    continue
-                target.status = ef["status"]
-                self._say("%s 를 %s 상태로" % (target.name, ef["status"]))
-                if ef["status"] not in STATUS_DONE:
-                    self._warn("'%s' 상태의 효과는 아직 계산에 없습니다 (이름만 붙습니다)"
-                               % ef["status"])
+                self._inflict(target, ef["status"], move)
             elif k == "protect":
                 user.protecting = True
                 self._say("%s 의 %s — 이 턴은 막는다" % (user.name, move["name"]))
@@ -480,12 +516,112 @@ class Battle(object):
                 self._say("%s 의 %s — 효과를 아직 모른다" % (user.name, move["name"]))
                 self._warn("'%s' 의 효과를 설명문에서 못 읽었습니다" % move["name"])
 
+    # -- 상태 이상 ----------------------------------------------------------
+    def _inflict(self, side, status, move=None):
+        """상태 이상을 건다. 막히면 왜 막혔는지 로그에 남긴다."""
+        # 1) 기술 설명문에 적힌 타입 면역 (전기자석파 -> 땅, 수면가루 -> 풀)
+        if move is not None:
+            for t in move_type_immunity(move):
+                if t in side.base.types:
+                    self._say("%s 는 %s타입이라 %s 가 안 통한다"
+                              % (side.name, t, move["name"]))
+                    return False
+        # 2) 특성 면역 — 설명문에 적혀 있다
+        if status in self._immune_abilities.get(side.base.ability, ()):
+            self._say("%s 의 특성 '%s' 로 %s 를 막았다"
+                      % (side.name, side.base.ability, status))
+            return False
+        # 3) 타입 면역 — 게임 데이터에 없어서 본편 규칙을 가정한 부분
+        for t in calc.STATUS_TYPE_IMMUNE.get(status, ()):
+            if t in side.base.types:
+                self._say("%s 는 %s타입이라 %s 에 안 걸린다" % (side.name, t, status))
+                self._warn("'%s타입은 %s 에 안 걸린다' 는 게임 데이터에 없는 "
+                           "본편 규칙 가정입니다" % (t, status))
+                return False
+
+        if status == "혼란":
+            if side.confused:
+                self._say("%s 는 이미 혼란" % side.name)
+                return False
+            side.confused = self.rng.randint(calc.CONFIG["confuse_min"],
+                                             calc.CONFIG["confuse_max"])
+            self._say("%s 는 혼란에 빠졌다 (%d턴)" % (side.name, side.confused))
+            return True
+        if status == "졸음":
+            if side.status or side.drowsy:
+                self._say("%s 에게는 안 통했다" % side.name)
+                return False
+            side.drowsy = 2          # 이번 턴 끝 + 다음 턴 끝 -> 잠든다
+            self._say("%s 는 졸음 상태 (다음 턴에 잠든다)" % side.name)
+            return True
+
+        if side.status:
+            self._say("%s 는 이미 %s 상태" % (side.name, side.status))
+            return False
+        side.status = status
+        if status == "잠듦":
+            side.status_turns = self.rng.randint(calc.CONFIG["sleep_min"],
+                                                 calc.CONFIG["sleep_max"])
+            self._say("%s 는 잠들었다 (%d턴)" % (side.name, side.status_turns))
+        elif status == "맹독":
+            side.toxic_n = 1
+            self._say("%s 는 맹독 상태가 됐다" % side.name)
+        else:
+            self._say("%s 를 %s 상태로" % (side.name, status))
+        if status not in STATUS_DONE:
+            self._warn("'%s' 상태의 효과는 아직 계산에 없습니다 (이름만 붙습니다)"
+                       % status)
+        return True
+
+    def _can_move(self, side):
+        """행동할 수 있는가. 잠듦·얼음·마비·혼란을 여기서 본다."""
+        if side.status == "잠듦":
+            if side.status_turns > 0:
+                side.status_turns -= 1
+                self._say("%s 는 자고 있다 (남은 %d턴)" % (side.name, side.status_turns))
+                return False
+            side.status = None
+            self._say("%s 가 깨어났다" % side.name)
+        elif side.status == "얼음":
+            if self.rng.random() >= calc.CONFIG["freeze_thaw"]:
+                self._say("%s 는 얼어붙어 움직이지 못했다" % side.name)
+                return False
+            side.status = None
+            self._say("%s 의 얼음이 풀렸다" % side.name)
+
+        if (side.status == "마비"
+                and self.rng.random() < calc.CONFIG["paralysis_skip"]):
+            self._say("%s 는 몸이 저려 움직이지 못했다" % side.name)
+            return False
+
+        if side.confused:
+            side.confused -= 1
+            if self.rng.random() < calc.CONFIG["confuse_self"]:
+                self._confusion_hit(side)
+                return False
+            self._say("%s 는 혼란스럽다 (남은 %d턴)" % (side.name, side.confused))
+        return True
+
+    def _confusion_hit(self, side):
+        """혼란 자해. 무속성 물리라 상성·자속을 타지 않는다."""
+        b = side.as_build()
+        a, d_ = b.stat("attack"), b.stat("defense")
+        lvl = calc.CONFIG["level"]
+        base = (int(int(int(2 * lvl / 5 + 2) * calc.CONFIG["confuse_power"]
+                        * a / d_) / 50) + 2)
+        roll = self.rng.randint(calc.CONFIG["random_min"],
+                                calc.CONFIG["random_max"])
+        dmg = max(1, int(base * roll / 100))
+        side.damage(dmg, direct=False)
+        self._say("%s 는 혼란해서 자신을 공격했다 — %d (HP %d/%d)"
+                  % (side.name, dmg, side.hp, side.max_hp))
+        self._pinch_berry(side)
+
     # -- 한 턴 --------------------------------------------------------------
     def _act(self, actor, target, move):
         if not actor.alive:
             return
-        if actor.status == "마비" and self.rng.random() < calc.CONFIG["paralysis_skip"]:
-            self._say("%s 는 몸이 저려 움직이지 못했다" % actor.name)
+        if not self._can_move(actor):
             return
         if move["category"] == "변화":
             self._use_status(actor, target, move)
@@ -521,11 +657,27 @@ class Battle(object):
             if not side.alive:
                 continue
             if side.status == "화상":
-                side.damage(max(1, side.max_hp // calc.CONFIG["burn_chip"]))
+                side.damage(max(1, side.max_hp // calc.CONFIG["burn_chip"]),
+                            direct=False)
                 self._say("%s 화상 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
             elif side.status == "독":
-                side.damage(max(1, side.max_hp // calc.CONFIG["poison_chip"]))
+                side.damage(max(1, side.max_hp // calc.CONFIG["poison_chip"]),
+                            direct=False)
                 self._say("%s 독 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
+            elif side.status == "맹독":
+                # 맹독은 턴마다 세진다 — 1/16, 2/16, 3/16 ...
+                hurt = max(1, side.max_hp * side.toxic_n
+                           // calc.CONFIG["toxic_chip"])
+                side.damage(hurt, direct=False)
+                self._say("%s 맹독 데미지 %d (%d턴째, HP %d/%d)"
+                          % (side.name, hurt, side.toxic_n, side.hp, side.max_hp))
+                side.toxic_n += 1
+
+            # 하품 -> 졸음 -> 다음 턴 끝에 잠든다
+            if side.drowsy:
+                side.drowsy -= 1
+                if side.drowsy == 0 and side.alive:
+                    self._inflict(side, "잠듦")
 
             if (self.field.weather == "모래바람"
                     and not (set(side.base.types) & SAND_IMMUNE)):
