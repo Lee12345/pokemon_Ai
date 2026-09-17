@@ -1165,15 +1165,21 @@ def test_forms(dex):
     check("지진은 형태로 가른다", not forms.form_neutral(mv("지진")))
 
     # -- 배분 -> 형태 ----------------------------------------------------
-    check("공격만 부으면 물리형",
+    check("공격만 부으면 A형",
           forms.spread_class({"attack": 32}) == "A")
-    check("특공만 부으면 특수형",
-          forms.spread_class({"spAtk": 32}) == "C")
-    check("둘 다면 양쪽형",
+    check("공격+스피드면 AS형 (사용자가 쓰는 그 표기다)",
+          forms.spread_class({"attack": 32, "speed": 32}) == "AS")
+    check("특공+스피드면 CS형",
+          forms.spread_class({"spAtk": 32, "speed": 32}) == "CS")
+    check("둘 다면 AC형",
           forms.spread_class({"attack": 32, "spAtk": 32}) == "AC")
     check("둘 다 안 부으면 내구형", forms.spread_class({}) == "-")
     check("조금만 부은 건 투자로 안 친다",
           forms.spread_class({"attack": 2}) == "-")
+    check("기술은 스피드 축을 안 본다 — AS형과 A형은 같은 기술",
+          forms.attack_part("AS") == forms.attack_part("A") == "A")
+    check("스피드만 부은 건 때리는 쪽으로는 내구형",
+          forms.attack_part("S") == "-")
 
     w = forms.class_weights(dex, chomp)
     check("형태 비중의 합이 1", abs(sum(w.values()) - 1.0) < 1e-9, w)
@@ -1189,8 +1195,8 @@ def test_forms(dex):
     # -- 실제로 갈리는가 -------------------------------------------------
     classes, weights, moves, table = forms.conditional_table(dex, chomp)
     idx = dict((m["name"], j) for j, m in enumerate(moves))
-    phys = classes.index("A")
-    spec = classes.index("C")
+    phys = classes.index("AS")
+    spec = classes.index("CS")
     check("특수형이 물리형보다 용성군을 많이 든다",
           table[spec][idx["용성군"]] > table[phys][idx["용성군"]] + 0.20,
           (table[phys][idx["용성군"]], table[spec][idx["용성군"]]))
@@ -1216,15 +1222,26 @@ def test_forms(dex):
     # -- 본 것으로 형태가 좁혀진다 ---------------------------------------
     base = forms.form_posterior(dex, chomp, set())
     check("본 것이 없으면 사전 분포 그대로",
-          abs(base["C"] - w["C"]) < 1e-9, (base["C"], w["C"]))
+          abs(base["CS"] - w["CS"]) < 1e-9, (base["CS"], w["CS"]))
     after = forms.form_posterior(dex, chomp, {"용성군"})
-    check("용성군을 보면 특수형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
-          % (base["C"] * 100, after["C"] * 100),
-          after["C"] > base["C"] + 0.15, (base["C"], after["C"]))
+    check("용성군을 보면 CS형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
+          % (base["CS"] * 100, after["CS"] * 100),
+          after["CS"] > base["CS"] + 0.15, (base["CS"], after["CS"]))
     after2 = forms.form_posterior(dex, chomp, {"역린"})
-    check("역린을 보면 물리형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
-          % (base["A"] * 100, after2["A"] * 100),
-          after2["A"] > base["A"] + 0.15, (base["A"], after2["A"]))
+    check("역린을 보면 AS형 쪽으로 쏠린다 (%.0f%% -> %.0f%%)"
+          % (base["AS"] * 100, after2["AS"] * 100),
+          after2["AS"] > base["AS"] + 0.15, (base["AS"], after2["AS"]))
+
+    # 도구를 봐도 형태가 좁혀진다 — 메가 종족값이 세다
+    char = dex.find_pokemon("리자몽")
+    cbase = forms.form_posterior(dex, char, set())
+    cy = forms.form_posterior(dex, char, set(), item="리자몽나이트Y")
+    cx = forms.form_posterior(dex, char, set(), item="리자몽나이트X")
+    check("메가리자몽Y(특공159)를 보면 CS형 쪽 (%.0f%% -> %.0f%%)"
+          % (cbase["CS"] * 100, cy["CS"] * 100),
+          cy["CS"] > cbase["CS"], (cbase["CS"], cy["CS"]))
+    check("메가리자몽X(공격=특공)는 Y보다 AS형 쪽",
+          cx["AS"] > cy["AS"], (cx["AS"], cy["AS"]))
 
     # -- 안 본 기술의 확률까지 같이 움직인다 (1-A 의 수확) ----------------
     ev = scout.Evidence(seen_moves={"용성군"})
@@ -1246,7 +1263,8 @@ def test_forms(dex):
     cnt = {"A": [0, 0.0], "C": [0, 0.0]}
     for _ in range(600):
         b, ms = scout.sample_opponent(dex, chomp, rng)
-        cls = forms.spread_class(b.sp)
+        # 기술은 스피드 축과 무관하므로 때리는 쪽만 본다 (AS -> A)
+        cls = forms.attack_part(forms.spread_class(b.sp))
         if cls not in cnt:
             continue
         cnt[cls][0] += 1
@@ -1261,6 +1279,112 @@ def test_forms(dex):
     err = max(abs(a - b) for _, a, b in rows)
     check("뽑은 결과를 다 세면 원래 채용률로 돌아온다 (오차 %.1f%%p)" % err,
           err < 3.0, [(n, round(a, 1), round(b, 1)) for n, a, b in rows[:3]])
+
+def test_forms_body(dex):
+    """성격·도구도 형태에 딸려 온다 (1-A 확장)."""
+    print("\n[30] 형태에 딸린 성격과 도구")
+    import random
+
+    chomp = dex.find_pokemon("한카리아스")
+    char = dex.find_pokemon("리자몽")
+
+    # -- 성격은 규칙이다 --------------------------------------------------
+    jolly = dex.find_nature("고집")      # 공격+ / 특공-
+    timid = dex.find_nature("겁쟁이")    # 스피드+ / 공격-
+    check("고집(특공-)은 CS형에 안 맞는다",
+          forms.nature_compat("CS", jolly) < 0.5, forms.nature_compat("CS", jolly))
+    check("고집은 AS형에 맞는다",
+          forms.nature_compat("AS", jolly) == 1.0)
+    check("겁쟁이(공격-)는 AS형에 안 맞는다",
+          forms.nature_compat("AS", timid) < 0.5)
+    check("겁쟁이는 CS형에 맞는다",
+          forms.nature_compat("CS", timid) == 1.0)
+    check("안 쓰는 쪽을 깎는 건 정상이다 (CS형이 공격을 깎는 것)",
+          forms.nature_compat("CS", timid) == 1.0)
+
+    nclasses, nentries, ntable = forms.nature_table(dex, chomp)
+    nidx = dict((e["name"], j) for j, e in enumerate(nentries))
+    a, c = nclasses.index("AS"), nclasses.index("CS")
+    check("AS형이 고집을 훨씬 많이 쓴다",
+          ntable[a][nidx["고집"]] > ntable[c][nidx["고집"]] + 0.15,
+          (ntable[a][nidx["고집"]], ntable[c][nidx["고집"]]))
+    check("CS형이 겁쟁이를 훨씬 많이 쓴다",
+          ntable[c][nidx["겁쟁이"]] > ntable[a][nidx["겁쟁이"]] + 0.15,
+          (ntable[c][nidx["겁쟁이"]], ntable[a][nidx["겁쟁이"]]))
+    check("형태마다 성격 확률의 합이 1",
+          all(abs(sum(r) - 1.0) < 1e-6 for r in ntable))
+
+    # -- 도구 경향은 데이터에서 잰 것이다 ---------------------------------
+    tend = forms.item_tendency(dex)
+    check("도구 경향을 %d종에 대해 쟀다" % len(tend), len(tend) >= 10)
+    lefto = tend.get("먹다남은음식", {})
+    scarf = tend.get("구애스카프", {})
+    check("먹다남은음식은 내구형과 양의 상관 (%.2f)" % lefto.get("-", 0),
+          lefto.get("-", 0) > 0.3, lefto)
+    check("구애스카프는 내구형과 음의 상관 (%.2f)" % scarf.get("-", 0),
+          scarf.get("-", 0) < 0.0, scarf)
+    check("풍선은 아무 경향이 없다 — 이 측정은 다 맞다고 해 주지 않는다",
+          abs(tend.get("풍선", {}).get("-", 0)) < 0.2,
+          tend.get("풍선", {}).get("-", 0))
+
+    iclasses, ientries, itable = forms.item_table(dex, chomp)
+    iidx = dict((e["name"], j) for j, e in enumerate(ientries))
+    ia, ic = iclasses.index("AS"), iclasses.index("-")
+    check("내구형이 자뭉열매를 더 든다",
+          itable[ic][iidx["자뭉열매"]] > itable[ia][iidx["자뭉열매"]],
+          (itable[ia][iidx["자뭉열매"]], itable[ic][iidx["자뭉열매"]]))
+    check("AS형이 구애스카프를 더 든다",
+          itable[ia][iidx["구애스카프"]] > itable[ic][iidx["구애스카프"]],
+          (itable[ia][iidx["구애스카프"]], itable[ic][iidx["구애스카프"]]))
+
+    # -- 메가스톤은 상관이 아니라 종족값이 정한다 -------------------------
+    cclasses, centries, ctable = forms.item_table(dex, char)
+    cidx = dict((e["name"], j) for j, e in enumerate(centries))
+    ca, cc = cclasses.index("AS"), cclasses.index("CS")
+    check("메가리자몽Y(특공159)는 CS형이 더 든다",
+          ctable[cc][cidx["리자몽나이트Y"]] > ctable[ca][cidx["리자몽나이트Y"]],
+          (ctable[ca][cidx["리자몽나이트Y"]], ctable[cc][cidx["리자몽나이트Y"]]))
+    check("메가리자몽X(공격=특공)는 AS형이 더 든다",
+          ctable[ca][cidx["리자몽나이트X"]] > ctable[cc][cidx["리자몽나이트X"]],
+          (ctable[ca][cidx["리자몽나이트X"]], ctable[cc][cidx["리자몽나이트X"]]))
+
+    # -- 갈라 놓고도 원래 채용률이 나온다 ---------------------------------
+    worst = 0.0
+    for nm in ("한카리아스", "리자몽", "보만다", "누리레느", "망나뇽", "하마돈"):
+        pk = dex.find_pokemon(nm)
+        worst = max(worst, forms.pick_error(dex, pk, "natures"),
+                    forms.pick_error(dex, pk, "items"))
+    check("성격·도구도 섞으면 원래 채용률로 돌아온다 (%.3f%%p)" % (worst * 100),
+          worst < 0.005, worst)
+
+    # -- 뽑아 보면 어긋난 놈이 줄어 있다 ----------------------------------
+    def mismatch(strength):
+        old = calc.CONFIG["nature_mismatch"]
+        calc.CONFIG["nature_mismatch"] = strength
+        forms._PICK_CACHE.clear()
+        try:
+            rng = random.Random(5)
+            tot = bad = 0
+            for nm in ("한카리아스", "보만다", "리자몽", "망나뇽"):
+                pk = dex.find_pokemon(nm)
+                for _ in range(500):
+                    b, _m = scout.sample_opponent(dex, pk, rng)
+                    if not b.nature:
+                        continue
+                    tot += 1
+                    ap = forms.attack_part(forms.spread_class(b.sp))
+                    d = b.nature.get("down")
+                    if ((d == "attack" and ap in ("A", "AC"))
+                            or (d == "spAtk" and ap in ("C", "AC"))):
+                        bad += 1
+            return bad * 100.0 / max(1, tot)
+        finally:
+            calc.CONFIG["nature_mismatch"] = old
+            forms._PICK_CACHE.clear()
+
+    before, after = mismatch(1.0), mismatch(calc.CONFIG["nature_mismatch"])
+    check("자기 공격력을 깎는 성격이 줄었다 (%.0f%% -> %.0f%%)" % (before, after),
+          after < before * 0.4, (before, after))
 
 def main():
     dex = calc.Dex()
@@ -1296,6 +1420,7 @@ def main():
     test_crit_rules(dex)
     test_new_abilities(dex)
     test_forms(dex)
+    test_forms_body(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

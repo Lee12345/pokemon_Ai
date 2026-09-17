@@ -85,9 +85,15 @@ TOUCHED_BY = {
 # (거기 넣으면 0.0%p 가 나오는데, 그건 '안 중요' 가 아니라 '안 걸림' 이다.)
 # 그래서 따로 잰다 — 아래 measure_forms.
 FORM_ALTERNATIVES = [
-    (0.05, "형태를 더 믿는다 0.15 → 0.05"),
-    (0.40, "형태를 덜 믿는다 0.15 → 0.40"),
-    (1.00, "형태를 아예 안 가른다 0.15 → 1.0 (1-A 이전)"),
+    ("form_mismatch", 0.05, "기술↔형태를 더 믿는다 0.15 → 0.05"),
+    ("form_mismatch", 0.40, "기술↔형태를 덜 믿는다 0.15 → 0.40"),
+    ("form_mismatch", 1.00, "기술을 형태로 안 가른다 (1-A 이전)"),
+    ("nature_mismatch", 0.20, "성격↔형태를 덜 믿는다 0.05 → 0.20"),
+    ("nature_mismatch", 1.00, "성격을 형태로 안 가른다"),
+    ("item_tendency_strength", 2.0, "도구 경향을 두 배로 믿는다 1.0 → 2.0"),
+    ("item_tendency_strength", 0.0, "도구 경향을 안 쓴다 (측정은 했지만 무시)"),
+    ("mega_stat_strength", 3.0, "메가 종족값을 두 배로 믿는다 1.5 → 3.0"),
+    ("mega_stat_strength", 0.0, "메가 종족값을 안 쓴다"),
 ]
 
 # 형태로 기술이 크게 갈리는 상대들. forms.py 의 조사 결과에서 골랐다.
@@ -184,28 +190,34 @@ def measure_forms(dex, pairs=None, trials=200, seed=5):
         rows.sort(key=lambda x: -x[0])
         return rows[0][1], rows[0][0]
 
-    old = calc.CONFIG["form_mismatch"]
+    def clear():
+        forms._TABLE_CACHE.clear()
+        forms._PICK_CACHE.clear()
+        scout._WEIGHT_CACHE.clear()
+
+    keys = sorted(set(k for k, _, _ in FORM_ALTERNATIVES))
+    saved = dict((k, calc.CONFIG[k]) for k in keys)
     base = []
     try:
+        clear()
         for st in setups:
             base.append(rank(st))
         out = []
-        for alt, why in FORM_ALTERNATIVES:
-            calc.CONFIG["form_mismatch"] = alt
-            forms._TABLE_CACHE.clear()
-            scout._WEIGHT_CACHE.clear()
+        for key, alt, why in FORM_ALTERNATIVES:
+            calc.CONFIG[key] = alt
+            clear()
             flips, swing = 0, 0.0
             for st, (top0, win0) in zip(setups, base):
                 top, win = rank(st)
                 if top != top0:
                     flips += 1
                 swing = max(swing, abs(win - win0))
+            calc.CONFIG[key] = saved[key]
             out.append({"why": why, "flips": flips, "swing": swing,
                         "of": len(setups)})
     finally:
-        calc.CONFIG["form_mismatch"] = old
-        forms._TABLE_CACHE.clear()
-        scout._WEIGHT_CACHE.clear()
+        calc.CONFIG.update(saved)
+        clear()
     return out, setups, base
 
 
@@ -220,7 +232,7 @@ def report_forms(rows, setups, base, trials):
         L.append("  %s vs %s — 기본 1등 '%s' (%.0f%%)"
                  % (st["names"][0], st["names"][1], top, win * 100))
     L.append("-" * 78)
-    head = [("바꿔 본 값", 40), ("추천이 바뀐 대면", 18), ("승률 최대 흔들림", 18)]
+    head = [("바꿔 본 값", 44), ("추천이 바뀐 대면", 18), ("승률 최대 흔들림", 18)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
     for r in rows:
         cells = [r["why"], "%d / %d" % (r["flips"], r["of"]),

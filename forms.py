@@ -48,6 +48,7 @@
 확률까지 같이 움직인다.** 이게 `form_posterior()` 다.
 """
 
+import math
 import re
 import sys
 
@@ -56,9 +57,14 @@ import calc
 # 노력치는 한 능력치에 최대 32다. 절반 이상 부었으면 '투자했다' 로 본다.
 INVEST = 16
 
-# 형태 이름
-CLASS_ORDER = ["A", "C", "AC", "-"]
-CLASS_KO = {"A": "물리형", "C": "특수형", "AC": "양쪽형", "-": "내구형"}
+# 형태 이름. 사용자가 쓰는 말과 같게 둔다 — "AS형", "HB형" 의 그 표기다.
+#
+# 처음에는 A/C 만 봤는데, 도구 경향을 재 보니 **제일 센 축이 내구 ↔ 스피드**였다.
+# 먹다남은음식은 내구형과 +0.69, 구애스카프는 스피드 투자와 +0.58 이다.
+# A/C 만 보면 그 축이 통째로 안 보인다. 그래서 S 를 넣었다.
+CLASS_ORDER = ["AS", "A", "CS", "C", "ACS", "AC", "S", "-"]
+CLASS_KO = {"AS": "AS형", "A": "A형", "CS": "CS형", "C": "C형",
+            "ACS": "ACS형", "AC": "AC형", "S": "S형", "-": "내구형"}
 
 # 자기 어느 능력치로 때리는지가 설명문에 적혀 있는 기술이 있다.
 #   바디프레스 — "이 기술은 공격이 아닌 방어 수치에 따라 데미지가 결정된다."
@@ -98,13 +104,20 @@ def spread_class(sp):
     sp = sp or {}
     a = sp.get("attack", 0) >= INVEST
     c = sp.get("spAtk", 0) >= INVEST
-    if a and c:
-        return "AC"
-    if a:
-        return "A"
-    if c:
-        return "C"
-    return "-"
+    s = sp.get("speed", 0) >= INVEST
+    base = "AC" if (a and c) else ("A" if a else ("C" if c else ""))
+    return (base + ("S" if s else "")) or "-"
+
+
+def attack_part(cls):
+    """형태에서 **때리는 능력치 부분만**. 기술 선택은 이것만 본다.
+
+    AS형과 A형은 같은 기술을 든다. 스피드 투자는 기술이 아니라
+    도구·성격을 가른다.
+    """
+    if cls in ("-", "S"):
+        return "-"
+    return cls[:-1] if cls.endswith("S") else cls
 
 
 def entry_class(entry):
@@ -143,12 +156,13 @@ def compat(cls, move):
     if stat not in ("attack", "spAtk"):
         # 변화기 · 바디프레스 · 강제 교체기는 A·C 투자로 안 갈린다
         return 1.0
-    if cls == "AC":
+    ap = attack_part(cls)
+    if ap == "AC":
         return 1.0
-    if cls == "-":
+    if ap == "-":
         # 어느 쪽도 안 부은 내구형. 물리든 특수든 어중간하다.
         return bad ** 0.5
-    return 1.0 if cls == ("A" if stat == "attack" else "C") else bad
+    return 1.0 if ap == ("A" if stat == "attack" else "C") else bad
 
 
 def _solve_odds(kappas, weights, target):
@@ -293,11 +307,280 @@ def probs_for_class(dex, poke, cls):
     return list(zip(moves, mixed))
 
 
-def form_posterior(dex, poke, seen_moves):
-    """본 기술로 형태를 좁힌다. {형태: 사후 확률}.
+
+# ---------------------------------------------------------------------------
+# 성격 — 규칙으로 갈린다
+# ---------------------------------------------------------------------------
+def nature_compat(cls, nature):
+    """이 성격이 이 형태와 맞는가. **이건 규칙이다.**
+
+    성격은 한 능력치를 1.1배, 다른 하나를 0.9배로 만든다.
+    **자기가 때리는 능력치를 깎는 성격은 안 쓴다.** CS형 한카리아스가
+    특수공격을 깎는 성격을 들 이유가 없다. 취향이 아니라 손해다.
+
+    반대로 **안 쓰는 쪽을 깎는 것은 정상**이다 (CS형이 공격을 깎는 것).
+    그래서 '깎는다' 가 아니라 '쓰는 걸 깎는다' 만 본다.
+    """
+    bad = calc.CONFIG["nature_mismatch"]
+    down = (nature or {}).get("down")
+    if not down:
+        return 1.0
+    ap = attack_part(cls)
+    k = 1.0
+    if down == "attack" and ap in ("A", "AC"):
+        k *= bad
+    if down == "spAtk" and ap in ("C", "AC"):
+        k *= bad
+    if down == "speed" and cls.endswith("S"):
+        k *= bad
+    return k
+
+
+# ---------------------------------------------------------------------------
+# 도구 — 규칙이 없다. 그래서 **데이터에서 잰다.**
+# ---------------------------------------------------------------------------
+#
+# 기술은 "물리기는 공격으로 때린다" 는 규칙이 방향을 줬다. 도구에는 그런 게 없다.
+# 챔피언스에는 공격/특공을 확정 짓는 도구가 힘의머리띠·박식안경 둘뿐이고,
+# 상위 20마리 채용률이 0.0% 다. (구애머리띠·구애안경·돌격조끼는 아예 없다.)
+#
+# 그래도 경향은 잴 수 있다. 한 포켓몬 안에서는 조합을 못 보지만,
+# **포켓몬끼리 비교**는 된다 — 먹다남은음식을 많이 쓰는 포켓몬이 내구형
+# 비중도 높은가. 263마리로 재면 이렇게 나온다.
+#
+#     먹다남은음식  내구형 +0.69   스피드 -0.59
+#     울퉁불퉁멧    내구형 +0.62   스피드 -0.54
+#     구애스카프    스피드 +0.58   내구형 -0.41
+#     생명의구슬    내구형 -0.43   물리형 +0.28
+#     풍선         내구형 +0.03   ← 아무 경향 없음
+#
+# 마지막 줄이 중요하다. 이 측정은 **아무거나 다 맞다고 해 주지 않는다.**
+# 풍선은 '땅 기술 무효' 라 뭔가 경향이 있을 것 같지만, 재 보면 없다.
+#
+# ! 한계를 분명히 해 둔다. 이건 **포켓몬끼리의 상관**이지 한 포켓몬 안의
+#   상관이 아니다. "내구형 포켓몬이 먹다남은음식을 쓴다" 는 잰 것이고,
+#   "이 한카리아스가 HB 배분일 때 먹다남은음식을 쓴다" 는 **가정**이다.
+#   다만 방향은 데이터가 정했고, 세기는 CONFIG 에 두고 감도를 잰다.
+#   그리고 섞으면 원래 도구 채용률이 그대로 나오도록 맞추므로 피해가 갇힌다.
+
+_MIN_POKE = 15          # 이 도구를 쓰는 포켓몬이 이만큼은 돼야 상관을 믿는다
+_TENDENCY = None
+
+
+def _ranks(xs):
+    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    out = [0.0] * len(xs)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and xs[order[j + 1]] == xs[order[i]]:
+            j += 1
+        avg = (i + j) / 2.0
+        for k in range(i, j + 1):
+            out[order[k]] = avg
+        i = j + 1
+    return out
+
+
+def _corr(ra, rb):
+    n = len(ra)
+    ma, mb = sum(ra) / n, sum(rb) / n
+    num = sum((x - ma) * (y - mb) for x, y in zip(ra, rb))
+    da = sum((x - ma) ** 2 for x in ra) ** 0.5
+    db = sum((y - mb) ** 2 for y in rb) ** 0.5
+    return num / (da * db) if da and db else 0.0
+
+
+def item_tendency(dex):
+    """도구가 어느 형태에 쏠리는지 데이터에서 잰다. {도구: {형태: 상관}}."""
+    global _TENDENCY
+    if _TENDENCY is not None:
+        return _TENDENCY
+
+    rows = []
+    for u in dex.usage.values():
+        evs, items = u.get("evs"), u.get("items")
+        tot_ev = sum(e["pct"] for e in evs or [])
+        tot_it = sum(i["pct"] for i in items or [])
+        if tot_ev <= 0 or tot_it <= 0:
+            continue
+        share = {}
+        for e in evs:
+            c = entry_class(e)
+            share[c] = share.get(c, 0.0) + e["pct"] / tot_ev
+        rows.append((share,
+                     dict((i["name"], i["pct"] / tot_it) for i in items)))
+
+    out = {}
+    if len(rows) < 30:
+        _TENDENCY = out
+        return out
+
+    cls_ranks = {}
+    for c in CLASS_ORDER:
+        col = [r[0].get(c, 0.0) for r in rows]
+        if sum(1 for v in col if v > 0) >= _MIN_POKE:
+            cls_ranks[c] = _ranks(col)
+
+    names = set()
+    for _, it in rows:
+        names.update(it)
+    for name in names:
+        col = [it.get(name, 0.0) for _, it in rows]
+        if sum(1 for v in col if v > 0) < _MIN_POKE:
+            continue          # 표본이 적으면 상관을 안 믿는다
+        rk = _ranks(col)
+        out[name] = dict((c, _corr(rk, cr)) for c, cr in cls_ranks.items())
+    _TENDENCY = out
+    return out
+
+
+def item_compat(dex, cls, item_name):
+    """이 도구가 이 형태에 붙을 **승산 배율**.
+
+    두 가지가 따로 논다.
+      · 메가스톤 — **메가 폼의 종족값**이 정한다. 상관이 아니다
+        (메가스톤은 한 포켓몬만 쓰므로 포켓몬끼리 비교할 수가 없다).
+      · 그 밖의 도구 — 위에서 잰 상관을 쓴다.
+    """
+    if not item_name:
+        return 1.0
+    mega = dex.mega_by_item.get(item_name)
+    if mega:
+        b = mega.get("baseStats") or {}
+        gap = (b.get("attack", 0) - b.get("spAtk", 0)) / 100.0
+        ap = attack_part(cls)
+        if ap == "A":
+            sign = 1.0
+        elif ap == "C":
+            sign = -1.0
+        else:
+            return 1.0        # 양쪽형·내구형은 어느 메가와도 어울린다
+        return math.exp(calc.CONFIG["mega_stat_strength"] * gap * sign)
+
+    corr = item_tendency(dex).get(item_name, {}).get(cls)
+    if corr is None:
+        return 1.0
+    return math.exp(calc.CONFIG["item_tendency_strength"] * corr)
+
+
+# ---------------------------------------------------------------------------
+# 하나만 고르는 것(성격·도구)을 형태별로 가른다
+# ---------------------------------------------------------------------------
+def _fit_categorical(kappa, weights, targets, rounds=300):
+    """기술과 달리 **딱 하나만** 고르는 것들을 맞춘다.
+
+    기술은 4칸에 독립으로 들어가므로 기술마다 승산 하나씩 풀면 됐다.
+    성격·도구는 하나만 고르므로 각 형태의 확률 합이 1 이어야 한다.
+    조건이 둘이라 번갈아 맞춘다 (표 맞추기).
+
+      가로 — 각 형태에서 확률 합이 1
+      세로 — 섞으면 원래 채용률이 나온다
+    """
+    n, m = len(kappa), len(targets)
+    if not n or not m:
+        return []
+    q = [[max(1e-12, targets[j]) * kappa[i][j] for j in range(m)]
+         for i in range(n)]
+    for _ in range(rounds):
+        for i in range(n):
+            tot = sum(q[i]) or 1.0
+            for j in range(m):
+                q[i][j] /= tot
+        for j in range(m):
+            got = sum(weights[i] * q[i][j] for i in range(n))
+            if got <= 0:
+                continue
+            f = targets[j] / got
+            for i in range(n):
+                q[i][j] *= f
+    for i in range(n):
+        tot = sum(q[i]) or 1.0
+        for j in range(m):
+            q[i][j] /= tot
+    return q
+
+
+_PICK_CACHE = {}
+
+
+def _pick_table(dex, poke, kind):
+    """형태별로 성격(또는 도구)을 고를 확률. (형태, 항목, 표)."""
+    key = (poke["key"], kind, calc.CONFIG["nature_mismatch"],
+           calc.CONFIG["item_tendency_strength"],
+           calc.CONFIG["mega_stat_strength"])
+    hit = _PICK_CACHE.get(key)
+    if hit is not None:
+        return hit
+
+    u = (dex.usage.get(poke["key"])
+         or dex.usage.get("%04d-00" % poke["dexNo"]))
+    wmap = class_weights(dex, poke)
+    entries = (u or {}).get(kind) or []
+    total = sum(e["pct"] for e in entries)
+    classes = [c for c in CLASS_ORDER if wmap.get(c, 0.0) > 0.0]
+    if not classes or total <= 0:
+        out = (classes, entries, [])
+        _PICK_CACHE[key] = out
+        return out
+
+    weights = [wmap[c] for c in classes]
+    targets = [e["pct"] / total for e in entries]
+    if kind == "natures":
+        kappa = [[nature_compat(c, e) for e in entries] for c in classes]
+    else:
+        kappa = [[item_compat(dex, c, e["name"]) for e in entries]
+                 for c in classes]
+    out = (classes, entries, _fit_categorical(kappa, weights, targets))
+    _PICK_CACHE[key] = out
+    return out
+
+
+def nature_table(dex, poke):
+    return _pick_table(dex, poke, "natures")
+
+
+def item_table(dex, poke):
+    return _pick_table(dex, poke, "items")
+
+
+def pick_dist(dex, poke, kind, cls):
+    """그 형태일 때 (항목, 확률) 목록. 형태를 모르면 원래 채용률."""
+    classes, entries, table = _pick_table(dex, poke, kind)
+    if not entries:
+        return []
+    if not table:
+        total = sum(e["pct"] for e in entries) or 1.0
+        return [(e, e["pct"] / total) for e in entries]
+    if cls in classes:
+        row = table[classes.index(cls)]
+        return list(zip(entries, row))
+    wmap = class_weights(dex, poke)
+    mixed = [sum(wmap.get(c, 0.0) * table[i][j] for i, c in enumerate(classes))
+             for j in range(len(entries))]
+    return list(zip(entries, mixed))
+
+
+def pick_error(dex, poke, kind):
+    """섞은 값이 원래 채용률과 얼마나 어긋나는가."""
+    classes, entries, table = _pick_table(dex, poke, kind)
+    if not table:
+        return 0.0
+    wmap = class_weights(dex, poke)
+    total = sum(e["pct"] for e in entries) or 1.0
+    worst = 0.0
+    for j, e in enumerate(entries):
+        got = sum(wmap.get(c, 0.0) * table[i][j]
+                  for i, c in enumerate(classes))
+        worst = max(worst, abs(got - e["pct"] / total))
+    return worst
+
+def form_posterior(dex, poke, seen_moves, item=None):
+    """본 것으로 형태를 좁힌다. {형태: 사후 확률}.
 
     용성군을 쓰는 걸 봤으면 특수형 쪽으로 확 쏠린다. 그러면 **아직 안 본
     기술의 확률까지 같이 움직인다** — 그게 이걸 만든 이유다.
+    도구를 봤으면 그것도 같이 넣는다.
     """
     classes, weights, moves, table = conditional_table(dex, poke)
     if not classes:
@@ -310,6 +593,16 @@ def form_posterior(dex, poke, seen_moves):
                 continue
             for i in range(len(classes)):
                 post[i] *= table[i][j]
+    # 도구를 봤으면 그것도 증거다. 메가스톤이 특히 세다 —
+    # 메가리자몽Y(특공159, 공격104)를 봤으면 그놈은 특수형이다.
+    if item:
+        icls, ientries, itable = _pick_table(dex, poke, "items")
+        for j, e in enumerate(ientries):
+            if e["name"] != item or not itable:
+                continue
+            for i, c in enumerate(classes):
+                if c in icls:
+                    post[i] *= itable[icls.index(c)][j]
     total = sum(post)
     if total <= 0:
         return dict(zip(classes, weights))
@@ -407,11 +700,39 @@ def report(dex, poke, top=12, seen=None):
                                 for c, (h, w) in zip(cells, head)).rstrip()
                  + mark)
 
+    # 성격과 도구도 형태로 갈린다
+    for kind, title in (("natures", "성격"), ("items", "도구")):
+        kclasses, entries, ktable = _pick_table(dex, poke, kind)
+        if not ktable:
+            continue
+        L.append("-" * 78)
+        khead = [(title, 16), ("전체", 9)] + [(CLASS_KO[c], 9) for c in kclasses]
+        L.append("  " + "".join(best._pad(h, w) for h, w in khead).rstrip())
+        tot = sum(e["pct"] for e in entries) or 1.0
+        for j, e in enumerate(entries[:6]):
+            cells = [e["name"], "%.1f%%" % (e["pct"] / tot * 100)]
+            cells += ["%.0f%%" % (ktable[i][j] * 100)
+                      for i in range(len(kclasses))]
+            col = [ktable[i][j] for i in range(len(kclasses))]
+            hi = max(col)
+            # 채용률이 아주 낮은 것은 비율이 튀므로 표시하지 않는다
+            mark = ""
+            if e["pct"] / tot >= 0.03 and hi > 1.6 * (sum(col) / len(col)):
+                mark = "   ← %s 쪽" % CLASS_KO[kclasses[col.index(hi)]]
+            L.append("  " + "".join(best._pad(c, w)
+                                    for c, (h, w) in zip(cells, khead)).rstrip()
+                     + mark)
+
     L.append("-" * 78)
-    L.append("  섞으면 원래 채용률이 그대로 나온다 — 최대 오차 %.2f%%p"
-             % (mix_error(dex, poke) * 100))
-    L.append("  (안 맞는 형태의 승산 배율 = %.2f, 가정값)"
-             % calc.CONFIG["form_mismatch"])
+    L.append("  섞으면 원래 채용률이 그대로 나온다 — 최대 오차 기술 %.2f%%p"
+             " · 성격 %.2f%%p · 도구 %.2f%%p"
+             % (mix_error(dex, poke) * 100,
+                pick_error(dex, poke, "natures") * 100,
+                pick_error(dex, poke, "items") * 100))
+    L.append("  (가정값 — 기술 %.2f · 성격 %.2f · 도구 세기 %.1f · 메가 세기 %.1f)"
+             % (calc.CONFIG["form_mismatch"], calc.CONFIG["nature_mismatch"],
+                calc.CONFIG["item_tendency_strength"],
+                calc.CONFIG["mega_stat_strength"]))
     L.append(line)
     return "\n".join(L)
 

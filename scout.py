@@ -315,7 +315,8 @@ def pick_form(dex, poke, rng, evidence=None):
     끝까지 숨은 값이고, 본 것으로 조금씩 좁혀 갈 뿐이다.
     용성군을 쓰는 걸 봤으면 특수형 쪽으로 확 쏠린다.
     """
-    post = forms.form_posterior(dex, poke, (evidence or Evidence()).seen_moves)
+    ev = evidence or Evidence()
+    post = forms.form_posterior(dex, poke, ev.seen_moves, ev.item)
     if not post:
         return None
     return _weighted_pick(rng, sorted(post.items()))
@@ -335,19 +336,22 @@ def sample_build(dex, poke, rng, evidence=None, speed_of=None):
         return calc.Build(dex, poke)
 
     for _ in range(40):          # 관찰과 안 맞으면 다시 뽑는다
+        # **형태를 제일 먼저 뽑는다.** 성격·배분·도구가 전부 여기에 딸려 온다.
+        # 배분은 처음에 공개되지 않으므로 형태는 끝까지 추론 대상이다.
+        # 본 기술·본 도구가 있으면 이미 좁혀져 있다 (forms.form_posterior).
+        cls = pick_form(dex, poke, rng, ev)
+
         nature = None
         if u.get("natures"):
-            pick = _weighted_pick(rng, _normalized(u["natures"]))
-            try:
-                nature = dex.find_nature(pick["name"])
-            except LookupError:
-                nature = None
-        # 형태를 먼저 뽑고, 그 안에서 배분을 고른다.
-        # 본 기술이 있으면 형태가 이미 좁혀져 있다 (forms.form_posterior).
-        # 배분은 처음에 공개되지 않으므로 **끝까지 추론 대상**이다.
+            pick = _weighted_pick(rng, forms.pick_dist(dex, poke, "natures", cls))
+            if pick:
+                try:
+                    nature = dex.find_nature(pick["name"])
+                except LookupError:
+                    nature = None
+
         sp = {}
         if u.get("evs"):
-            cls = pick_form(dex, poke, rng, ev)
             rows = forms.spread_range(dex, poke, cls) if cls else []
             pick = _weighted_pick(rng, rows or _normalized(u["evs"]))
             for k, v in (pick or {}).get("spread", {}).items():
@@ -356,7 +360,7 @@ def sample_build(dex, poke, rng, evidence=None, speed_of=None):
 
         item = ev.item
         if item is None and u.get("items"):
-            pick = _weighted_pick(rng, _normalized(u["items"]))
+            pick = _weighted_pick(rng, forms.pick_dist(dex, poke, "items", cls))
             item = pick["name"] if pick else None
 
         # 메가스톤을 뽑았으면 실제로는 그 메가다
