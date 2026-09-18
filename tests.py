@@ -989,7 +989,9 @@ def test_live(dex):
     bad2, why2 = live.parse_evs("H32B32S32")
     check("합계 66 초과를 잡는다 (%s)" % why2, bad2 is None and why2)
 
-    line = "한카리아스 지진,역린 | 명랑 A32S32 기합의띠"
+    # ! 특성을 받게 만든 뒤로는 **특성까지 적어야** 채운 것이 없다.
+    #   한카리아스는 특성이 둘(사나운기세·모래숨기)이라 안 적으면 채운다.
+    line = "한카리아스 지진,역린 | 명랑 A32S32 까칠한피부 기합의띠"
     build, moves, filled, bad3 = live.read_line(dex, line)
     check("파티 한 줄을 통째로 읽는다", bad3 is None, bad3)
     check("적은 성격이 그대로 들어간다 (%s)"
@@ -1022,6 +1024,38 @@ def test_live(dex):
           % (hb.stat("spDef"), hd.stat("spDef")),
           hd.stat("spDef") > hb.stat("spDef") + 20,
           (hb.stat("spDef"), hd.stat("spDef")))
+
+    # 특성도 적은 대로 쓰는가 — 안 적으면 조용히 첫 번째 것이 된다
+    sand, _m, _f, _b = live.read_line(dex, "하마돈 지진 | 무사태평 모래날림")
+    power, _m, _f2, _b = live.read_line(dex, "하마돈 지진 | 무사태평 모래의힘")
+    check("적은 특성이 그대로 들어간다 (%s / %s)"
+          % (sand.ability, power.ability),
+          sand.ability == "모래날림" and power.ability == "모래의힘",
+          (sand.ability, power.ability))
+    none_, _m, filled3, _b = live.read_line(dex, "하마돈 지진 | 무사태평")
+    check("특성을 안 적으면 채웠다고 말한다", "특성" in (filled3 or []),
+          filled3)
+    bad4 = live.read_line(dex, "하마돈 지진 | 무사태평 심록")[3]
+    check("그 포켓몬이 못 가지는 특성은 거부한다 (%s)" % bad4, bool(bad4))
+
+    # 게임 화면처럼 보여 주는 카드 — **테두리가 맞아야 읽을 수 있다**
+    card = live.stat_card(sand, ["지진", "하품", "게으름피우기", "스텔스록"])
+    widths = set(best._w(x) for x in card)
+    check("카드의 모든 줄이 같은 너비다 (%s)" % sorted(widths),
+          len(widths) == 1, card[:3])
+    body = "\n".join(card)
+    check("카드에 능력치·보정·특성·도구가 다 보인다",
+          all(x in body for x in ("HP", "능력 포인트", "무사태평",
+                                  "모래날림", "도구")), card)
+
+    # 게임 화면과 실제로 맞는가 (2026-09-18 사용자가 보내 준 하마돈)
+    real = live.read_line(
+        dex, "하마돈 지진,하품,게으름피우기,스텔스록 | 무사태평 H32B22D12")[0]
+    screen = {"hp": 215, "attack": 132, "defense": 176,
+              "spAtk": 88, "spDef": 104, "speed": 60}
+    off = [(k, real.stat(k), v) for k, v in screen.items()
+           if real.stat(k) != v]
+    check("게임 화면의 하마돈과 6/6 일치한다", not off, off)
 
     # 메가스톤을 적으면 메가로 싸운다
     mg, _m, _f, _b = live.read_line(
@@ -1139,6 +1173,28 @@ def test_windows_safe(dex):
           body[:200])
     check("찍는 쪽(stdout·stderr)도 맞춘다",
           "sys.stdout" in body and "sys.stderr" in body)
+
+    # 창 UI — **여기서는 띄울 수가 없다** (컨테이너에 tkinter 도 화면도
+    # 없다). 그래서 띄우지 않고 확인할 수 있는 것만 본다. 실제로
+    # 만들어지는지는 윈도우 빌드의 `gui.py --점검` 이 본다.
+    import gui
+    check("창 코드가 문법적으로 멀쩡하다 (import 된다)",
+          hasattr(gui, "App") and hasattr(gui, "check"))
+    ok, why = gui.have_tk()
+    check("tkinter 가 있나 없나를 말해 준다 (여기: %s)"
+          % ("있음" if ok else "없음"), isinstance(ok, bool))
+    if not ok:
+        check("없으면 글자판을 쓰라고 안내한다",
+              "live.py" in io.open(os.path.join(root, "gui.py"),
+                                   encoding="utf-8").read())
+    gsrc = io.open(os.path.join(root, "gui.py"), encoding="utf-8").read()
+    check("창도 시작할 때 fix_console 을 부른다", "paths.fix_console" in gsrc)
+    check("탐색을 다른 갈래에서 돌린다 (창이 얼면 못 쓴다)",
+          "threading.Thread" in gsrc)
+    check("창을 만든 갈래에서만 건드린다 (root.after)",
+          "root.after" in gsrc)
+    check("계산은 시험된 곳에 맡긴다 (search·live 를 쓴다)",
+          "search.best_action" in gsrc and "live.read_line" in gsrc)
 
     # 묶인 실행 파일에서 읽는 자리와 쓰는 자리가 갈려 있는가
     check("읽는 자리와 쓰는 자리를 따로 정한다",

@@ -46,6 +46,7 @@ import sys
 import time
 
 import battle
+import best
 import calc
 import scout
 import search
@@ -160,12 +161,27 @@ def parse_evs(text):
     return sp, " ".join(seen)
 
 
-def parse_extra(dex, text):
-    """기술 뒤에 적은 배분·성격·도구를 읽는다.
+def find_ability(dex, poke, text):
+    """그 포켓몬이 가질 수 있는 특성 중에서 찾는다.
 
-    돌려주는 것: (sp, nature, item, 못 읽은 낱말들)
+    **아무 특성이나 받으면 안 된다.** 하마돈에게 '심록' 을 붙일 수는
+    없다. 그 포켓몬의 목록 안에서만 고른다.
     """
-    sp = nature = item = None
+    for ab in poke.get("abilities") or ():
+        if ab["name"] == text:
+            return ab["name"]
+    for ab in poke.get("abilities") or ():
+        if ab["name"].startswith(text):
+            return ab["name"]
+    return None
+
+
+def parse_extra(dex, text, poke=None):
+    """기술 뒤에 적은 배분·성격·특성·도구를 읽는다.
+
+    돌려주는 것: (sp, nature, ability, item, 못 읽은 낱말들)
+    """
+    sp = nature = ability = item = None
     unknown = []
     for word in (text or "").replace(",", " ").split():
         got, note = parse_evs(word)
@@ -180,15 +196,20 @@ def parse_extra(dex, text):
             continue
         except LookupError:
             pass
+        if poke is not None:
+            got = find_ability(dex, poke, word)
+            if got:
+                ability = got
+                continue
         kind, name = find_move_or_item(dex, word)
         if kind == "도구":
             item = name
             continue
         unknown.append(word)
-    return sp, nature, item, unknown
+    return sp, nature, ability, item, unknown
 
 
-def build_one(dex, poke, sp, nature, item):
+def build_one(dex, poke, sp, nature, ability, item):
     """내가 적은 대로 만든다. 안 적은 것만 사용률로 채운다.
 
     (빌드, 사용률로 채운 것들) 을 돌려준다.
@@ -204,11 +225,18 @@ def build_one(dex, poke, sp, nature, item):
     if item is None:
         item = base.item
         filled.append("도구")
-    # 메가스톤을 들었으면 그 폼으로 싸운다 (popular_build 와 같은 규칙)
+    if ability is None:
+        # **특성도 조용히 첫 번째 것으로 정해지고 있었다.** 하마돈이
+        # 모래의힘이면 날씨가 안 깔려서 판이 통째로 달라진다.
+        ability = base.ability
+        if len(poke.get("abilities") or ()) > 1:
+            filled.append("특성")
     mega = dex.mega_by_item.get(item)
     if mega and not poke.get("isMega") and mega["dexNo"] == poke["dexNo"]:
         poke = mega
-    return calc.Build(dex, poke, sp=sp, nature=nature, item=item), filled
+        ability = None            # 메가는 특성이 따로 정해져 있다
+    return calc.Build(dex, poke, sp=sp, nature=nature, ability=ability,
+                      item=item), filled
 def read_line(dex, line):
     """파티 파일 한 줄을 읽는다.
 
@@ -230,10 +258,10 @@ def read_line(dex, line):
             return None, None, None, ("'%s' 을 기술로 못 읽었습니다" % m)
         moves.append(name)
 
-    sp, nature, item, unknown = parse_extra(dex, tail)
+    sp, nature, ability, item, unknown = parse_extra(dex, tail, poke)
     if unknown:
         return None, None, None, ("못 알아들은 말: %s" % ", ".join(unknown))
-    build, filled = build_one(dex, poke, sp, nature, item)
+    build, filled = build_one(dex, poke, sp, nature, ability, item)
     return build, moves, filled, None
 
 
@@ -263,7 +291,8 @@ PARTY_HELP = u"""내 파티를 적으세요. 한 줄에 한 마리, 빈 줄이�
        아머까오 바디프레스,철벽,날개쉬기,브레이브버드 | 장난꾸러기 H32B32 울퉁불퉁멧
 
   노력치는 A32S32 처럼 붙여 씁니다 (H체력 A공격 B방어 C특공 D특방 S스피드).
-  한 칸에 32까지, 합쳐서 66까지입니다.
+  한 칸에 32까지, 합쳐서 66까지 — 게임의 '능력 포인트' 화면 그대로입니다.
+  특성도 적을 수 있습니다 (그 포켓몬이 가질 수 있는 것만 받습니다).
   세로줄(|) 뒤는 안 적어도 되는데, 그러면 **사다리에서 제일 흔한 것**으로
   채웁니다. 내 포켓몬인데 남의 배분으로 계산하게 되니 적는 편이 낫습니다."""
 
@@ -283,17 +312,31 @@ def ask_party(dex):
             print("  ! %s" % bad)
             continue
         out.append((build, moves, filled))
-        print("  %s" % describe_member(build, moves, filled))
+        print_card(build, moves)
+        if filled:
+            print("    ← %s 는 사용률로 채웠습니다 — 게임 화면을 보고 적어 주세요"
+                  % "·".join(filled))
     if out:
-        with io.open(PARTY_FILE, "w", encoding="utf-8") as f:
-            f.write(u"# 이름 기술,기술,기술,기술 | 성격 노력치 도구\n")
-            for build, moves, _filled in out:
-                f.write(u"%s %s | %s %s %s\n"
-                        % (build.poke["name"], ",".join(moves),
-                           build.nature["name"] if build.nature else "",
-                           ev_text(build.sp), build.item or ""))
+        save_party_file(out)
         print("\n%s 에 저장했습니다. 다음부터는 안 물어봅니다." % PARTY_FILE)
     return out or None
+
+
+def party_line(build, moves):
+    """한 마리를 파일에 적을 한 줄로."""
+    return u"%s %s | %s %s %s %s" % (
+        build.poke["name"], ",".join(moves),
+        build.nature["name"] if build.nature else "",
+        ev_text(build.sp), build.ability or "", build.item or "")
+
+
+def save_party_file(party, path=PARTY_FILE):
+    """[(빌드, [기술], 채운것)] 을 파일로. 글자판과 창이 같이 쓴다."""
+    with io.open(path, "w", encoding="utf-8") as f:
+        f.write(u"# 이름 기술,기술,기술,기술 | 성격 노력치 특성 도구\n")
+        for row in party:
+            f.write(party_line(row[0], row[1]) + u"\n")
+    return path
 
 
 def ev_text(sp):
@@ -304,11 +347,72 @@ def ev_text(sp):
     return "".join("%s%d" % (k, v) for k, v in got) or "무투자"
 
 
+# ---------------------------------------------------------------------------
+# 게임 화면처럼 보여 주기
+# ---------------------------------------------------------------------------
+#
+# 게임의 능력치 화면을 그대로 옮긴 것이다. 사용자가 그 화면을 보면서
+# 적을 테니, **같은 순서·같은 이름**으로 보여 줘야 눈으로 대조할 수 있다.
+# 실제로 그 화면과 대조해서 계산기가 6/6 맞는 것을 확인했다 (하마돈).
+STAT_ORDER = [("hp", "HP"), ("attack", "공격"), ("defense", "방어"),
+              ("spAtk", "특수공격"), ("spDef", "특수방어"), ("speed", "스피드")]
+
+
+def stat_card(build, moves=None, bar_width=18):
+    """한 마리를 게임 화면처럼 그린다. 줄 목록으로 돌려준다.
+
+    ! **한글은 한 글자가 두 칸이다.** 그냥 %-12s 로 맞추면 테두리가
+      들쭉날쭉해진다. best._w / best._pad 가 그걸 세어 준다 —
+      이미 있는 것을 쓴다.
+    """
+    W = 46                      # 테두리 안쪽 너비 (칸 기준)
+
+    def row(text):
+        return "│ " + best._pad(text, W - 2) + " │"
+
+    def two(left, right):
+        half = (W - 2) // 2
+        return "│ " + best._pad(left, half) + best._pad(right, W - 2 - half) + " │"
+
+    L = ["┌" + "─" * W + "┐", row(build.name), "├" + "─" * W + "┤"]
+    got = "%d/%d" % (sum(build.sp.values()), EV_TOTAL)
+    L.append(row(best._pad("능력 포인트", W - 2 - best._w(got)) + got))
+
+    up = (build.nature or {}).get("up")
+    down = (build.nature or {}).get("down")
+    for key, ko in STAT_ORDER:
+        val = build.stat(key)
+        ev = build.sp.get(key, 0)
+        n = int(round(bar_width * ev / float(EV_MAX)))
+        bar = "█" * n + "·" * (bar_width - n)
+        mark = "▲" if key == up else ("▼" if key == down else " ")
+        # ! 화살표(▲▼)도 한글처럼 두 칸이다. 그래서 여기도 _pad 로 센다.
+        head = best._pad(ko, 9) + "%3d" % val + mark + " "
+        L.append(row(best._pad(head, 15) + bar + " %2d" % ev))
+
+    L.append("├" + "─" * W + "┤")
+    L.append(two("보정  " + ((build.nature or {}).get("name") or "-"),
+                 "특성  " + (build.ability or "-")))
+    L.append(row("도구  " + (build.item or "없음")))
+    if moves:
+        L.append("├" + "─" * W + "┤")
+        for i in range(0, len(moves), 2):
+            pair = moves[i:i + 2]
+            L.append(two(pair[0], pair[1] if len(pair) > 1 else ""))
+    L.append("└" + "─" * W + "┘")
+    return L
+
+
+def print_card(build, moves=None):
+    for line in stat_card(build, moves):
+        print("  " + line)
+
+
 def describe_member(build, moves, filled):
     """한 마리를 한 줄로. **사용률로 채운 것은 반드시 드러낸다.**"""
-    out = "%s | %s %s %s" % (build.name,
-                             build.nature["name"] if build.nature else "-",
-                             ev_text(build.sp), build.item or "도구없음")
+    out = "%s | %s %s | %s | %s" % (
+        build.name, build.nature["name"] if build.nature else "-",
+        ev_text(build.sp), build.ability or "-", build.item or "도구없음")
     if moves:
         out += " | " + "/".join(moves)
     else:
@@ -528,9 +632,12 @@ def main():
     dex = calc.Dex()
     party = load_party(dex)
     if party:
-        print("내 파티 (%s):" % PARTY_FILE)
+        print("내 파티 (%s)\n" % PARTY_FILE)
         for build, moves, filled in party:
-            print("  " + describe_member(build, moves, filled))
+            print_card(build, moves)
+            if filled:
+                print("    ← %s 는 사용률로 채웠습니다" % "·".join(filled))
+            print("")
         guessed = sorted(set(x for _b, _m, f in party for x in (f or [])))
         if guessed:
             print("")
