@@ -594,6 +594,120 @@ def test_item_behaviors(dex):
           (b.get("초점렌즈"), b.get("대파")))
 
 
+def test_screens_and_weather(dex):
+    """스크린 · 날씨 강화 · 대타 · 희망사항.
+
+    전부 **게임 데이터에 숫자가 없어서** 본편 값을 가정한 것들이다.
+    그래서 값이 맞는지가 아니라 **실제로 도는지**를 지킨다.
+    가정값이라는 경고가 같이 뜨는지도 본다 — 조용히 넘어가면 안 된다.
+    """
+    print("\n[38] 스크린 · 날씨 · 대타 · 희망사항")
+    import random
+
+    kao = calc.popular_build(dex, dex.find_pokemon("아머까오"))[0]
+    chomp = calc.Build(dex, dex.find_pokemon("한카리아스"),
+                       sp={"attack": 32, "speed": 32},
+                       nature=dex.find_nature("명랑"))
+    fang = dex.find_move("불꽃엄니")
+
+    # -- 스크린이 물리/특수를 갈라서 깎는가 --------------------------------
+    check("리플렉터는 물리만 깎는다",
+          battle.SCREEN_KIND["리플렉터"] == "물리")
+    check("빛의장막은 특수만 깎는다",
+          battle.SCREEN_KIND["빛의장막"] == "특수")
+    check("오로라베일은 둘 다 깎는다",
+          battle.SCREEN_KIND["오로라베일"] is None)
+    check("순풍은 같은 자리에 깔려도 데미지를 안 깎는다",
+          battle.SCREEN_KIND["순풍"] == "-")
+
+    party = battle.Party(dex, kao)
+    party.screens["리플렉터"] = 5
+    check("리플렉터를 깔면 물리가 반감된다 (%.2f)"
+          % party.screen_mult("물리"),
+          abs(party.screen_mult("물리")
+              - calc.CONFIG["screen_reduce"]) < 1e-9)
+    check("특수는 그대로다 (%.2f)" % party.screen_mult("특수"),
+          abs(party.screen_mult("특수") - 1.0) < 1e-9)
+    party.screens = {"순풍": 4}
+    check("순풍만 깔렸을 때 데미지는 그대로다",
+          abs(party.screen_mult("물리") - 1.0) < 1e-9)
+    check("대신 스피드가 두 배다 (%.1f)" % party.speed_mult(),
+          abs(party.speed_mult() - 2.0) < 1e-9)
+
+    # -- 실제 대전에서 데미지가 줄어드는가 ---------------------------------
+    # **대조군을 고르는 데 한 번 미끄러졌다.** 처음엔 철벽을 대조군으로
+    # 썼는데, 철벽은 방어를 올리므로 그쪽 데미지도 같이 줄어 32 대 31 이
+    # 나왔다. 효과가 있는지 없는지 구별이 안 되는 비교였다.
+    # 빛의장막은 리플렉터와 **모든 것이 같고 물리를 안 깎는 것만 다르다.**
+    plain = battle.run_once(dex, kao, chomp, [dex.find_move("빛의장막")],
+                            [fang], random.Random(1), log=True)
+    screen = battle.run_once(dex, kao, chomp, [dex.find_move("리플렉터")],
+                             [fang], random.Random(1), log=True)
+
+    def nth_hit(log, n):
+        """n번째로 맞은 데미지. **첫 타가 아니라 둘째 타를 봐야 한다** —
+        한카리아스가 더 빨라서 첫 타는 리플렉터를 깔기 전에 들어온다.
+        (이걸 모르고 첫 타로 짰다가 54 -> 54 로 테스트가 깨졌다.)"""
+        got = [int(r.split("에게")[1].split("(")[0]) for r in log
+               if "불꽃엄니 →" in r and "아머까오 에게" in r]
+        return got[n] if len(got) > n else None
+    a, b = nth_hit(plain["log"], 1), nth_hit(screen["log"], 1)
+    check("리플렉터를 깐 뒤 물리 데미지가 준다 (%s -> %s)" % (a, b),
+          a is not None and b is not None and b < a, (a, b))
+    check("스크린이 가정값이라고 경고한다",
+          any("스크린" in w for w in screen["warnings"]),
+          screen["warnings"][:2])
+
+    # -- 날씨가 타입 배율을 주는가 -----------------------------------------
+    check("비는 물을 올리고 불꽃을 깎는다",
+          battle.WEATHER_BOOST["비"] == "물"
+          and battle.WEATHER_WEAKEN["비"] == "불꽃")
+    check("쾌청은 불꽃을 올리고 물을 깎는다",
+          battle.WEATHER_BOOST["쾌청"] == "불꽃"
+          and battle.WEATHER_WEAKEN["쾌청"] == "물")
+    b2 = battle.Battle(dex, kao, chomp, rng=random.Random(1))
+    base = b2._power_scale(fang, chomp)
+    b2.field.set("비")
+    wet = b2._power_scale(fang, chomp)
+    b2.field.set("쾌청")
+    dry = b2._power_scale(fang, chomp)
+    check("비가 오면 불꽃 기술이 약해진다 (%.2f -> %.2f)" % (base, wet),
+          wet < base, (base, wet))
+    check("쾌청이면 불꽃 기술이 세진다 (%.2f -> %.2f)" % (base, dry),
+          dry > base, (base, dry))
+    check("날씨 배율이 가정값이라고 경고한다",
+          any("미확인" in w and ("비" in w or "쾌청" in w)
+              for w in b2.warnings), b2.warnings[:3])
+
+    # -- 대타출동 ----------------------------------------------------------
+    r = battle.run_once(dex, kao, chomp,
+                        [dex.find_move("대타출동"), dex.find_move("브레이브버드")],
+                        [fang], random.Random(2), log=True)
+    check("대타가 데미지를 대신 받는다",
+          any("대타에게" in x for x in r["log"]), r["log"][:4])
+    check("대타는 부서진다", any("부서졌다" in x for x in r["log"]),
+          r["log"][:5])
+
+    # -- 희망사항은 **다음 턴에** 온다 --------------------------------------
+    r2 = battle.run_once(dex, kao, chomp,
+                         [dex.find_move("희망사항"), dex.find_move("브레이브버드")],
+                         [fang], random.Random(2), log=True)
+    laid = [i for i, x in enumerate(r2["log"]) if "회복이 온다" in x]
+    came = [i for i, x in enumerate(r2["log"]) if "희망사항으로" in x]
+    check("희망사항이 걸리고 나중에 도착한다",
+          bool(laid) and bool(came) and came[0] > laid[0], (laid, came))
+
+    # -- 아픔나누기 · 흑안개 · 버티기 ---------------------------------------
+    for nm, kind in (("아픔나누기", "pain_split"), ("흑안개", "haze"),
+                     ("버티기", "endure_turn"), ("대타출동", "substitute"),
+                     ("희망사항", "wish")):
+        efs = [e["kind"] for e in battle.move_effects(dex.find_move(nm))]
+        check("%s 를 '%s' 로 읽는다" % (nm, kind), kind in efs, efs)
+    check("빛의장막은 스크린으로 읽는다",
+          any(e["kind"] == "screen" and e["turns"] == 5
+              for e in battle.move_effects(dex.find_move("빛의장막"))))
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2280,6 +2394,7 @@ def main():
     test_battle_result(dex)
     test_dead_items(dex)
     test_item_behaviors(dex)
+    test_screens_and_weather(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

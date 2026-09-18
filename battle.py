@@ -39,6 +39,21 @@ STAT_WORD = {
     "특수방어": "spDef", "스피드": "speed",
 }
 
+# 날씨가 어느 타입을 올리고 어느 타입을 깎는가.
+# **게임 데이터에 숫자가 없다.** 본편 값을 쓰고 경고를 띄운다 — 압정과 같다.
+WEATHER_BOOST = {"비": "물", "쾌청": "불꽃"}
+WEATHER_WEAKEN = {"비": "불꽃", "쾌청": "물"}
+
+# 같은 편 필드에 까는 것들. 기술 설명문에서 이름과 턴수를 읽는다.
+# 물리만 깎는 것 / 특수만 깎는 것 / 둘 다 깎는 것으로 갈린다.
+# 값이 "물리"/"특수" 면 그 분류만 깎고, None 이면 둘 다 깎는다.
+# "-" 는 **데미지를 안 깎는 것**이다 — 순풍은 같은 자리에 깔리지만
+# 스피드를 두 배로 만드는 것이라 데미지와 상관이 없다. 이걸 안 갈라 두면
+# 순풍이 조용히 스크린 노릇을 한다.
+SCREEN_KIND = {"리플렉터": "물리", "빛의장막": "특수", "오로라베일": None,
+               "순풍": "-"}
+SCREEN_SPEED = {"순풍": 2.0}
+
 # 날씨를 등장만으로 까는 특성
 WEATHER_ABILITY = {
     "모래날림": "모래바람", "가뭄": "쾌청", "잔비": "비", "눈퍼뜨리기": "눈",
@@ -134,6 +149,16 @@ _WEATHER = re.compile(r"5턴 동안 (?:전체 필드를 )?([가-힣]+) 상태로
 _RECOIL = re.compile(r"준 데미지의 1/(\d+)만큼 자신도")
 
 
+# "5턴 동안 같은 편 필드를 빛의장막 상태로 만든다" — 순풍도 같은 꼴이다
+_SCREEN = re.compile(r"(\d+)턴 동안 같은 편 필드를 (.+?) 상태로 만든다")
+_SUBSTITUTE = re.compile(r"HP를 소비하여 대타를 내보낸다")
+_WISH = re.compile(r"자신이 위치한 자리를 희망사항 상태로 만든다")
+_PAIN_SPLIT = re.compile(r"남은 HP를 더한 다음 1/2씩 나눠 갖는다")
+_HAZE = re.compile(r"전체 필드의 능력 변화를 없앤다")
+_ENDURE_MOVE = re.compile(r"사용한 턴 동안 기절할 듯한 기술로 데미지를 입으면 "
+                          r"HP를 1 남기고 버틴다")
+
+
 def move_effects(move):
     """이 기술이 하는 일을 목록으로. 못 읽은 것은 'unknown' 으로 남긴다."""
     d = move.get("description") or ""
@@ -170,6 +195,20 @@ def move_effects(move):
         out.append({"kind": "protect"})
     if _PHAZE.search(d):
         out.append({"kind": "phaze"})
+    if _SUBSTITUTE.search(d):
+        out.append({"kind": "substitute", "frac": 0.25})
+    if _WISH.search(d):
+        out.append({"kind": "wish", "frac": 0.5})
+    if _PAIN_SPLIT.search(d):
+        out.append({"kind": "pain_split"})
+    if _HAZE.search(d):
+        out.append({"kind": "haze"})
+    if _ENDURE_MOVE.search(d):
+        out.append({"kind": "endure_turn"})
+    m = _SCREEN.search(d)
+    if m:
+        out.append({"kind": "screen", "name": m.group(2),
+                    "turns": int(m.group(1))})
     m = _WEATHER.search(d)
     if m:
         out.append({"kind": "weather", "weather": m.group(1)})
@@ -378,6 +417,12 @@ class Side(object):
         self.protecting = False
         # 이 턴에 풀죽었는가 (왕의징표석 등). 턴이 끝나면 지워진다.
         self.flinched = False
+        # 대타출동으로 세운 인형의 남은 HP. 0 이면 없다.
+        self.substitute = 0
+        # 희망사항을 자기가 걸었는지 (표시용). 실제 회복은 Party.wish 가 한다.
+        self.wish = 0
+        # 버티기 — 이 턴만 HP 1 을 남긴다
+        self.enduring = False
         # 따라큐의 탈. 첫 공격을 한 번 통째로 막는다.
         self.disguise = (build.ability == DISGUISE)
         # 상태 이상 부속 — 잠듦/얼음 남은 턴, 맹독 누적, 혼란, 졸음
@@ -438,6 +483,9 @@ class Side(object):
         기합의띠와 옹골참은 그때는 안 버틴다.
         """
         note = None
+        if direct and amount >= self.hp and self.enduring:
+            self.hp = 1
+            return "버티기로 HP 1 남김"
         if direct and amount >= self.hp and self.hp == self.max_hp:
             if self.base.ability == ENDURE_FULL:
                 amount = self.hp - 1
@@ -497,6 +545,11 @@ class Party(object):
         self.active_idx = 0
         # 이 편이 '맞는' 압정. 상대가 깔아 둔 것이다.
         self.hazards = {}
+        # 이 편이 '깐' 스크린. {이름: 남은 턴}
+        self.screens = {}
+        # 희망사항 — (남은 턴, 회복량). **자리에 걸리는 것**이라 건 놈이
+        # 빠져도 다음에 나온 놈이 받는다. 그래서 Side 가 아니라 Party 다.
+        self.wish = None
 
     @property
     def active(self):
@@ -523,6 +576,38 @@ class Party(object):
             return False
         self.hazards[kind] = now + 1
         return True
+
+    def screen_text(self):
+        if not self.screens:
+            return "없음"
+        return " ".join("%s(%d턴)" % (k, v) for k, v in self.screens.items())
+
+    def screen_mult(self, category):
+        """이 편이 받는 데미지 배율. 스크린이 깔려 있으면 깎인다."""
+        mult = 1.0
+        for name in self.screens:
+            kind = SCREEN_KIND.get(name, "-")   # 모르는 것은 안 깎는다
+            if kind == "-":
+                continue
+            if kind is None or kind == category:
+                mult *= calc.CONFIG["screen_reduce"]
+        return mult
+
+    def speed_mult(self):
+        """순풍처럼 이 편 전체의 스피드를 바꾸는 것."""
+        mult = 1.0
+        for name in self.screens:
+            mult *= SCREEN_SPEED.get(name, 1.0)
+        return mult
+
+    def tick_screens(self):
+        out = []
+        for name in list(self.screens):
+            self.screens[name] -= 1
+            if self.screens[name] <= 0:
+                del self.screens[name]
+                out.append("%s 가 사라졌다" % name)
+        return out
 
     def hazard_text(self):
         if not self.hazards:
@@ -741,6 +826,8 @@ class Battle(object):
         if old.alive:
             # **랭크는 물러나면 사라진다.** 쌓아 둔 것을 지키려면 안 빠져야 한다.
             old.ranks = {k: 0 for k in old.ranks}
+            old.substitute = 0
+            old.enduring = False
             old.confused = 0
             old.drowsy = 0
             old.protecting = False
@@ -827,6 +914,17 @@ class Battle(object):
             mult *= 0.5
             self._warn("%s 가 %s 를 반감시킨다고 본 것은 미확인 값입니다"
                        % (self.field.terrain, move["type"]))
+        # 날씨도 게임 데이터에 숫자가 없다. 본편 값을 쓰고 경고를 띄운다.
+        if WEATHER_BOOST.get(self.field.weather) == move["type"]:
+            mult *= calc.CONFIG["weather_boost"]
+            self._warn("%s 의 %s 타입 강화 %.2f배는 게임 데이터에 없는 "
+                       "미확인 값입니다" % (self.field.weather, move["type"],
+                                       calc.CONFIG["weather_boost"]))
+        if WEATHER_WEAKEN.get(self.field.weather) == move["type"]:
+            mult *= calc.CONFIG["weather_weaken"]
+            self._warn("%s 가 %s 를 %.2f배로 깎는다고 본 것은 미확인 값입니다"
+                       % (self.field.weather, move["type"],
+                          calc.CONFIG["weather_weaken"]))
         return mult
 
     def _hit(self, atk, dfn, move, who):
@@ -871,6 +969,11 @@ class Battle(object):
             return 0
 
         dmg = self.rng.choice(res["rolls"])
+        # 스크린 — 급소에는 안 통한다 (본편 규칙)
+        if not crit:
+            shield = self._party_of(dfn).screen_mult(move["category"])
+            if shield < 1.0:
+                dmg = max(1, int(dmg * shield))
 
         # 따라큐의 탈 — 데미지를 통째로 막고 최대 HP의 1/8 만 잃는다
         if dfn.disguise and dmg > 0:
@@ -880,6 +983,18 @@ class Battle(object):
             self._say("%s 의 탈이 벗겨졌다 — 데미지 무효, %d 만 잃음 (HP %d/%d)"
                       % (dfn.name, lost, dfn.hp, dfn.max_hp))
             self._pinch_berry(dfn)
+            return 0
+
+        if dfn.substitute > 0:
+            took = min(dfn.substitute, dmg)
+            dfn.substitute -= took
+            gone = dfn.substitute <= 0
+            self._say("%s 의 %s → %s 의 대타에게 %d%s"
+                      % (atk.name, move["name"], dfn.name, took,
+                         " — 대타가 부서졌다" if gone else
+                         " (대타 %d 남음)" % dfn.substitute))
+            if gone:
+                dfn.substitute = 0
             return 0
 
         note = dfn.damage(dmg)
@@ -1076,6 +1191,57 @@ class Battle(object):
             elif k == "protect":
                 user.protecting = True
                 self._say("%s 의 %s — 이 턴은 막는다" % (user.name, move["name"]))
+            elif k == "substitute":
+                cost = max(1, int(user.max_hp * ef["frac"]))
+                if user.substitute:
+                    self._say("%s 의 %s — 이미 대타가 있다" % (user.name, move["name"]))
+                elif user.hp <= cost:
+                    self._say("%s 의 %s — HP가 모자라 실패" % (user.name, move["name"]))
+                else:
+                    user.damage(cost, direct=False)
+                    user.substitute = cost
+                    self._say("%s 의 %s — 대타 %d (HP %d/%d)"
+                              % (user.name, move["name"], cost,
+                                 user.hp, user.max_hp))
+            elif k == "wish":
+                if user.wish:
+                    self._say("%s 의 %s — 이미 걸려 있다" % (user.name, move["name"]))
+                else:
+                    # 희망사항은 **다음 턴 끝에** 자리로 회복이 온다.
+                    # 그래서 빠지고 나서 들어온 놈이 받는다 — 그게 이 기술의 핵심이다.
+                    user.wish = max(1, int(user.max_hp * ef["frac"]))
+                    self._party_of(user).wish = (2, user.wish)
+                    self._say("%s 의 %s — 다음 턴에 %d 회복이 온다"
+                              % (user.name, move["name"], user.wish))
+            elif k == "pain_split":
+                total = user.hp + target.hp
+                half = total // 2
+                user.hp = min(user.max_hp, half)
+                target.hp = min(target.max_hp, total - half)
+                self._say("%s 의 %s — %d/%d 와 %d/%d 로 나눴다"
+                          % (user.name, move["name"], user.hp, user.max_hp,
+                             target.hp, target.max_hp))
+            elif k == "haze":
+                for side in (self.me, self.opp):
+                    side.ranks = {kk: 0 for kk in side.ranks}
+                self._say("%s 의 %s — 양쪽 능력 변화가 전부 사라졌다"
+                          % (user.name, move["name"]))
+            elif k == "endure_turn":
+                user.enduring = True
+                self._say("%s 의 %s — 이 턴은 버틴다" % (user.name, move["name"]))
+            elif k == "screen":
+                party = self._party_of(user)
+                turns = ef["turns"]
+                ext = item_effect(self.dex, user.item, "extend")
+                if ext and ext["what"] == "screen":
+                    turns += ext["turns"]
+                party.screens[ef["name"]] = turns
+                self._say("%s 의 %s — %d턴 (지금 %s)"
+                          % (user.name, move["name"], turns,
+                             party.screen_text()))
+                self._warn("스크린이 데미지를 %.0f%% 깎는다고 본 것은 게임 "
+                           "데이터에 없는 미확인 값입니다"
+                           % ((1 - calc.CONFIG["screen_reduce"]) * 100))
             elif k == "weather":
                 self.field.set(ef["weather"], turns=self._field_turns(
                     user, ef["weather"]))
@@ -1517,7 +1683,26 @@ class Battle(object):
                 self._say("%s 의 하양허브 — 깎인 능력이 돌아왔다 (지금 %s)"
                           % (side.name, side.rank_text()))
             side.flinched = False
+            side.enduring = False
 
+        for party in (self.me_party, self.opp_party):
+            if not party.wish:
+                continue
+            turns, amount = party.wish
+            turns -= 1
+            if turns <= 0:
+                party.wish = None
+                got = party.active.heal(amount) if party.active.alive else 0
+                if got:
+                    self._say("%s — 희망사항으로 %d 회복 (HP %d/%d)"
+                              % (party.active.name, got,
+                                 party.active.hp, party.active.max_hp))
+            else:
+                party.wish = (turns, amount)
+
+        for party in (self.me_party, self.opp_party):
+            for text in party.tick_screens():
+                self._say(text)
         for text in self.field.tick():
             self._say(text)
 
