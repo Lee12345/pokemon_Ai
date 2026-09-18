@@ -87,7 +87,12 @@ jobs:
             echo "한글이 깨졌습니다"
             exit 1
           }
-          rm -f 넣을글.txt 나온글.txt
+          # 프로그램이 확인 중에 '내기록' 을 만든다 — 윈도우에서도 쓰기가
+          # 된다는 증거다. 다만 배포에 딸려 가면 안 되므로 여기서 지운다.
+          # (전에 이걸 안 지워서 파일 3개가 올라갔다)
+          test -d 내기록 || { echo "내기록 폴더가 안 생겼습니다 — 쓰기가 안 된다"; exit 1; }
+          echo "쓰기 확인:"; find 내기록 -type f
+          rm -rf 넣을글.txt 나온글.txt 내기록
 
       - uses: actions/upload-artifact@v4
         with:
