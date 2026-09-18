@@ -414,6 +414,7 @@ class Battle(object):
         self.log = [] if log else None
         self.warnings = []
         self._immune_abilities = status_immune_abilities(dex)
+        self._warn_dead_items()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
         self._entry_weather()
@@ -438,6 +439,31 @@ class Battle(object):
     def _warn(self, text):
         if text not in self.warnings:
             self.warnings.append(text)
+
+    def _warn_dead_items(self):
+        """**계산에 아무 일도 안 하는 도구를 들고 싸우면 큰 소리로 말한다.**
+
+        한 번 크게 당했다. 아머까오(울퉁불퉁멧 66% · 먹다남은음식 24% ·
+        자뭉열매 9%)로 한카리아스를 상대하는 판을 400판 돌려 놓고
+        "아머까오가 진다" 고 보고했는데, 사실은 **도구 셋이 다 미구현**
+        이라 맨몸으로 싸우고 있었다. 접촉기를 네 번 맞고도 울퉁불퉁멧
+        반동이 한 번도 안 들어갔다.
+        조용히 틀어진 것이라 결과만 봐서는 알 수가 없었다. 그래서 이제
+        대전이 시작될 때 세어서 경고에 넣는다 — 승률 옆에 같이 찍힌다.
+        """
+        spd = best.speed_item_effects(self.dex)
+        for party, who in ((self.me_party, "나"), (self.opp_party, "상대")):
+            for side in party.members:
+                it = side.base.item
+                if not it:
+                    continue
+                if (self.dex.item_effects.get(it)
+                        or self.dex.mega_by_item.get(it)
+                        or it in spd):
+                    continue
+                self._warn("%s %s 의 %s 는 **계산에 안 들어간다** "
+                           "(아직 구현 안 된 도구다). 이 승률은 그 도구가 "
+                           "없다고 치고 나온 값이다." % (who, side.name, it))
 
     # -- 교체 ---------------------------------------------------------------
     def _grounded(self, side):

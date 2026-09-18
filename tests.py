@@ -474,6 +474,61 @@ def test_battle_rules(dex):
           bt.field.weather)
 
 
+def test_dead_items(dex):
+    """**계산에 안 들어가는 도구를 조용히 넘기지 않는가.**
+
+    아머까오(울퉁불퉁멧 66%)로 한카리아스를 400판 상대해 놓고
+    "아머까오가 진다" 고 보고한 적이 있다. 도구 셋이 다 미구현이라
+    맨몸으로 싸우고 있었는데 결과만 봐서는 알 수가 없었다.
+    조용히 틀어진 것이다. 이제 대전이 경고를 띄운다 — 그 경고가
+    없어지지 않는지 여기서 지킨다.
+    """
+    print("\n[36] 계산에 안 들어가는 도구를 큰 소리로 말하는가")
+    import random
+
+    kao = calc.popular_build(dex, dex.find_pokemon("아머까오"))[0]
+    chomp = calc.popular_build(dex, dex.find_pokemon("한카리아스"))[0]
+    check("아머까오 1위 도구가 아직 미구현이다 (%s)" % kao.item,
+          not dex.item_effects.get(kao.item)
+          and not dex.mega_by_item.get(kao.item), kao.item)
+    r = battle.run_once(dex, kao, chomp,
+                        [dex.find_move("철벽"), dex.find_move("브레이브버드")],
+                        [dex.find_move("화염방사")], random.Random(1))
+    got = [w for w in r["warnings"] if kao.item in w and "계산에 안 들어간다" in w]
+    check("대전이 그걸 경고로 말한다", bool(got), r["warnings"][:2])
+
+    # 반대로, 효과가 있는 도구는 경고하지 않는다 (아무 데서나 울면 안 된다)
+    band = calc.Build(dex, dex.find_pokemon("한카리아스"),
+                      sp={"attack": 32, "speed": 32},
+                      nature=dex.find_nature("명랑"), item="생명의구슬")
+    r2 = battle.run_once(dex, band, kao, [dex.find_move("지진")],
+                         [dex.find_move("바디프레스")], random.Random(1))
+    check("효과가 있는 도구(생명의구슬)에는 경고를 안 한다",
+          not [w for w in r2["warnings"] if "생명의구슬" in w],
+          r2["warnings"][:2])
+
+    # 구멍이 얼마나 넓은지도 세어 둔다 — 줄어들면 여기 숫자가 따라 내려간다
+    import json
+    import os
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "data", "usage_single.json")
+    with open(path, encoding="utf-8") as f:
+        listed = json.load(f)["pokemon"]
+    spd = best.speed_item_effects(dex)
+    worst = 0.0
+    for e in sorted(listed, key=lambda x: x.get("rank") or 10 ** 6)[:20]:
+        tot = 0.0
+        for it in (e.get("items") or [])[:8]:
+            nm = it["name"]
+            if (dex.item_effects.get(nm) or dex.mega_by_item.get(nm)
+                    or nm in spd):
+                continue
+            tot += it["pct"]
+        worst = max(worst, tot)
+    check("상위 20종 중 제일 심한 종의 '죽은 도구' 채용률 %.0f%%" % worst,
+          worst <= 100.0, worst)
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2158,6 +2213,7 @@ def main():
     test_move_effects(dex)
     test_battle_rules(dex)
     test_battle_result(dex)
+    test_dead_items(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)
