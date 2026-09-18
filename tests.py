@@ -858,6 +858,85 @@ def test_cache_honesty(dex):
           burn < base, (base, burn))
 
 
+def test_search(dex):
+    """7단계 — **답을 아는 상황에서 그 답을 찾는가.**
+
+    승률 숫자는 그럴듯하게 나오기 쉽다. 그래서 "이건 무조건 이 수여야
+    한다" 는 자리를 만들어 놓고 거기서만 확인한다. 실제로 이 방식으로
+    두 가지 큰 결함을 잡았다 (아래 각 검사의 주석 참고).
+    """
+    print("\n[41] 7단계 탐색")
+    import search
+
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+
+    def pick(party, opp, moves, secs=3.0):
+        got = search.best_action(dex, [P(x) for x in party],
+                                 dex.find_pokemon(opp), my_moves=moves,
+                                 seconds=secs)
+        full = [r for r in got["rows"] if not r["dropped"]] or got["rows"]
+        return max(full, key=lambda r: r["score"]), got
+
+    # ① 때릴 수단이 아예 없으면 빼야 한다 -----------------------------------
+    # ! 이 검사가 **두 개의 결함**을 잡아냈다.
+    #   (가) Policy 가 계획이 끝난 뒤 사용률 기술을 몰래 꺼내 썼다.
+    #       땅 기술만 든 한카리아스가 2턴째부터 화염방사를 쓰고 있었다.
+    #   (나) 점수가 '이기면 1.0' 이라, 이놈을 공짜로 잃어도 벤치가
+    #       이기면 같은 점수였다. 그래서 뺐어야 할 자리에서 안 뺐다.
+    top, got = pick(["한카리아스", "누리레느"], "아머까오",
+                    ["지진", "대지의힘", "칼춤", "스텔스록"], 4.0)
+    check("때릴 수단이 없으면 교체를 고른다 (%s)" % top["name"],
+          "교체" in top["name"], [(r["name"], round(r["score"], 3))
+                                 for r in got["rows"][:3]])
+
+    # ② 통하는 기술이 있으면 그걸 고른다 -------------------------------------
+    top2, got2 = pick(["한카리아스", "누리레느"], "아머까오",
+                      ["지진", "역린", "화염방사", "칼춤"], 4.0)
+    check("강철 상대에 불꽃을 고른다 (%s)" % top2["name"],
+          top2["name"] == "화염방사",
+          [(r["name"], round(r["score"], 3)) for r in got2["rows"][:3]])
+
+    # ③ 기술 제한이 정말로 걸리는가 (①의 (가) 재발 방지) --------------------
+    import random
+    me, opp = P("한카리아스"), P("아머까오")
+    def win_rate(moves, n=80):
+        rng = random.Random(5)
+        w = 0
+        for _ in range(n):
+            r = battle.run_once(dex, me, opp, [dex.find_move("칼춤")],
+                                [dex.find_move("바디프레스")], rng,
+                                my_moves=moves)
+            w += (r["result"] == "이김")
+        return w * 100.0 / n
+    ground = [dex.find_move(x) for x in ("지진", "대지의힘", "칼춤", "스텔스록")]
+    mixed = [dex.find_move(x) for x in ("지진", "화염방사", "칼춤", "스텔스록")]
+    a, b = win_rate(ground), win_rate(mixed)
+    check("땅 기술만 주면 비행 상대에게 못 이긴다 (%.0f%%)" % a, a == 0.0, a)
+    check("불꽃을 끼워 주면 이긴다 (%.0f%%)" % b, b > 90.0, b)
+
+    # ④ 점수가 '이기는 정도' 를 가르는가 (①의 (나) 재발 방지) ---------------
+    clean = {"result": "이김", "myPartyHpPct": 100.0}
+    barely = {"result": "이김", "myPartyHpPct": 5.0}
+    tie = {"result": "동시에 쓰러짐", "myPartyHpPct": 100.0}
+    lose = {"result": "짐", "myPartyHpPct": 0.0}
+    check("깨끗이 이긴 판이 간신히 이긴 판보다 높다 (%.2f > %.2f)"
+          % (search._score(clean), search._score(barely)),
+          search._score(clean) > search._score(barely))
+    check("간신히 이긴 판도 비긴 판보다는 높다",
+          search._score(barely) > search._score(tie))
+    check("비긴 판이 진 판보다 높다",
+          search._score(tie) > search._score(lose))
+
+    # ⑤ 보고서가 나오고, 확실하지 않으면 그렇다고 말하는가 -------------------
+    text = search.report(dex, [P("한카리아스"), P("누리레느")],
+                         dex.find_pokemon("아머까오"), got2)
+    check("보고서가 나온다", "7단계" in text and "승률" in text)
+    check("판수와 오차를 같이 보여 준다", "오차" in text and "±" in text)
+    check("일찍 접은 후보도 버리지 않고 보여 준다",
+          any(r["dropped"] for r in got2["rows"]),
+          [r["name"] for r in got2["rows"] if r["dropped"]])
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2547,6 +2626,7 @@ def main():
     test_screens_and_weather(dex)
     test_more_status_moves(dex)
     test_cache_honesty(dex)
+    test_search(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

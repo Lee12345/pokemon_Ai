@@ -1942,9 +1942,22 @@ class Policy(object):
     (배우지도 않은 기술이라 조용히 이상한 계산이 된다.)
     """
 
-    def __init__(self, dex, party, foe_build, plan, allow_switch=True):
+    def __init__(self, dex, party, foe_build, plan, allow_switch=True,
+                 moves=None):
+        """moves 를 주면 **계획이 끝난 뒤에도 그 기술들만 쓴다.**
+
+        ! 이게 없어서 7단계가 조용히 거짓말을 했다. 계획(plan)은 첫 턴
+          한 수뿐인데, 그 뒤부터는 `_best_move` 가 **사용률 상위 기술**을
+          꺼내 썼다. 그래서 땅 기술만 든 한카리아스로 아머까오(비행,
+          땅 무효)를 상대하는 판이 96.7% 승률로 나왔다 — 2턴째부터
+          화염방사를 쓰고 있었던 것이다.
+          숫자가 그럴듯해서 눈으로는 절대 못 잡는 종류다.
+        """
         self.dex = dex
         self.plan = plan
+        # moves 를 주면 **계획이 끝난 뒤에는 첫 수를 반복하지 않고**
+        # 그 기술들 중 제일 나은 것을 매번 고른다 (7단계가 쓰는 방식).
+        self.moves = list(moves) if moves else None
         self.lead = party[0] if isinstance(party, (list, tuple)) else party
         self._fallback = {}
         self._foe = _first(foe_build)
@@ -1954,11 +1967,16 @@ class Policy(object):
         self.allow_switch = allow_switch
 
     def _best_move(self, side):
-        key = side.name
+        # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
+        restricted = bool(self.moves) and side.base is self.lead
+        key = (side.name, restricted)
         if key not in self._fallback:
+            if restricted:
+                cand = [(m, None) for m in self.moves]
+            else:
+                cand = best.candidate_moves(self.dex, side.base.poke)
             rows = best.rate_moves(
-                self.dex, side.as_build(), self._foe,
-                best.candidate_moves(self.dex, side.base.poke))
+                self.dex, side.as_build(), self._foe, cand)
             threat = best.best_threat(rows)
             if threat:
                 mv = threat["move"]
@@ -1981,6 +1999,13 @@ class Policy(object):
             if idx is not None:
                 return ("교체", idx)
         if party.active.base is self.lead:
+            # ! **계획이 끝난 뒤 첫 수를 계속 반복하면 안 된다.**
+            #   7단계는 "이번 턴에 이 수를 두면 어떻게 되나" 를 묻는데,
+            #   반복해 버리면 "매 턴 이 수만 둔다면" 을 재게 된다.
+            #   칼춤을 한 번 쓰는 것과 여섯 턴 내리 쓰는 것은 완전히
+            #   다른 이야기다. 내 기술을 알 때는 매 턴 다시 고른다.
+            if self.moves:
+                return self._best_move(party.active)
             return _pick(self.plan, turn_index)
         return self._best_move(party.active)
 
@@ -2040,13 +2065,16 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
-             opp_switch=True, matchup=None):
-    """한 판. 끝났을 때의 상태를 통째로 돌려준다."""
+             opp_switch=True, matchup=None, my_moves=None):
+    """한 판. 끝났을 때의 상태를 통째로 돌려준다.
+
+    my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
+    """
     b = Battle(dex, me_build, opp_build, rng=rng, log=log,
                matchup=matchup)
     # 내 쪽은 '이 계획이 좋은가' 를 재는 중이므로 계획을 그대로 밀고,
     # 계획이 끝난 뒤부터는 양쪽 다 빼는 것을 판단한다.
-    mine = Policy(dex, me_build, opp_build, my_plan)
+    mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
                     allow_switch=opp_switch)
     for i in range(MAX_TURNS):
