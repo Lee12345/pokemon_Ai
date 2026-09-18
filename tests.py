@@ -1759,14 +1759,71 @@ def test_combos(dex):
     check("갈래가 두 개 이상 나왔다 (%d개)" % len(w), len(w) >= 2, len(w))
     check("갈래 비중의 합이 1", abs(sum(w) - 1.0) < 1e-6, w)
     idx = dict((mv["name"], j) for j, mv in enumerate(moves))
+    # -- 갈래를 가르는가 --------------------------------------------------
+    # 자(combos.split_score)가 왜 이 모양인지는 combos.py 에 적어 두었다.
+    # 여기서는 **그 자가 뒤집히지 않는지**만 못 박는다.
     rock = [table[i][idx["스텔스록"]] for i in range(len(w))]
     out = [table[i][idx["역린"]] for i in range(len(w))]
-    check("스텔스록이 한 갈래에 몰린다 (%.0f%% vs %.0f%%)"
-          % (max(rock) * 100, min(rock) * 100),
-          max(rock) - min(rock) > 0.5, rock)
-    check("역린도 한 갈래에 몰린다", max(out) - min(out) > 0.4, out)
+    quake = [table[i][idx["지진"]] for i in range(len(w))]
+    check("스텔스록이 갈래를 가른다 (갈래도 %.1f, 문턱 %.0f)"
+          % (combos.split_score(rock), combos.SPLIT_MIN),
+          combos.split_score(rock) >= combos.SPLIT_MIN,
+          [round(x, 3) for x in rock])
+    check("역린도 갈래를 가른다 (갈래도 %.1f)" % combos.split_score(out),
+          combos.split_score(out) >= combos.SPLIT_MIN,
+          [round(x, 3) for x in out])
     check("스텔스록과 역린은 다른 갈래다",
           rock.index(max(rock)) != out.index(max(out)), (rock, out))
+    # 지진은 **폭은 제일 넓은데 갈래를 안 가른다** — 옛 자(max-min)가
+    # 거꾸로 세던 바로 그 칸이다. 되돌리면 여기서 걸린다.
+    check("지진은 폭이 넓어도 갈래를 안 가른다 (폭 %.2f, 갈래도 %.1f)"
+          % (max(quake) - min(quake), combos.split_score(quake)),
+          max(quake) - min(quake) > 0.4
+          and combos.split_score(quake) < combos.SPLIT_MIN,
+          [round(x, 3) for x in quake])
+
+    # -- 한 마리에만 맞는 자가 아닌가 (여러 종에서 확인) --------------------
+    # 갈래를 둘 이상 찾았다면, 그 갈래들을 **가르는 기술이 하나는** 있어야
+    # 한다. 없으면 갈래를 찾았다는 말 자체가 헛것이다.
+    weak = []
+    n_multi = 0
+    for nm, rws2 in samples.by_pokemon(combos.loaded(dex)).items():
+        if len(rws2) < combos.MIN_SAMPLES:
+            continue
+        try:
+            pk = dex.find_pokemon(nm)
+        except LookupError:
+            continue
+        got2 = combos.archetypes(dex, pk)
+        if got2 is None or len(got2[1]) < 2:
+            continue
+        n_multi += 1
+        best = max((combos.split_score([r[j] for r in got2[2]])
+                    for j in range(len(got2[0]))), default=0.0)
+        if best < combos.SPLIT_MIN:
+            weak.append((nm, round(best, 1)))
+    check("갈래를 찾은 %d종 모두 가르는 기술이 있다" % n_multi,
+          n_multi >= 5 and not weak, weak)
+
+    # -- 새로 생긴 형태를 조용히 넘기지 않는가 ------------------------------
+    # 한카리아스Z 가 이번에 추가돼서 CS형 한카리아스는 사용률로는 36% 인데
+    # 표본에는 4% 밖에 없다. 모르고 쓰면 인구의 3분의 1을 9마리로 설명하는
+    # 셈이 된다. 경고가 뜨는지, 그리고 **아무 데서나 뜨지는 않는지** 본다.
+    warns = combos.thin_forms(dex, chomp)
+    check("한카리아스 CS형에 경고가 뜬다 (%d건)" % len(warns),
+          any("CS형" in x for x in warns), warns)
+    n_warn = n_spec = 0
+    for nm, rws3 in samples.by_pokemon(combos.loaded(dex)).items():
+        if len(rws3) < combos.MIN_SAMPLES:
+            continue
+        try:
+            pk = dex.find_pokemon(nm)
+        except LookupError:
+            continue
+        n_spec += 1
+        n_warn += 1 if combos.thin_forms(dex, pk) else 0
+    check("경고가 아무 데서나 뜨지는 않는다 (%d/%d종)" % (n_warn, n_spec),
+          n_spec >= 10 and n_warn <= n_spec * 0.3, (n_warn, n_spec))
 
     # -- 두 마진이 다 지켜지는가 (제일 중요) -------------------------------
     worst = 0.0
