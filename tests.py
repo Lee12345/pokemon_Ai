@@ -1026,6 +1026,62 @@ def test_live(dex):
           "thin" in got3, list(got3.keys()))
 
 
+def test_windows_safe(dex):
+    """**윈도우에서만 나는 고장을 여기서 잡는다.**
+
+    리눅스·맥에서는 한글을 아무리 찍어도 멀쩡한데, 윈도우는 화면
+    인코딩이 cp949/cp1252 라 UTF-8 한글을 찍는 순간 **프로그램이 죽는다.**
+    글자가 깨지는 정도가 아니라 죽는다.
+
+        UnicodeEncodeError: 'charmap' codec can't encode characters
+
+    실제로 첫 윈도우 빌드가 tests.py 첫 줄에서 이걸로 터졌다. 방어를
+    live.py 에만 넣어 뒀던 것이 원인이다. **여기서는 절대 재현이 안 되는
+    고장이라, 규칙으로 잡는 수밖에 없다.**
+    """
+    print("\n[43] 윈도우에서 죽지 않는가")
+    import io
+    import os
+    import re
+
+    root = os.path.dirname(os.path.abspath(__file__))
+    missing = []
+    checked = []
+    for name in sorted(os.listdir(root)):
+        if not name.endswith(".py") or name == "paths.py":
+            continue
+        src = io.open(os.path.join(root, name), encoding="utf-8").read()
+        # 켜서 쓰는 프로그램인가 (화면에 찍고, 직접 실행되는가)
+        if "if __name__" not in src or "print(" not in src:
+            continue
+        if not re.search(r"^def main\(\):", src, re.M):
+            continue
+        checked.append(name)
+        body = src[re.search(r"^def main\(\):", src, re.M).end():][:400]
+        if "fix_console" not in body:
+            missing.append(name)
+    check("켜서 쓰는 프로그램 %d개가 모두 main 처음에 fix_console 을 부른다"
+          % len(checked), not missing, missing)
+    check("확인한 프로그램이 충분히 많다 (%d개)" % len(checked),
+          len(checked) >= 10, checked)
+
+    # 실제로 그 함수가 죽지 않는지 (두 번 불러도 안전해야 한다)
+    blew = None
+    try:
+        paths.fix_console()
+        paths.fix_console()
+    except Exception as e:
+        blew = e
+    check("fix_console 은 여러 번 불러도 안전하다", blew is None, blew)
+
+    # 묶인 실행 파일에서 읽는 자리와 쓰는 자리가 갈려 있는가
+    check("읽는 자리와 쓰는 자리를 따로 정한다",
+          hasattr(paths, "read_root") and hasattr(paths, "write_root"))
+    check("평소에는 둘이 같다",
+          paths.read_root() == paths.write_root(),
+          (paths.read_root(), paths.write_root()))
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2718,6 +2774,7 @@ def main():
     test_cache_honesty(dex)
     test_search(dex)
     test_live(dex)
+    test_windows_safe(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

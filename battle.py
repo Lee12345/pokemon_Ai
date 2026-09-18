@@ -23,6 +23,7 @@
 """
 
 import math
+import paths
 import random
 import re
 import sys
@@ -2525,6 +2526,7 @@ USAGE = """사용법: python battle.py <내 포켓몬> <상대 포켓몬> [옵�
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = sys.argv[1:]
     trials, plan_arg, show_log, worst = 400, None, False, False
     use_dist, seen = False, []

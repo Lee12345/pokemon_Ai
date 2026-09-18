@@ -136,6 +136,7 @@ champs 기사를 3배로 보는 것은 **순위 검증** 때문이다 (132편 �
 import gzip
 import io as _io
 import json
+import paths
 import os
 import re
 import sys
@@ -758,6 +759,7 @@ def fetch_all(urls, cards=None):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = sys.argv[1:]
     if "--구조" in args:
         i = args.index("--구조")

@@ -19,6 +19,7 @@
 """
 
 import re
+import paths
 import sys
 import unicodedata
 
@@ -799,6 +800,7 @@ USAGE = """사용법: python best.py <내 포켓몬> <상대 포켓몬> [기술.
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = [a for a in sys.argv[1:]]
     trick_room = False
     for flag in ("--트릭룸", "--trickroom", "--tr"):

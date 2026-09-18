@@ -49,6 +49,7 @@
 """
 
 import math
+import paths
 import re
 import sys
 
@@ -786,6 +787,7 @@ def survey(dex, count=30):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
     argv = sys.argv[1:]
     names, seen = [], []

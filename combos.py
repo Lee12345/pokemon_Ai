@@ -55,6 +55,7 @@ EM 이 알려 주는 것은 "어느 기술이 어느 갈래에 뭉치나" 라는
 """
 
 import math
+import paths
 import random
 import sys
 
@@ -1042,6 +1043,7 @@ def survey(dex):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
     argv = sys.argv[1:]
     if "--덮개" in argv:

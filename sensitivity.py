@@ -22,6 +22,7 @@
 """
 
 import sys
+import paths
 
 import battle
 import best
@@ -308,6 +309,7 @@ def report(rows, setups, trials):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = sys.argv[1:]
     trials = 150
     rest = []

@@ -911,6 +911,7 @@ def interactive(dex):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     dex = Dex()
     args = sys.argv[1:]
     if len(args) == 3:

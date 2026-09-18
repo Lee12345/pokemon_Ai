@@ -35,6 +35,7 @@
 import itertools
 import random
 import sys
+import paths
 
 import battle
 import best
@@ -219,6 +220,7 @@ USAGE = """사용법: python pick.py <내 6마리> <상대 6마리>
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = sys.argv[1:]
     trials, pair_trials = 20, 40
     rest = []

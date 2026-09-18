@@ -40,6 +40,7 @@ pokesol 의 이름표는 **본편까지 포함**한다 (기술 829개, 도구 32
 import gzip
 import io as _io
 import json
+import paths
 import os
 import re
 import sys
@@ -298,6 +299,7 @@ def save_out(doc):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = sys.argv[1:]
     urls = []
     if "--파일" in args:

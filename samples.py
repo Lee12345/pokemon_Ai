@@ -1052,6 +1052,7 @@ def report_rosters(dex, parties, since=None, rule=None, name=None):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
     argv = sys.argv[1:]
     season = None

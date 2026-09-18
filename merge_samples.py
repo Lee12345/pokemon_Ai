@@ -37,6 +37,7 @@ champs 카드만으로 만든 파티(이름과 도구뿐)와 같은 기사를 po
 
 import io
 import json
+import paths
 import os
 import sys
 
@@ -130,6 +131,7 @@ def merge(a, b, log=None):
 
 
 def main():
+    paths.fix_console()   # 윈도우에서 한글을 찍다 죽지 않게
     args = [x for x in sys.argv[1:]]
     out_path = None
     if "-o" in args:
