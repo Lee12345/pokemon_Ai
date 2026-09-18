@@ -1178,6 +1178,7 @@ def test_windows_safe(dex):
     # 없다). 그래서 띄우지 않고 확인할 수 있는 것만 본다. 실제로
     # 만들어지는지는 윈도우 빌드의 `gui.py --점검` 이 본다.
     import gui
+    import live
     check("창 코드가 문법적으로 멀쩡하다 (import 된다)",
           hasattr(gui, "App") and hasattr(gui, "check"))
     ok, why = gui.have_tk()
@@ -1187,14 +1188,69 @@ def test_windows_safe(dex):
         check("없으면 글자판을 쓰라고 안내한다",
               "live.py" in io.open(os.path.join(root, "gui.py"),
                                    encoding="utf-8").read())
+    # ★ **고르는 규칙은 창이 아니라 live.py 에 있다.** 창은 못 보지만
+    #   규칙은 여기서 전부 시험한다. 사용자가 "한 줄씩 적는 게 아니라
+    #   칸에 검색해서 넣게 해 달라" 고 해서 만든 부분이다.
+    pool = live.pickable_pokemon(dex)
+    check("고를 수 있는 포켓몬이 이름마다 하나뿐이다 (%d마리)" % len(pool),
+          len(set(p["name"] for p in pool)) == len(pool), len(pool))
+    check("메가는 후보에 없다 (도구로 정해진다)",
+          not any(p.get("isMega") for p in pool))
+    hits = [p["name"] for p in live.rank_hits(pool, "한카")]
+    check("'한카' 를 치면 한카리아스 하나만 뜬다 (%s)" % hits,
+          hits == ["한카리아스"], hits)
+    hits2 = [p["name"] for p in live.rank_hits(pool, "리자")]
+    check("가운데서 맞는 것보다 앞에서 맞는 것이 먼저다 (%s)" % hits2[:2],
+          hits2 and hits2[0] == "리자몽", hits2)
+
+    hama = dex.find_pokemon("하마돈")
+    moves, known = live.learnable(dex, hama)
+    names = [m["name"] for m in moves]
+    check("배우는 기술만 후보로 준다 (하마돈 %d개)" % len(names),
+          known and "지진" in names and "역린" not in names,
+          (known, len(names)))
+    fake = dict(hama)
+    fake["key"] = "9999-99"
+    fake["dexNo"] = 9999
+    all_moves, known2 = live.learnable(dex, fake)
+    check("배우는 목록이 없으면 **전체를 준다** (빈 목록을 주면 안 된다)",
+          not known2 and len(all_moves) > 400, (known2, len(all_moves)))
+
+    check("특성은 그 포켓몬 것만 (%s)" % live.abilities_of(dex, hama),
+          live.abilities_of(dex, hama) == ["모래날림", "모래의힘"])
+    check("성격은 25개, 보정 없는 것이 먼저",
+          len(live.nature_names(dex)) == 25
+          and "보정 없음" in live.nature_label(dex, live.nature_names(dex)[0]),
+          live.nature_names(dex)[:3])
+    check("성격에 무엇이 오르내리는지 붙여 준다 (%s)"
+          % live.nature_label(dex, "무사태평"),
+          "방어" in live.nature_label(dex, "무사태평")
+          and "스피드" in live.nature_label(dex, "무사태평"))
+    check("노력치 규칙을 말로 알려 준다",
+          live.ev_problem({"hp": 40}) and live.ev_problem(
+              {"hp": 32, "attack": 32, "defense": 32})
+          and live.ev_problem({"hp": 32, "defense": 22, "spDef": 12}) is None,
+          live.ev_problem({"hp": 40}))
+
     gsrc = io.open(os.path.join(root, "gui.py"), encoding="utf-8").read()
+    check("창이 그 규칙들을 쓴다 (스스로 다시 짜지 않는다)",
+          all(x in gsrc for x in ("live.pickable_pokemon", "live.learnable",
+                                  "live.abilities_of", "live.nature_names",
+                                  "live.ev_problem")))
+    check("창에 검색 칸(Picker)이 있다",
+          "class Picker" in gsrc and "Listbox" in gsrc)
+    check("점검 모드가 칸을 실제로 채워 본다",
+          "slot.stat_rows" in gsrc and "app.ask()" in gsrc)
     check("창도 시작할 때 fix_console 을 부른다", "paths.fix_console" in gsrc)
     check("탐색을 다른 갈래에서 돌린다 (창이 얼면 못 쓴다)",
           "threading.Thread" in gsrc)
     check("창을 만든 갈래에서만 건드린다 (root.after)",
           "root.after" in gsrc)
+    # 칸으로 받게 바뀌면서 live.read_line 은 더 안 쓴다. 대신 몸을
+    # 만드는 것도 계산도 여전히 시험된 곳에 맡기는지를 본다.
     check("계산은 시험된 곳에 맡긴다 (search·live 를 쓴다)",
-          "search.best_action" in gsrc and "live.read_line" in gsrc)
+          "search.best_action" in gsrc and "live.build_one" in gsrc
+          and "live.save_party_file" in gsrc)
 
     # 묶인 실행 파일에서 읽는 자리와 쓰는 자리가 갈려 있는가
     check("읽는 자리와 쓰는 자리를 따로 정한다",

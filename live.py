@@ -729,3 +729,116 @@ if __name__ == "__main__":
         print("\n문제가 생겼습니다 — 아래를 통째로 알려 주시면 고칩니다.\n")
         traceback.print_exc()
     _wait_before_closing()
+
+
+# ---------------------------------------------------------------------------
+# 검색해서 고르기
+# ---------------------------------------------------------------------------
+#
+# 창에서 "한 줄에 한 마리씩 적기" 대신 **칸에 치면서 후보를 고르는** 방식을
+# 쓴다. 고르는 규칙은 여기 둔다 — 창은 보여 주기만 하고, 규칙은 여기서
+# 시험한다. (창은 이 컨테이너에서 볼 수가 없다. CLAUDE.md §9)
+
+def rank_hits(items, text, key="name", limit=12):
+    """친 글자로 후보를 고른다. **앞글자가 맞는 것이 먼저다.**
+
+    '지진' 처럼 앞에서 맞는 것이 '대지의힘' 처럼 가운데서 맞는 것보다
+    먼저 와야 한다. 아무것도 안 쳤으면 앞에서부터 보여 준다.
+    """
+    text = (text or "").strip()
+    if not text:
+        return items[:limit]
+    head, mid = [], []
+    for x in items:
+        name = x[key]
+        if name == text:
+            head.insert(0, x)
+        elif name.startswith(text):
+            head.append(x)
+        elif text in name:
+            mid.append(x)
+    return (head + mid)[:limit]
+
+
+def pickable_pokemon(dex):
+    """고를 수 있는 포켓몬 목록. **같은 이름을 한 번만 보여 준다.**
+
+    ! 한카리아스는 기본·메가·메가Z 세 개가 다 'find_pokemon' 에 걸린다.
+      검색 후보에 같은 이름이 셋 나오면 무엇을 고른 건지 알 수 없다.
+      메가는 **도구(메가스톤)로 정해지는 것**이므로 여기서는 기본 폼만
+      보여 주고, 도구를 고르면 그때 메가로 바뀐다.
+    """
+    got = getattr(dex, "_pickable", None)
+    if got is not None:
+        return got
+    seen, out = set(), []
+    for p in dex.pokemon:
+        if p.get("isMega"):
+            continue
+        if p["name"] in seen:
+            continue
+        seen.add(p["name"])
+        out.append(p)
+    out.sort(key=lambda p: p["name"])
+    try:
+        dex._pickable = out
+    except AttributeError:
+        pass
+    return out
+
+
+def learnable(dex, poke):
+    """그 포켓몬이 배울 수 있는 기술. 목록이 없으면 전체를 준다.
+
+    ! 목록이 없다고 **빈 목록을 주면 안 된다.** 기술을 하나도 못 고르게
+      된다. 자료가 없을 때는 전체를 주고, 대신 그렇다고 알린다.
+    """
+    ids = dex.learnsets.get(poke["key"]) if hasattr(dex, "learnsets") else None
+    if not ids:
+        base = "%04d-00" % poke["dexNo"]
+        ids = getattr(dex, "learnsets", {}).get(base)
+    if not ids:
+        return sorted(dex.moves, key=lambda m: m["name"]), False
+    by_id = dict((m["id"], m) for m in dex.moves)
+    got = [by_id[i] for i in ids if i in by_id]
+    return sorted(got, key=lambda m: m["name"]), True
+
+
+def abilities_of(dex, poke):
+    """그 포켓몬이 가질 수 있는 특성 이름들."""
+    return [a["name"] for a in (poke.get("abilities") or ())]
+
+
+def nature_names(dex):
+    """성격 이름들. **무보정이 먼저 오게** 둔다 — 제일 자주 쓴다."""
+    plain = [n["name"] for n in dex.natures
+             if not n.get("up") and not n.get("down")]
+    rest = sorted(n["name"] for n in dex.natures
+                  if n.get("up") or n.get("down"))
+    return plain + rest
+
+
+def nature_label(dex, name):
+    """'명랑 (스피드↑ 특공↓)' 처럼 무엇이 오르내리는지 붙여 준다."""
+    try:
+        n = dex.find_nature(name)
+    except LookupError:
+        return name
+    up, down = n.get("up"), n.get("down")
+    if not up or not down:
+        return "%s (보정 없음)" % name
+    return "%s (%s↑ %s↓)" % (name, calc.STAT_KO[up], calc.STAT_KO[down])
+
+
+def ev_problem(sp):
+    """노력치가 규칙에 맞나. 맞으면 None, 아니면 무엇이 잘못됐는지."""
+    for stat, val in (sp or {}).items():
+        if val < 0:
+            return "%s 가 음수입니다" % calc.STAT_KO.get(stat, stat)
+        if val > EV_MAX:
+            return "%s %d — 한 칸에 %d까지입니다" % (
+                calc.STAT_KO.get(stat, stat), val, EV_MAX)
+    total = sum((sp or {}).values())
+    if total > EV_TOTAL:
+        return "합이 %d입니다 — %d까지입니다" % (total, EV_TOTAL)
+    return None
