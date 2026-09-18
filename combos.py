@@ -911,8 +911,8 @@ def coverage(dex, top=30, rule=None):
     prev = samples.previous_rule(parties, rule)
     byp = samples.by_pokemon(parties)
     now = samples.by_pokemon(samples.by_rule(parties, rule))
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "data", "usage_single.json")
+    import paths
+    path = paths.data("usage_single.json")
     try:
         with open(path, encoding="utf-8") as f:
             listed = json.load(f)["pokemon"]

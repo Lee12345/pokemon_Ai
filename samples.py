@@ -72,7 +72,9 @@ import sys
 import calc
 import forms
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+import paths
+
+HERE = paths.read_root()
 SAMPLES = os.path.join(HERE, "data", "samples.json")
 NAMES = os.path.join(HERE, "data", "names_ja.json")
 

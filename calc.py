@@ -19,8 +19,10 @@ import os
 import re
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(HERE, "data")
+import paths
+
+HERE = paths.read_root()
+DATA = paths.data()
 
 # ---------------------------------------------------------------------------
 # 아직 게임에서 직접 확인하지 못한 값들.

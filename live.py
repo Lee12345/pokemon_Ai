@@ -49,9 +49,13 @@ import calc
 import scout
 import search
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-PARTY_FILE = os.path.join(HERE, "data", "my_party.txt")
-LOG_DIR = os.path.join(HERE, "data", "logs")
+import paths
+
+# **읽는 자리와 쓰는 자리를 가른다.** 하나로 묶은 실행 파일이면 자료는
+# 임시 폴더에서 읽지만, 내 파티와 대전 기록은 실행 파일이 놓인 자리에
+# 써야 다음에도 남는다 (paths.py 참고).
+PARTY_FILE = paths.mine("내파티.txt")
+LOG_DIR = paths.mine("대전기록")
 
 # 턴당 40초, 보유 7분. 읽고 누를 시간을 빼고 10초를 기본으로 둔다.
 DEFAULT_SECONDS = 10.0
@@ -385,6 +389,10 @@ def save_log(fight):
 
 
 def main():
+    paths.fix_console()
+    print("=" * 46)
+    print("  포켓몬 챔피언스 — 무엇을 둘까")
+    print("=" * 46)
     dex = calc.Dex()
     party = load_party(dex)
     if party:
@@ -451,5 +459,27 @@ def main():
         print("진 판이면 그 파일을 대화창에 가져오면 왜 졌는지 볼 수 있습니다.")
 
 
+def _wait_before_closing():
+    """**더블클릭으로 켰을 때 창이 바로 닫히지 않게 한다.**
+
+    터미널에서 켰으면 그냥 끝나면 되지만, 실행 파일을 두 번 눌러서
+    켰으면 창이 순식간에 사라져서 무슨 일이 있었는지 못 본다.
+    오류가 났을 때 특히 그렇다.
+    """
+    if not paths.frozen():
+        return
+    try:
+        raw_input_("\n창을 닫으려면 엔터를 누르세요. ")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        # 묶인 프로그램에서 오류가 나면 창이 닫히기 전에 보여 준다.
+        import traceback
+        print("\n문제가 생겼습니다 — 아래를 통째로 알려 주시면 고칩니다.\n")
+        traceback.print_exc()
+    _wait_before_closing()

@@ -8,3 +8,7 @@ venv/
 .venv/
 data/logs/
 data/my_party.txt
+build/
+dist/
+*.spec
+내기록/

@@ -1,0 +1,66 @@
+# 실행 파일을 만들어 둔다 — 터미널을 안 써도 되게.
+#
+# 사용자 컴퓨터의 터미널을 쓸 수 없어서, 받아서 두 번 누르면 켜지는
+# 파일이 필요했다. 깃허브가 대신 만들어 준다.
+#
+#   받는 법: 깃허브 저장소 -> Actions 탭 -> 제일 위 줄 -> Artifacts
+#
+# 맥도 만들려면 아래 matrix 의 주석 두 줄을 살리면 된다.
+# (지금은 안 만든다 — 사용자가 "지금 만들라는 건 아님" 이라고 했다)
+
+name: 실행 파일 만들기
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # 손으로도 돌릴 수 있게
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: 포켓몬도우미-윈도우
+            sep: ";"          # --add-data 구분자가 윈도우만 다르다
+          # - os: macos-latest
+          #   name: 포켓몬도우미-맥
+          #   sep: ":"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 이 프로젝트는 바깥 라이브러리를 하나도 안 쓴다. 묶는 도구만 받는다.
+      - run: pip install pyinstaller
+
+      # **묶기 전에 검사를 돌린다.** 깨진 채로 내보내지 않는다.
+      - run: python tests.py
+
+      - name: 묶기
+        shell: bash
+        run: |
+          pyinstaller --onefile --console \
+            --name "${{ matrix.name }}" \
+            --add-data "data${{ matrix.sep }}data" \
+            live.py
+
+      # 묶은 것이 정말 켜지는지 확인한다. 자료를 못 찾으면 여기서 걸린다.
+      - name: 켜지는지 확인
+        shell: bash
+        run: |
+          cd dist
+          printf '한카리아스 지진,역린,화염방사,칼춤\n\n하마돈 초3\nq\n\n' \
+            | ./"${{ matrix.name }}"* | tee out.txt
+          grep -q "=>" out.txt || (echo "추천이 안 나왔습니다" && exit 1)
+          rm -f out.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
