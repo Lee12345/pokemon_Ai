@@ -268,13 +268,16 @@ def move_crit(move):
     return False, int(m.group(1)) if m else 0
 
 
-def crit_chance(move):
-    """이 기술로 급소가 뜰 확률."""
+def crit_chance(move, extra_stage=0):
+    """이 기술로 급소가 뜰 확률.
+
+    extra_stage 는 도구·기술로 올라간 급소업 단계다 (초점렌즈 +1, 기충전 +2).
+    """
     always, stage = move_crit(move)
     if always:
         return 1.0
     rates = CONFIG["crit_stage_rates"]
-    return rates[min(stage, len(rates) - 1)]
+    return rates[min(stage + max(0, extra_stage), len(rates) - 1)]
 
 
 # 노력치 배분 표기(A/B/C/D/S/H) -> 능력치 이름

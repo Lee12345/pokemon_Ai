@@ -480,53 +480,118 @@ def test_dead_items(dex):
     아머까오(울퉁불퉁멧 66%)로 한카리아스를 400판 상대해 놓고
     "아머까오가 진다" 고 보고한 적이 있다. 도구 셋이 다 미구현이라
     맨몸으로 싸우고 있었는데 결과만 봐서는 알 수가 없었다.
-    조용히 틀어진 것이다. 이제 대전이 경고를 띄운다 — 그 경고가
-    없어지지 않는지 여기서 지킨다.
+
+    그 뒤 도구를 채웠다. 그래서 여기서 지키는 것이 둘로 늘었다 —
+      ① 채운 도구가 **정말로 도는가** (설명문만 읽고 안 쓰면 같은 일이 난다)
+      ② 아직 못 채운 도구는 **여전히 큰 소리로 말하는가**
     """
-    print("\n[36] 계산에 안 들어가는 도구를 큰 소리로 말하는가")
+    print("\n[36] 도구가 정말로 도는가 / 안 도는 것은 말하는가")
     import random
 
     kao = calc.popular_build(dex, dex.find_pokemon("아머까오"))[0]
-    chomp = calc.popular_build(dex, dex.find_pokemon("한카리아스"))[0]
-    check("아머까오 1위 도구가 아직 미구현이다 (%s)" % kao.item,
-          not dex.item_effects.get(kao.item)
-          and not dex.mega_by_item.get(kao.item), kao.item)
+    check("아머까오 1위 도구는 울퉁불퉁멧이다 (%s)" % kao.item,
+          kao.item == "울퉁불퉁멧", kao.item)
+
+    # ① 접촉기를 맞으면 반동이 실제로 들어가는가
+    chomp = calc.Build(dex, dex.find_pokemon("한카리아스"),
+                       sp={"attack": 32, "speed": 32},
+                       nature=dex.find_nature("명랑"), item="기합의띠")
     r = battle.run_once(dex, kao, chomp,
-                        [dex.find_move("철벽"), dex.find_move("브레이브버드")],
-                        [dex.find_move("화염방사")], random.Random(1))
-    got = [w for w in r["warnings"] if kao.item in w and "계산에 안 들어간다" in w]
-    check("대전이 그걸 경고로 말한다", bool(got), r["warnings"][:2])
+                        [dex.find_move("철벽")], [dex.find_move("불꽃엄니")],
+                        random.Random(1), log=True)
+    chip = [x for x in r["log"] if "울퉁불퉁멧" in x]
+    check("접촉기를 맞으면 울퉁불퉁멧이 돈다 (%d번)" % len(chip),
+          bool(chip), r["log"][:3])
+    check("그 도구에는 이제 경고가 안 뜬다",
+          not [w for w in r["warnings"] if "울퉁불퉁멧" in w],
+          r["warnings"][:2])
 
-    # 반대로, 효과가 있는 도구는 경고하지 않는다 (아무 데서나 울면 안 된다)
-    band = calc.Build(dex, dex.find_pokemon("한카리아스"),
-                      sp={"attack": 32, "speed": 32},
-                      nature=dex.find_nature("명랑"), item="생명의구슬")
-    r2 = battle.run_once(dex, band, kao, [dex.find_move("지진")],
-                         [dex.find_move("바디프레스")], random.Random(1))
-    check("효과가 있는 도구(생명의구슬)에는 경고를 안 한다",
-          not [w for w in r2["warnings"] if "생명의구슬" in w],
-          r2["warnings"][:2])
+    # ② 아직 못 채운 도구는 여전히 말해야 한다
+    left = sorted(set(k for v in battle.item_behaviors(dex).values()
+                      for k in (e["kind"] for e in v))
+                  - battle.APPLIED_ITEM_KINDS)
+    check("아직 못 채운 효과가 무엇인지 코드가 알고 있다 (%s)"
+          % ", ".join(left), bool(left), left)
+    still = None
+    for nm, efs in battle.item_behaviors(dex).items():
+        if any(e["kind"] in left for e in efs):
+            still = nm
+            break
+    if still:
+        thin = calc.Build(dex, dex.find_pokemon("한카리아스"),
+                          sp={"attack": 32}, item=still)
+        r2 = battle.run_once(dex, thin, kao, [dex.find_move("지진")],
+                             [dex.find_move("바디프레스")], random.Random(1))
+        check("못 채운 도구(%s)는 아직 경고가 뜬다" % still,
+              bool([w for w in r2["warnings"] if still in w]),
+              r2["warnings"][:2])
 
-    # 구멍이 얼마나 넓은지도 세어 둔다 — 줄어들면 여기 숫자가 따라 내려간다
-    import json
-    import os
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "data", "usage_single.json")
-    with open(path, encoding="utf-8") as f:
-        listed = json.load(f)["pokemon"]
-    spd = best.speed_item_effects(dex)
-    worst = 0.0
-    for e in sorted(listed, key=lambda x: x.get("rank") or 10 ** 6)[:20]:
-        tot = 0.0
-        for it in (e.get("items") or [])[:8]:
-            nm = it["name"]
-            if (dex.item_effects.get(nm) or dex.mega_by_item.get(nm)
-                    or nm in spd):
-                continue
-            tot += it["pct"]
-        worst = max(worst, tot)
-    check("상위 20종 중 제일 심한 종의 '죽은 도구' 채용률 %.0f%%" % worst,
-          worst <= 100.0, worst)
+    # ③ 설명문을 못 읽은 도구가 남아 있나
+    unread = [it["name"] for it in dex.items
+              if it["name"] not in battle.item_behaviors(dex)
+              and not dex.item_effects.get(it["name"])
+              and not dex.mega_by_item.get(it["name"])
+              and it["name"] not in best.speed_item_effects(dex)]
+    check("설명문을 못 읽은 도구가 없다 (%d개)" % len(unread),
+          not unread, unread[:6])
+
+
+def test_item_behaviors(dex):
+    """도구 설명문을 규칙으로 읽은 결과가 맞는지 하나하나 확인한다.
+
+    정규식은 **조용히 어긋나기 제일 쉬운 자리**다. 순서만 바뀌어도
+    넓은 규칙이 좁은 규칙을 잡아먹는다. 그래서 대표 도구를 못 박는다.
+    """
+    print("\n[37] 도구 설명문 읽기")
+    b = battle.item_behaviors(dex)
+
+    def one(name, kind, **want):
+        ef = battle.item_effect(dex, name, kind)
+        ok = ef is not None and all(
+            abs(ef[k] - v) < 1e-9 if isinstance(v, float) else ef[k] == v
+            for k, v in want.items())
+        check("%s -> %s %s" % (name, kind,
+                               " ".join("%s=%s" % kv for kv in want.items())),
+              ok, ef)
+
+    one("기합의띠", "endure", chance=1.0, full_hp=True)
+    one("기합의머리띠", "endure", chance=0.1, full_hp=False)
+    one("먹다남은음식", "heal_turn", frac=1.0 / 16)
+    one("자뭉열매", "heal_pinch", at=0.5, frac=0.25)
+    one("오랭열매", "heal_pinch", at=0.5, flat=10)
+    one("울퉁불퉁멧", "contact_chip", frac=1.0 / 6)
+    one("풍선", "float")
+    one("리샘열매", "cure", statuses=None)
+    one("유루열매", "cure", statuses=["잠듦"])
+    one("복슝열매", "cure", statuses=["독", "맹독"])
+    one("하양허브", "restore_ranks")
+    one("빛의점토", "extend", what="screen", turns=3)
+    one("축축한바위", "extend", what="weather", weather="비", turns=3)
+    one("뜨거운바위", "extend", what="weather", weather="쾌청", turns=3)
+    one("그라운드코트", "extend", what="terrain", turns=3)
+    one("사이코시드", "seed", terrain="사이코필드", stat="특수방어", step=1)
+    one("그래스시드", "seed", terrain="그래스필드", stat="방어", step=1)
+    one("노말주얼", "jewel", type="노말", mult=1.3)
+    one("광각렌즈", "accuracy", mult=1.1)
+    one("반짝가루", "evasion", mult=0.9)
+    one("초점렌즈", "crit_stage", step=1)
+    one("대파", "crit_stage", step=2)
+    one("레드카드", "force_switch_foe")
+    one("탈출버튼", "self_switch")
+    one("왕의징표석", "flinch", chance=0.1)
+    one("조개껍질방울", "drain_hit", frac=1.0 / 8)
+
+    # 넓은 규칙이 좁은 규칙을 안 잡아먹었는가
+    check("'상태를 회복한다' 규칙이 하양허브를 안 삼켰다",
+          battle.item_effect(dex, "하양허브", "cure") is None,
+          b.get("하양허브"))
+    check("'상태를 회복한다' 규칙이 빛의점토를 안 삼켰다",
+          battle.item_effect(dex, "빛의점토", "cure") is None,
+          b.get("빛의점토"))
+    check("급소업 규칙이 초점렌즈와 대파를 안 섞었다",
+          not battle.item_effect(dex, "초점렌즈", "crit_stage").get("who")
+          and battle.item_effect(dex, "대파", "crit_stage").get("who"),
+          (b.get("초점렌즈"), b.get("대파")))
 
 
 def test_battle_result(dex):
@@ -2214,6 +2279,7 @@ def main():
     test_battle_rules(dex)
     test_battle_result(dex)
     test_dead_items(dex)
+    test_item_behaviors(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

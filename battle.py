@@ -183,6 +183,151 @@ def move_effects(move):
     return out
 
 
+# ---------------------------------------------------------------------------
+# 도구가 대전 중에 하는 일
+# ---------------------------------------------------------------------------
+#
+# `calc.Dex.item_effects` 는 **데미지 배율**만 읽는다. 여기서 읽는 것은
+# 턴이 있어야 뜻이 생기는 것들이다 — 버티기, 회복, 접촉 반동, 타입 무효.
+#
+# **왜 만들었나.** 아머까오의 도구 1·2·3위(울퉁불퉁멧 66% · 먹다남은음식
+# 24% · 자뭉열매 9%, 합쳐서 99%)가 전부 미구현이라 400판을 **맨몸으로**
+# 싸워 놓고 "아머까오가 진다" 고 보고한 적이 있다. 접촉기를 네 번 맞고도
+# 울퉁불퉁멧 반동이 한 번도 안 들어갔다. 상위 20종에서 **효과가 아예
+# 없는 도구의 채용률 합이 중앙값 45%** 였다.
+#
+# 설명문에서 읽는다. 데미지 도구와 같은 방식이라 새 도구가 나와도 따라온다.
+# 못 읽은 도구는 버리지 않고 이름을 남겨서 `_warn_dead_items` 가 세도록 한다.
+_ITEM_RULES = [
+    (r"HP가 꽉 찼을 때 .*기절할 듯한 기술로 데미지를 입으면 HP를 1 남기고",
+     lambda m: {"kind": "endure", "chance": 1.0, "full_hp": True}),
+    (r"기절할 듯한 기술로 데미지를 입으면 (\d+)% 확률로 HP를 1 남기고",
+     lambda m: {"kind": "endure", "chance": int(m.group(1)) / 100.0,
+                "full_hp": False}),
+    (r"턴 종료 시 최대 HP의 1/(\d+)만큼 회복",
+     lambda m: {"kind": "heal_turn", "frac": 1.0 / int(m.group(1))}),
+    (r"남은 HP가 최대 HP의 1/(\d+) 이하가 되었을 때 최대 HP의 1/(\d+)만큼 회복",
+     lambda m: {"kind": "heal_pinch", "at": 1.0 / int(m.group(1)),
+                "frac": 1.0 / int(m.group(2))}),
+    (r"남은 HP가 최대 HP의 1/(\d+) 이하가 되었을 때 HP를 (\d+) 회복",
+     lambda m: {"kind": "heal_pinch", "at": 1.0 / int(m.group(1)),
+                "flat": int(m.group(2))}),
+    (r"접촉 기술을 받으면 상대 최대 HP의 1/(\d+)만큼 데미지",
+     lambda m: {"kind": "contact_chip", "frac": 1.0 / int(m.group(1))}),
+    (r"땅 위에 있지 않게 되어",
+     lambda m: {"kind": "float"}),
+    (r"모든 상태 이상과 혼란 상태를 회복",
+     lambda m: {"kind": "cure", "statuses": None}),
+    (r"능력이 떨어지면 원래대로 되돌린다",
+     lambda m: {"kind": "restore_ranks"}),
+    (r"(?:빛의장막|리플렉터|오로라베일).*지속 시간이 (\d+)턴 증가",
+     lambda m: {"kind": "extend", "what": "screen", "turns": int(m.group(1))}),
+    (r"필드를 전개했을 때 지속 시간이 (\d+)턴 증가",
+     lambda m: {"kind": "extend", "what": "terrain", "turns": int(m.group(1))}),
+    (r"(비|모래바람|눈|쾌청|쨍쨍한 햇살) 상태로 만들었을 때 지속 시간이 (\d+)턴 증가",
+     lambda m: {"kind": "extend", "what": "weather",
+                "weather": m.group(1), "turns": int(m.group(2))}),
+    (r"^(.+?필드) 상태일 때 (.+?)가 (\d+)단계 올라간다",
+     lambda m: {"kind": "seed", "terrain": m.group(1),
+                "stat": m.group(2), "step": int(m.group(3))}),
+    (r"^(.+?)타입 기술의 위력이 (\d+\.\d+)배가 된다\. 한 번 사용하면",
+     lambda m: {"kind": "jewel", "type": m.group(1),
+                "mult": float(m.group(2))}),
+    (r"^기술의 명중률이 (\d+\.\d+)배",
+     lambda m: {"kind": "accuracy", "mult": float(m.group(1))}),
+    (r"자신에게 상대가 사용하는 기술의 명중률이 (\d+\.\d+)배",
+     lambda m: {"kind": "evasion", "mult": float(m.group(1))}),
+    (r"상대보다 행동 순서가 늦으면 기술의 명중률이 (\d+\.\d+)배",
+     lambda m: {"kind": "accuracy_slow", "mult": float(m.group(1))}),
+    (r"^급소업\+(\d+)이 된다",
+     lambda m: {"kind": "crit_stage", "step": int(m.group(1))}),
+    (r"^(.+?)가 급소업\+(\d+)[이가] 된다",
+     lambda m: {"kind": "crit_stage", "step": int(m.group(2)),
+                "who": [x.strip() for x in m.group(1).split(",")]}),
+    (r"자신에게 기술로 데미지를 준 상대를 교체시킨다",
+     lambda m: {"kind": "force_switch_foe"}),
+    (r"기술로 데미지를 입으면 지닌 포켓몬으로 돌아간다",
+     lambda m: {"kind": "self_switch"}),
+    (r"(\d+)% 확률로 우선도가 같은 기술 중에서 가장 먼저 행동",
+     lambda m: {"kind": "quick", "chance": int(m.group(1)) / 100.0}),
+    (r"기술로 데미지를 주었을 때 (\d+)% 확률로 상대를 풀죽게",
+     lambda m: {"kind": "flinch", "chance": int(m.group(1)) / 100.0}),
+    (r"기술로 데미지를 주었을 때 그 데미지의 1/(\d+)만큼 자신의 HP를 회복",
+     lambda m: {"kind": "drain_hit", "frac": 1.0 / int(m.group(1))}),
+    (r"HP를 흡수하는 기술의 회복량이 (\d+\.\d+)배",
+     lambda m: {"kind": "drain_boost", "mult": float(m.group(1))}),
+    (r"^(.+?)의 공격, 특수공격이 (\d+)배가 된다",
+     lambda m: {"kind": "only_for", "who": [m.group(1)],
+                "mult": int(m.group(2))}),
+    (r"교체를 방해하는 효과를 무시하고",
+     lambda m: {"kind": "free_switch"}),
+    (r"바인드 상태로 주는 데미지가 .*1/\d+이 아니라 1/(\d+)",
+     lambda m: {"kind": "bind_chip", "frac": 1.0 / int(m.group(1))}),
+    (r"같은 기술을 연속해서 사용하면 위력이 올라간다.*?최대 (\d+)배",
+     lambda m: {"kind": "metronome", "step": 0.2, "cap": float(m.group(1))}),
+    (r"PP가 0이 된 기술의 PP를 (\d+) 회복",
+     lambda m: {"kind": "pp", "amount": int(m.group(1))}),
+    # 상태 회복 열매 — **제일 마지막에 둔다.** '^(.+?) 상태를 회복한다' 는
+    # 너무 넓어서 앞에 두면 다른 규칙을 잡아먹는다.
+    (r"^(.+?) 상태를 회복한다\.",
+     lambda m: {"kind": "cure",
+                "statuses": [x.strip() for x in m.group(1).split(",")]}),
+]
+
+# **여기가 정직함을 지키는 자리다.** 설명문을 읽어냈다는 것과 턴 루프가
+# 그걸 실제로 쓴다는 것은 다르다. 전에 `dex.item_effects`(데미지 표) 만
+# 보고 "먹다남은음식·자뭉열매가 미구현" 이라고 보고했는데, 사실 둘 다
+# 턴 루프에 손으로 박혀 있었다. 표 하나만 보고 세면 또 틀린다.
+# **아래 집합에 넣기 전에 반드시 코드를 붙인다.**
+APPLIED_ITEM_KINDS = {
+    "endure", "heal_turn", "heal_pinch", "contact_chip", "float",
+    "cure", "restore_ranks", "jewel", "crit_stage",
+    "accuracy", "evasion", "accuracy_slow",
+    "drain_hit", "flinch", "force_switch_foe", "self_switch",
+    "extend", "seed",
+}
+# 아직 못 붙인 것 — 모델에 그 개념 자체가 없다. 붙이면 위로 옮긴다.
+#   quick      : 우선도가 같을 때 끼어드는 것 (best.turn_order 를 고쳐야 한다)
+#   drain_boost: HP 흡수 기술의 회복이 아직 없다
+#   pp         : PP 를 안 세고 있다
+#   bind_chip  : 바인드(조르기) 상태가 없다
+#   metronome  : 같은 기술 연속 횟수를 안 세고 있다
+#   only_for   : 피카츄 전용 (챔피언스 상위권에 없다)
+#   free_switch: 교체를 막는 효과가 아직 없다
+
+_ITEM_CACHE = {}
+
+
+def item_behaviors(dex):
+    """도구 이름 -> 대전 중 효과 목록. dex 하나당 한 번만 읽는다."""
+    key = id(dex)
+    if key in _ITEM_CACHE:
+        return _ITEM_CACHE[key]
+    out = {}
+    for it in dex.items:
+        d = it["description"] or ""
+        got = []
+        for pattern, make in _ITEM_RULES:
+            m = re.search(pattern, d)
+            if m:
+                got.append(make(m))
+                break            # 도구 하나에 규칙 하나면 충분하다
+        if got:
+            out[it["name"]] = got
+    _ITEM_CACHE[key] = out
+    return out
+
+
+def item_effect(dex, item, kind):
+    """그 도구에 그 효과가 있으면 돌려준다. 없으면 None."""
+    if not item:
+        return None
+    for ef in item_behaviors(dex).get(item) or ():
+        if ef["kind"] == kind:
+            return ef
+    return None
+
+
 def status_immune_abilities(dex):
     """특성 설명문에서 '무슨 상태가 안 걸리는지' 를 읽어낸다.
 
@@ -231,6 +376,8 @@ class Side(object):
         self.item = build.item
         self.item_used = False
         self.protecting = False
+        # 이 턴에 풀죽었는가 (왕의징표석 등). 턴이 끝나면 지워진다.
+        self.flinched = False
         # 따라큐의 탈. 첫 공격을 한 번 통째로 막는다.
         self.disguise = (build.ability == DISGUISE)
         # 상태 이상 부속 — 잠듦/얼음 남은 턴, 맹독 누적, 혼란, 졸음
@@ -266,12 +413,25 @@ class Side(object):
         self.ranks[stat] = after
         return after - before        # 실제로 움직인 칸수
 
+    def herb(self):
+        """하양허브 — 깎인 랭크를 통째로 되돌린다. 되돌렸으면 True."""
+        if self.item_used or not item_effect(self.dex, self.item,
+                                             "restore_ranks"):
+            return False
+        if not any(v < 0 for v in self.ranks.values()):
+            return False
+        for k, v in list(self.ranks.items()):
+            if v < 0:
+                self.ranks[k] = 0
+        self.item_used = True
+        return True
+
     def blocks_drop(self):
         """상대가 내 능력을 깎는 것을 막는가."""
         return (self.base.ability in STAT_DROP_PROOF
                 or self.base.ability == MIRROR_ARMOR)
 
-    def damage(self, amount, direct=True):
+    def damage(self, amount, direct=True, rng=None):
         """데미지를 넣는다. 기합의띠·옹골참이 있으면 여기서 버틴다.
 
         direct=False 는 반동·칩 데미지처럼 '기술로 맞은 것' 이 아닌 경우다.
@@ -282,10 +442,19 @@ class Side(object):
             if self.base.ability == ENDURE_FULL:
                 amount = self.hp - 1
                 note = "옹골참으로 HP 1 남기고 버팀"
-            elif self.item == "기합의띠" and not self.item_used:
-                amount = self.hp - 1
-                self.item_used = True
-                note = "기합의띠로 HP 1 남기고 버팀"
+            else:
+                # **손으로 박아 두지 않는다.** 전에는 여기에 "기합의띠" 라는
+                # 이름이 직접 적혀 있었다. 그러면 기합의머리띠(10% 버팀)
+                # 같은 것이 조용히 빠진다. 설명문에서 읽은 규칙을 쓴다.
+                ef = item_effect(self.dex, self.item, "endure")
+                if ef and not self.item_used and (
+                        not ef["full_hp"] or self.hp == self.max_hp):
+                    if ef["chance"] >= 1.0 or (
+                            rng is not None
+                            and rng.random() < ef["chance"]):
+                        amount = self.hp - 1
+                        self.item_used = True
+                        note = "%s 로 HP 1 남기고 버팀" % self.item
         self.hp = max(0, self.hp - amount)
         return note
 
@@ -452,6 +621,7 @@ class Battle(object):
         대전이 시작될 때 세어서 경고에 넣는다 — 승률 옆에 같이 찍힌다.
         """
         spd = best.speed_item_effects(self.dex)
+        behave = item_behaviors(self.dex)
         for party, who in ((self.me_party, "나"), (self.opp_party, "상대")):
             for side in party.members:
                 it = side.base.item
@@ -461,9 +631,15 @@ class Battle(object):
                         or self.dex.mega_by_item.get(it)
                         or it in spd):
                     continue
-                self._warn("%s %s 의 %s 는 **계산에 안 들어간다** "
-                           "(아직 구현 안 된 도구다). 이 승률은 그 도구가 "
-                           "없다고 치고 나온 값이다." % (who, side.name, it))
+                kinds = [e["kind"] for e in behave.get(it) or ()]
+                left = [k for k in kinds if k not in APPLIED_ITEM_KINDS]
+                if kinds and not left:
+                    continue
+                why = ("아직 구현 안 된 도구다" if not kinds
+                       else "%s 는 아직 모델에 없다" % ", ".join(left))
+                self._warn("%s %s 의 %s 는 **계산에 안 들어간다** (%s). "
+                           "이 승률은 그 도구가 없다고 치고 나온 값이다."
+                           % (who, side.name, it, why))
 
     # -- 교체 ---------------------------------------------------------------
     def _grounded(self, side):
@@ -472,7 +648,26 @@ class Battle(object):
             return False
         if set(side.base.types) & GROUNDED_IMMUNE_TYPES:
             return False
+        # 풍선 — 터지기 전까지는 떠 있다
+        if item_effect(self.dex, side.item, "float") and not side.item_used:
+            return False
         return True
+
+    def _seed_item(self, side):
+        """그래스시드·사이코시드 — 필드가 맞으면 한 번 랭크를 올린다."""
+        if side.item_used or not side.alive:
+            return
+        ef = item_effect(self.dex, side.item, "seed")
+        if not ef or self.field.terrain != ef["terrain"]:
+            return
+        key = STAT_WORD.get(ef["stat"])
+        if not key:
+            return
+        if side.bump(key, ef["step"]):
+            side.item_used = True
+            self._say("%s 의 %s — %s %s%+d (지금 %s)"
+                      % (side.name, side.item, side.name,
+                         calc.STAT_KO[key], ef["step"], side.rank_text()))
 
     def _apply_hazards(self, party, side):
         """나올 때 압정을 밟는다. 수치는 게임 데이터에 없어서 본편 값 가정."""
@@ -556,11 +751,12 @@ class Battle(object):
         if side.alive:
             self._entry_weather_for(side)
             self._entry_abilities(side)
+            self._seed_item(side)
 
     def _entry_weather_for(self, side):
         w = WEATHER_ABILITY.get(side.base.ability)
         if w:
-            self.field.set(w)
+            self.field.set(w, turns=self._field_turns(side, w))
             self._say("%s(%s) — %s" % (side.name, side.base.ability, w))
 
     def _force_switch(self, party, by_name):
@@ -594,8 +790,27 @@ class Battle(object):
                 self._say("%s(%s) 등장 — %s" % (side.name, side.base.ability, w))
         for side, who in order:
             self._entry_abilities(side)
+        for side, who in order:
+            self._seed_item(side)
 
     # -- 데미지 -------------------------------------------------------------
+    def _field_turns(self, user, kind):
+        """날씨·필드가 몇 턴 가나. 연장 도구가 있으면 3턴 늘어난다.
+
+        축축한바위(비) · 뜨거운바위(쾌청) · 보송보송바위(모래) ·
+        차가운바위(눈) · 그라운드코트(필드) — 전부 설명문에 '3턴 증가
+        (총 8턴)' 라고 적혀 있다.
+        """
+        base = 5
+        ef = item_effect(self.dex, user.item, "extend")
+        if not ef:
+            return base
+        if ef["what"] == "terrain" and kind in TERRAIN:
+            return base + ef["turns"]
+        if ef["what"] == "weather" and ef.get("weather") == kind:
+            return base + ef["turns"]
+        return base
+
     def _power_scale(self, move, attacker):
         """날씨·필드가 위력에 주는 배율. 데이터에 적혀 있는 것만 본다."""
         mult = 1.0
@@ -621,13 +836,34 @@ class Battle(object):
             return 0
 
         acc = move.get("accuracy")
-        if acc is not None and acc <= 100 and self.rng.random() > acc / 100.0:
-            self._say("%s 의 %s — 빗나감 (명중 %d%%)" % (atk.name, move["name"], acc))
-            return 0
+        if acc is not None and acc <= 100:
+            hit_p = acc / 100.0
+            for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
+                ef = item_effect(self.dex, src.item, kind)
+                if ef:
+                    hit_p *= ef["mult"]
+            ef = item_effect(self.dex, atk.item, "accuracy_slow")
+            if ef and who == "후공":
+                hit_p *= ef["mult"]
+            if self.rng.random() > min(1.0, hit_p):
+                self._say("%s 의 %s — 빗나감 (명중 %.0f%%)"
+                          % (atk.name, move["name"], min(1.0, hit_p) * 100))
+                return 0
 
         # 기술마다 급소 확률이 다르다. '반드시 급소' 도 있다 (트릭플라워 등).
-        crit = self.rng.random() < calc.crit_chance(move)
+        stage = 0
+        ef = item_effect(self.dex, atk.item, "crit_stage")
+        if ef and (not ef.get("who") or atk.base.poke["name"] in ef["who"]):
+            stage = ef["step"]
+        crit = self.rng.random() < calc.crit_chance(move, stage)
         extra = self._power_scale(move, atk)
+        jw = item_effect(self.dex, atk.item, "jewel")
+        if jw and not atk.item_used and move["type"] == jw["type"] \
+                and move["category"] != "변화":
+            extra *= jw["mult"]
+            atk.item_used = True
+            self._say("%s 의 %s — %s 기술 위력 %.1f배 (한 번뿐)"
+                      % (atk.name, atk.item, jw["type"], jw["mult"]))
         res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(), move,
                                critical=crit, extra=extra)
         if "error" in res:
@@ -675,6 +911,48 @@ class Battle(object):
                           % (dfn.name, dfn.base.ability, atk.name, back,
                              atk.hp, atk.max_hp))
 
+        # 도구가 반응한다 (맞은 쪽)
+        if dmg and dfn.alive:
+            ef = item_effect(self.dex, dfn.item, "contact_chip")
+            if ef and move["isContact"]:
+                back = max(1, int(atk.max_hp * ef["frac"]))
+                atk.damage(back, direct=False)
+                self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
+                          % (dfn.name, dfn.item, atk.name, back,
+                             atk.hp, atk.max_hp))
+        if dmg and item_effect(self.dex, dfn.item, "float") \
+                and not dfn.item_used:
+            dfn.item_used = True
+            self._say("%s 의 %s 이 터졌다 — 이제 땅에 닿는다"
+                      % (dfn.name, dfn.item))
+        # 때린 쪽 도구
+        if dmg:
+            ef = item_effect(self.dex, atk.item, "drain_hit")
+            if ef and atk.alive:
+                got = atk.heal(max(1, int(dmg * ef["frac"])))
+                if got:
+                    self._say("%s 의 %s — %d 회복" % (atk.name, atk.item, got))
+            ef = item_effect(self.dex, atk.item, "flinch")
+            if ef and dfn.alive and self.rng.random() < ef["chance"]:
+                dfn.flinched = True
+                self._say("%s 의 %s — %s 가 풀죽었다"
+                          % (atk.name, atk.item, dfn.name))
+
+        # 맞으면 누군가를 바꾸는 도구
+        if dmg and dfn.alive and not dfn.item_used:
+            if item_effect(self.dex, dfn.item, "force_switch_foe"):
+                dfn.item_used = True
+                self._say("%s 의 %s — %s 를 밀어낸다"
+                          % (dfn.name, dfn.item, atk.name))
+                self._force_switch(self._party_of(atk), dfn.item)
+            elif item_effect(self.dex, dfn.item, "self_switch"):
+                bench = self._party_of(dfn).bench()
+                if bench:
+                    dfn.item_used = True
+                    self._say("%s 의 %s — 스스로 물러난다"
+                              % (dfn.name, dfn.item))
+                    self._force_switch(self._party_of(dfn), dfn.item)
+
         # 반동
         rec = move_recoil(move)
         if rec and dmg:
@@ -707,16 +985,37 @@ class Battle(object):
         """자뭉열매처럼 반피에서 터지는 열매. 상위권 1위 도구가 이거다."""
         if side.item_used or not side.item or not side.alive:
             return
-        it = [i for i in self.dex.items if i["name"] == side.item]
-        if not it:
+        ef = item_effect(self.dex, side.item, "heal_pinch")
+        if not ef or side.hp > side.max_hp * ef["at"]:
             return
-        m = re.search(r"최대 HP의 1/2 이하가 되었을 때 최대 HP의 1/(\d+)만큼 회복",
-                      it[0]["description"])
-        if m and side.hp <= side.max_hp // 2:
-            got = side.heal(side.max_hp / float(int(m.group(1))))
+        # 자뭉열매는 비율, 오랭열매는 고정값이다. 전에는 비율만 읽어서
+        # 고정값 열매가 조용히 안 터졌다.
+        amount = (side.max_hp * ef["frac"]) if "frac" in ef else ef["flat"]
+        got = side.heal(amount)
+        side.item_used = True
+        self._say("%s 의 %s 발동 — %d 회복 (HP %d/%d)"
+                  % (side.name, side.item, got, side.hp, side.max_hp))
+
+    def _cure_berry(self, side):
+        """리샘열매·유루열매처럼 상태를 풀어 주는 열매."""
+        if side.item_used or not side.alive:
+            return
+        ef = item_effect(self.dex, side.item, "cure")
+        if not ef:
+            return
+        want = ef["statuses"]
+        hit = None
+        if side.status and (want is None or side.status in want):
+            hit = side.status
+            side.status = None
+            side.status_turns = 0
+            side.toxic_n = 0
+        elif side.confused and (want is None or "혼란" in want):
+            hit = "혼란"
+            side.confused = 0
+        if hit:
             side.item_used = True
-            self._say("%s 의 %s 발동 — %d 회복 (HP %d/%d)"
-                      % (side.name, side.item, got, side.hp, side.max_hp))
+            self._say("%s 의 %s — %s 가 풀렸다" % (side.name, side.item, hit))
 
     # -- 변화기 -------------------------------------------------------------
     def _use_status(self, user, target, move):
@@ -778,7 +1077,8 @@ class Battle(object):
                 user.protecting = True
                 self._say("%s 의 %s — 이 턴은 막는다" % (user.name, move["name"]))
             elif k == "weather":
-                self.field.set(ef["weather"])
+                self.field.set(ef["weather"], turns=self._field_turns(
+                    user, ef["weather"]))
                 self._say("%s 의 %s — %s" % (user.name, move["name"], ef["weather"]))
             elif k == "phaze":
                 if target.protecting:
@@ -964,6 +1264,9 @@ class Battle(object):
                 continue          # 이 턴에 교체한 쪽이다
             if not (self.me.alive and self.opp.alive):
                 break
+            if actor.flinched:
+                self._say("%s 는 풀죽어서 움직이지 못했다" % actor.name)
+                continue
             self._act(actor, target, move)
 
         if self.me.alive and self.opp.alive:
@@ -1209,6 +1512,11 @@ class Battle(object):
                 if got:
                     self._say("%s 먹다남은음식 %d 회복" % (side.name, got))
             self._pinch_berry(side)
+            self._cure_berry(side)
+            if side.herb():
+                self._say("%s 의 하양허브 — 깎인 능력이 돌아왔다 (지금 %s)"
+                          % (side.name, side.rank_text()))
+            side.flinched = False
 
         for text in self.field.tick():
             self._say(text)
