@@ -152,6 +152,16 @@ _RECOIL = re.compile(r"준 데미지의 1/(\d+)만큼 자신도")
 # "5턴 동안 같은 편 필드를 빛의장막 상태로 만든다" — 순풍도 같은 꼴이다
 _SCREEN = re.compile(r"(\d+)턴 동안 같은 편 필드를 (.+?) 상태로 만든다")
 _SUBSTITUTE = re.compile(r"HP를 소비하여 대타를 내보낸다")
+_DESTINY = re.compile(r"자신은 길동무 상태가 된다")
+_REVIVE = re.compile(r"기절한 지닌 포켓몬을 최대 HP의 1/(\d+) 상태로 부활")
+_TRICK = re.compile(r"상대와 자신의 지니고 있는 도구를 바꾼다")
+_BATON = re.compile(r"다른 지닌 포켓몬과 교체한다\. 능력 변화")
+_PERISH = re.compile(r"필드의 전원을 멸망 상태로 만든다")
+_HEAL_WISH = re.compile(r"자신은 기절하게 되지만 다음에 내보내는 포켓몬의 HP를 모두 회복")
+_DEFOG = re.compile(r"리플렉터, 압정뿌리기.*등을 해제한다")
+_FOCUS_ENERGY = re.compile(r"자신은 급소업 상태가 된다\. \(\+(\d+)\)")
+_TYPE_CHANGE = re.compile(r"상대의 타입을 (.+?)타입으로 바꾼다")
+_BELLY = re.compile(r"HP를 소비하여 공격을 (\d+)단계까지 올린다")
 _WISH = re.compile(r"자신이 위치한 자리를 희망사항 상태로 만든다")
 _PAIN_SPLIT = re.compile(r"남은 HP를 더한 다음 1/2씩 나눠 갖는다")
 _HAZE = re.compile(r"전체 필드의 능력 변화를 없앤다")
@@ -195,6 +205,30 @@ def move_effects(move):
         out.append({"kind": "protect"})
     if _PHAZE.search(d):
         out.append({"kind": "phaze"})
+    if _DESTINY.search(d):
+        out.append({"kind": "destiny"})
+    m = _REVIVE.search(d)
+    if m:
+        out.append({"kind": "revive", "frac": 1.0 / int(m.group(1))})
+    if _TRICK.search(d):
+        out.append({"kind": "trick"})
+    if _BATON.search(d):
+        out.append({"kind": "baton"})
+    if _PERISH.search(d):
+        out.append({"kind": "perish", "turns": 3})
+    if _HEAL_WISH.search(d):
+        out.append({"kind": "heal_wish"})
+    if _DEFOG.search(d):
+        out.append({"kind": "defog"})
+    m = _FOCUS_ENERGY.search(d)
+    if m:
+        out.append({"kind": "crit_up", "step": int(m.group(1))})
+    m = _TYPE_CHANGE.search(d)
+    if m:
+        out.append({"kind": "retype", "type": m.group(1)})
+    m = _BELLY.search(d)
+    if m:
+        out.append({"kind": "belly", "step": int(m.group(1)), "cost": 0.5})
     if _SUBSTITUTE.search(d):
         out.append({"kind": "substitute", "frac": 0.25})
     if _WISH.search(d):
@@ -423,6 +457,17 @@ class Side(object):
         self.wish = 0
         # 버티기 — 이 턴만 HP 1 을 남긴다
         self.enduring = False
+        # 길동무를 건 턴 번호. **턴 끝에 지우면 안 된다** — 길동무는
+        # '내가 다음에 행동할 때까지' 가고, 쓴 턴에 이미 맞은 뒤라면
+        # 정작 죽는 것은 다음 턴이기 때문이다. 한 번 그렇게 짰다가
+        # 길동무가 한 번도 안 터졌다.
+        self.destiny_turn = None
+        # 멸망의노래 남은 턴. 0 이 되면 쓰러진다.
+        self.perish = 0
+        # 기충전 등으로 올라간 급소업 단계
+        self.crit_stage = 0
+        # 물붓기 등으로 바뀐 타입. None 이면 원래 타입.
+        self.types_override = None
         # 따라큐의 탈. 첫 공격을 한 번 통째로 막는다.
         self.disguise = (build.ability == DISGUISE)
         # 상태 이상 부속 — 잠듦/얼음 남은 턴, 맹독 누적, 혼란, 졸음
@@ -444,9 +489,19 @@ class Side(object):
         return self.hp / float(self.max_hp)
 
     def as_build(self):
-        """지금 상태를 반영한 Build. 데미지 계산기에 그대로 넣을 수 있다."""
+        """지금 상태를 반영한 Build. 데미지 계산기에 그대로 넣을 수 있다.
+
+        ! **타입이 바뀌어 있으면 바뀐 타입으로 넘겨야 한다.** 물붓기를
+          넣고 나서 `types_override` 만 만들어 두고 여기서 안 넘겼더니,
+          로그에는 "물타입이 됐다" 고 찍히는데 데미지는 원래 타입으로
+          계산되고 있었다. 딱 이 프로젝트가 고장나는 방식이다.
+        """
+        poke = self.base.poke
+        if self.types_override:
+            poke = dict(poke)
+            poke["types"] = list(self.types_override)
         return calc.Build(
-            self.dex, self.base.poke, sp=self.base.sp, nature=self.base.nature,
+            self.dex, poke, sp=self.base.sp, nature=self.base.nature,
             ranks=self.ranks, item=None if self.item_used else self.item,
             ability=self.base.ability, status=self.status,
             hp_ratio=self.hp_ratio)
@@ -512,6 +567,11 @@ class Side(object):
         self.hp = min(self.max_hp, self.hp + amount)
         return self.hp - before
 
+    @property
+    def types(self):
+        """지금 이 몸의 타입. 물붓기 같은 것으로 바뀌어 있을 수 있다."""
+        return self.types_override or self.base.types
+
     def rank_text(self):
         got = ["%s%+d" % (calc.STAT_KO[k], v)
                for k, v in self.ranks.items() if v]
@@ -547,6 +607,8 @@ class Party(object):
         self.hazards = {}
         # 이 편이 '깐' 스크린. {이름: 남은 턴}
         self.screens = {}
+        # 치유소원 — 다음에 나오는 놈이 다 낫는다
+        self.heal_wish = False
         # 희망사항 — (남은 턴, 회복량). **자리에 걸리는 것**이라 건 놈이
         # 빠져도 다음에 나온 놈이 받는다. 그래서 Side 가 아니라 Party 다.
         self.wish = None
@@ -828,6 +890,9 @@ class Battle(object):
             old.ranks = {k: 0 for k in old.ranks}
             old.substitute = 0
             old.enduring = False
+            old.crit_stage = 0
+            old.types_override = None
+            old.destiny_turn = None
             old.confused = 0
             old.drowsy = 0
             old.protecting = False
@@ -835,6 +900,15 @@ class Battle(object):
         side = party.active
         self._say("%s 로 교체%s" % (side.name, (" (%s)" % reason) if reason else ""))
         self._apply_hazards(party, side)
+        if party.heal_wish and side.alive:
+            party.heal_wish = False
+            got = side.heal(side.max_hp)
+            side.status = None
+            side.status_turns = 0
+            side.toxic_n = 0
+            if got:
+                self._say("%s — 치유소원으로 %d 회복하고 상태도 나았다"
+                          % (side.name, got))
         if side.alive:
             self._entry_weather_for(side)
             self._entry_abilities(side)
@@ -949,10 +1023,10 @@ class Battle(object):
                 return 0
 
         # 기술마다 급소 확률이 다르다. '반드시 급소' 도 있다 (트릭플라워 등).
-        stage = 0
+        stage = atk.crit_stage
         ef = item_effect(self.dex, atk.item, "crit_stage")
         if ef and (not ef.get("who") or atk.base.poke["name"] in ef["who"]):
-            stage = ef["step"]
+            stage += ef["step"]
         crit = self.rng.random() < calc.crit_chance(move, stage)
         extra = self._power_scale(move, atk)
         jw = item_effect(self.dex, atk.item, "jewel")
@@ -1025,6 +1099,14 @@ class Battle(object):
                 self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
                           % (dfn.name, dfn.base.ability, atk.name, back,
                              atk.hp, atk.max_hp))
+
+        # 길동무 — 이 기술로 쓰러졌다면 때린 쪽도 데려간다
+        if (dmg and not dfn.alive and atk.alive
+                and dfn.destiny_turn is not None
+                and self.turn <= dfn.destiny_turn + 1):
+            atk.hp = 0
+            self._say("%s 의 길동무 — %s 도 같이 쓰러졌다"
+                      % (dfn.name, atk.name))
 
         # 도구가 반응한다 (맞은 쪽)
         if dmg and dfn.alive:
@@ -1191,6 +1273,100 @@ class Battle(object):
             elif k == "protect":
                 user.protecting = True
                 self._say("%s 의 %s — 이 턴은 막는다" % (user.name, move["name"]))
+            elif k == "destiny":
+                user.destiny_turn = self.turn
+                self._say("%s 의 %s — 쓰러지면 같이 데려간다"
+                          % (user.name, move["name"]))
+            elif k == "crit_up":
+                user.crit_stage += ef["step"]
+                self._say("%s 의 %s — 급소업+%d (지금 +%d)"
+                          % (user.name, move["name"], ef["step"],
+                             user.crit_stage))
+            elif k == "retype":
+                target.types_override = [ef["type"]]
+                self._say("%s 의 %s — %s 가 %s타입이 됐다"
+                          % (user.name, move["name"], target.name,
+                             ef["type"]))
+            elif k == "belly":
+                cost = max(1, int(user.max_hp * ef["cost"]))
+                if user.hp <= cost:
+                    self._say("%s 의 %s — HP가 모자라 실패" % (user.name, move["name"]))
+                else:
+                    user.damage(cost, direct=False)
+                    user.ranks["attack"] = ef["step"]
+                    self._say("%s 의 %s — HP %d 를 쓰고 공격 +%d (HP %d/%d)"
+                              % (user.name, move["name"], cost, ef["step"],
+                                 user.hp, user.max_hp))
+            elif k == "perish":
+                for side in (self.me, self.opp):
+                    if not side.perish:
+                        side.perish = ef["turns"]
+                self._say("%s 의 %s — 양쪽 모두 %d턴 뒤에 쓰러진다"
+                          % (user.name, move["name"], ef["turns"]))
+            elif k == "defog":
+                party = self._party_of(target)
+                mine = self._party_of(user)
+                cleared = []
+                for p in (party, mine):
+                    if p.hazards:
+                        cleared.append("%s 쪽 압정" % ("상대" if p is party else "내"))
+                        p.hazards = {}
+                    if p.screens:
+                        cleared.append("%s 쪽 스크린" % ("상대" if p is party else "내"))
+                        p.screens = {}
+                if self.field.terrain:
+                    cleared.append(self.field.terrain)
+                    self.field.terrain, self.field.terrain_turns = None, 0
+                if target.bump("evasion", -1) if "evasion" in target.ranks else 0:
+                    pass
+                self._say("%s 의 %s — %s 해제"
+                          % (user.name, move["name"],
+                             ", ".join(cleared) if cleared else "해제할 것 없음"))
+            elif k == "trick":
+                a, b = user.item, target.item
+                if user.item_used or target.item_used:
+                    self._say("%s 의 %s — 실패 (이미 쓴 도구)" % (user.name, move["name"]))
+                else:
+                    user.item, target.item = b, a
+                    self._say("%s 의 %s — 도구를 바꿨다 (%s <-> %s)"
+                              % (user.name, move["name"], a or "없음", b or "없음"))
+            elif k == "revive":
+                party = self._party_of(user)
+                dead = [i for i, m in enumerate(party.members) if not m.alive]
+                if not dead:
+                    self._say("%s 의 %s — 쓰러진 포켓몬이 없어 실패"
+                              % (user.name, move["name"]))
+                else:
+                    user.hp = 0
+                    back = party.members[dead[0]]
+                    back.hp = max(1, int(back.max_hp * ef["frac"]))
+                    back.status = None
+                    self._say("%s 의 %s — 자신은 쓰러지고 %s 가 HP %d 로 돌아왔다"
+                              % (user.name, move["name"], back.name, back.hp))
+            elif k == "heal_wish":
+                party = self._party_of(user)
+                user.hp = 0
+                party.heal_wish = True
+                self._say("%s 의 %s — 자신은 쓰러지고 다음에 나오는 놈이 다 낫는다"
+                          % (user.name, move["name"]))
+            elif k == "baton":
+                party = self._party_of(user)
+                bench = party.bench()
+                if not bench:
+                    self._say("%s 의 %s — 바꿀 포켓몬이 없어 실패"
+                              % (user.name, move["name"]))
+                else:
+                    keep = dict(user.ranks)
+                    sub = user.substitute
+                    idx = max(bench, key=lambda t: self.replacement_score(
+                        party, t[1], target))[0]
+                    self.switch_in(party, idx, "%s 로" % move["name"])
+                    # **배턴터치의 요점은 랭크를 넘기는 것이다.**
+                    # switch_in 이 랭크를 지우므로 그 뒤에 다시 얹는다.
+                    party.active.ranks = keep
+                    party.active.substitute = sub
+                    self._say("%s — 능력 변화를 이어받았다 (지금 %s)"
+                              % (party.active.name, party.active.rank_text()))
             elif k == "substitute":
                 cost = max(1, int(user.max_hp * ef["frac"]))
                 if user.substitute:
@@ -1684,6 +1860,16 @@ class Battle(object):
                           % (side.name, side.rank_text()))
             side.flinched = False
             side.enduring = False
+            if (side.destiny_turn is not None
+                    and self.turn > side.destiny_turn + 1):
+                side.destiny_turn = None
+            if side.perish and side.alive:
+                side.perish -= 1
+                if side.perish <= 0:
+                    side.hp = 0
+                    self._say("%s — 멸망의노래로 쓰러졌다" % side.name)
+                else:
+                    self._say("%s — 멸망까지 %d턴" % (side.name, side.perish))
 
         for party in (self.me_party, self.opp_party):
             if not party.wish:

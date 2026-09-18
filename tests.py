@@ -708,6 +708,93 @@ def test_screens_and_weather(dex):
               for e in battle.move_effects(dex.find_move("빛의장막"))))
 
 
+def test_more_status_moves(dex):
+    """길동무 · 멸망의노래 · 배턴터치 · 트릭 · 회생의기도 · 치유소원 등."""
+    print("\n[39] 나머지 변화기")
+    import random
+
+    B = lambda n, **kw: calc.Build(dex, dex.find_pokemon(n), **kw)
+    gar = B("한카리아스", sp={"attack": 32, "speed": 32},
+            nature=dex.find_nature("명랑"))
+    quake = dex.find_move("지진")
+
+    # -- 읽기 --------------------------------------------------------------
+    for nm, kind in (("길동무", "destiny"), ("멸망의노래", "perish"),
+                     ("배턴터치", "baton"), ("트릭", "trick"),
+                     ("회생의기도", "revive"), ("치유소원", "heal_wish"),
+                     ("안개제거", "defog"), ("기충전", "crit_up"),
+                     ("물붓기", "retype"), ("배북", "belly")):
+        efs = [e["kind"] for e in battle.move_effects(dex.find_move(nm))]
+        check("%s 를 '%s' 로 읽는다" % (nm, kind), kind in efs, efs)
+
+    # -- 길동무는 **다음 턴까지 간다** ---------------------------------------
+    # 쓴 턴에 이미 맞은 뒤라면 정작 죽는 것은 다음 턴이다.
+    # 턴 끝에 지우도록 짰다가 한 번도 안 터진 적이 있다.
+    r = battle.run_once(dex, B("따라큐", sp={"attack": 32, "speed": 32}),
+                        gar, [dex.find_move("길동무")], [quake],
+                        random.Random(3), log=True)
+    check("길동무로 때린 쪽도 같이 쓰러진다",
+          any("같이 쓰러졌다" in x for x in r["log"]), r["log"][-3:])
+    check("그 판은 동시에 쓰러진 것으로 끝난다",
+          r["result"] == "동시에 쓰러짐", r["result"])
+
+    # -- 멸망의노래는 양쪽을 센다 --------------------------------------------
+    r2 = battle.run_once(dex, B("블래키", sp={"hp": 32, "spDef": 32}), gar,
+                         [dex.find_move("멸망의노래")] + [dex.find_move("달빛")] * 3,
+                         [quake], random.Random(3), log=True)
+    died = [x for x in r2["log"] if "멸망의노래로 쓰러졌다" in x]
+    check("멸망의노래가 양쪽을 데려간다 (%d마리)" % len(died),
+          len(died) == 2, died)
+
+    # -- 배턴터치는 랭크를 넘긴다 (이게 이 기술의 전부다) --------------------
+    r3 = battle.run_once(
+        dex, [B("블래키", sp={"hp": 32, "spDef": 32}),
+              B("아머까오", sp={"hp": 32, "defense": 32})], gar,
+        [dex.find_move("벌크업"), dex.find_move("벌크업"),
+         dex.find_move("배턴터치")], [quake], random.Random(3), log=True)
+    check("배턴터치로 능력 변화가 넘어간다",
+          any("이어받았다" in x for x in r3["log"]), r3["log"][-3:])
+
+    # -- 기충전이 급소 확률을 실제로 올리는가 --------------------------------
+    b = battle.Battle(dex, B("한카리아스", sp={"attack": 32}), gar,
+                      rng=random.Random(1))
+    before = calc.crit_chance(quake, b.me.crit_stage)
+    b._use_status(b.me, b.opp, dex.find_move("기충전"))
+    after = calc.crit_chance(quake, b.me.crit_stage)
+    check("기충전을 쓰면 급소 확률이 오른다 (%.3f -> %.3f)" % (before, after),
+          after > before, (before, after))
+
+    # -- 트릭은 도구를 바꾼다 ------------------------------------------------
+    b2 = battle.Battle(dex, B("타부자고", sp={"speed": 32}, item="구애스카프"),
+                       B("아머까오", sp={"hp": 32}, item="울퉁불퉁멧"),
+                       rng=random.Random(1))
+    b2._use_status(b2.me, b2.opp, dex.find_move("트릭"))
+    check("트릭으로 도구가 서로 바뀐다 (%s / %s)" % (b2.me.item, b2.opp.item),
+          b2.me.item == "울퉁불퉁멧" and b2.opp.item == "구애스카프",
+          (b2.me.item, b2.opp.item))
+
+    # -- 물붓기는 타입을 바꾼다 ----------------------------------------------
+    b3 = battle.Battle(dex, B("누리레느", sp={"spAtk": 32}), gar,
+                       rng=random.Random(1))
+    b3._use_status(b3.me, b3.opp, dex.find_move("물붓기"))
+    check("물붓기로 상대가 물타입이 된다 (%s)" % b3.opp.types,
+          b3.opp.types == ["물"], b3.opp.types)
+    # ★ **바뀐 타입이 데미지 계산까지 닿는가.** 한 번 여기서 미끄러졌다 —
+    #   로그에는 "물타입이 됐다" 고 찍히는데 데미지는 원래 타입으로
+    #   계산되고 있었다. 로그만 보면 알 수가 없다.
+    b4 = battle.Battle(dex, B("누리레느", sp={"spAtk": 32}),
+                       B("한카리아스", sp={"hp": 32}), rng=random.Random(1))
+    ball = dex.find_move("에너지볼")
+    was = calc.calc_damage(dex, b4.me.as_build(), b4.opp.as_build(),
+                           ball)["rolls"][-1]
+    b4._use_status(b4.me, b4.opp, dex.find_move("물붓기"))
+    now = calc.calc_damage(dex, b4.me.as_build(), b4.opp.as_build(),
+                           ball)["rolls"][-1]
+    check("바뀐 타입이 데미지까지 닿는다 (풀 기술 %d -> %d, %.1f배)"
+          % (was, now, now / float(was)), abs(now / float(was) - 2.0) < 0.05,
+          (was, now))
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2395,6 +2482,7 @@ def main():
     test_dead_items(dex)
     test_item_behaviors(dex)
     test_screens_and_weather(dex)
+    test_more_status_moves(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)
