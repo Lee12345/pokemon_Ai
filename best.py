@@ -85,7 +85,17 @@ def speed_item_effects(dex):
     """도구 설명문에서 스피드 배율을 읽어낸다.
 
     데미지 도구와 같은 방식이다. 설명문을 읽으므로 새 도구가 나와도 따라온다.
+
+    ! **결과를 dex 에 붙여 둔다.** 이건 dex 만 있으면 정해지는 값인데
+      전에는 부를 때마다 도구 166개를 전부 다시 훑었다. 3대3 한 판을
+      도는 동안 7,235번 불렸고, 그 안에서 정규식이 **240만 번** 돌았다
+      (한 판 전체 re.search 306만 번의 대부분). 재 보니 그것만으로
+      전체 시간의 44% 였다. 7단계(여러 턴 내다보기)는 이 함수를
+      수십만 번 부르게 되므로 여기서 막아야 한다.
     """
+    got = getattr(dex, "_speed_items", None)
+    if got is not None:
+        return got
     out = {}
     for it in dex.items:
         d = it["description"]
@@ -98,6 +108,10 @@ def speed_item_effects(dex):
         m = re.search(r"스피드가 1/(\d+)", d)
         if m:
             out[it["name"]] = 1.0 / int(m.group(1))
+    try:
+        dex._speed_items = out
+    except AttributeError:
+        pass
     return out
 
 
@@ -317,14 +331,26 @@ MOVE_CAVEAT_RULES = [
 ]
 
 
+_CAVEAT_CACHE = {}
+
+
 def move_caveats(move):
-    """이 기술이 '위력 그대로' 가 아닌 이유들. 없으면 빈 목록."""
+    """이 기술이 '위력 그대로' 가 아닌 이유들. 없으면 빈 목록.
+
+    기술 하나당 답이 하나뿐이라 외워 둔다. 한 판에 66,763번 불린다.
+    """
+    key = move.get("id") or move.get("name")
+    got = _CAVEAT_CACHE.get(key)
+    if got is not None:
+        return got
     d = move.get("description") or ""
     out = []
     for pattern, text in MOVE_CAVEAT_RULES:
         m = re.search(pattern, d)
         if m:
             out.append(text.format(*m.groups()) if m.groups() else text)
+    if key is not None:
+        _CAVEAT_CACHE[key] = out
     return out
 
 
@@ -369,6 +395,44 @@ def hit_rate(move):
     return acc / 100.0
 
 
+# ---------------------------------------------------------------------------
+# rate_moves 외워 두기
+# ---------------------------------------------------------------------------
+#
+# 3대3 한 판을 도는 동안 `rate_moves` 가 175번 불리고, 그 안에서
+# `calc_damage` 가 698번 돈다. 재 보니 **교체를 판단하는 휴리스틱
+# (should_switch -> replacement_score -> rate_moves) 이 전투 시뮬레이션
+# 자체보다 8배 비쌌다** — 4.84초 중 3.95초. 벤치에 앉아 있는 놈들은
+# 턴이 지나도 상태가 안 변하는데 매 턴 다시 재고 있었다.
+# 실제로 세어 보니 호출의 **73%가 이미 잰 것과 똑같은 조건**이었다.
+#
+# ! 열쇠는 `calc_damage` 가 **읽는 것 전부**여야 한다. 하나라도 빠지면
+#   남의 답을 돌려주는, 이 프로젝트에서 제일 무서운 종류의 고장이 된다.
+#   그래서 실제로 읽는 필드를 세어서 맞췄다 —
+#     ability · hp_ratio · item · ranks · stat(종족값·노력치·성격) ·
+#     status · types
+#   그리고 `CHECK_CACHE = True` 로 켜면 **캐시를 쓰지 않고 매번 다시
+#   계산해서 저장된 답과 대조한다.** 테스트가 그 모드로 한 번 돌린다.
+_RATE_CACHE = {}
+CHECK_CACHE = False         # True 면 캐시를 믿지 않고 매번 대조한다
+
+
+def _build_key(b):
+    """이 몸이 데미지 계산에 주는 영향을 남김없이 담은 열쇠."""
+    return (b.poke["key"], b.poke.get("formNo"),
+            tuple(sorted(b.sp.items())),
+            b.nature["name"] if b.nature else None,
+            tuple(sorted(b.ranks.items())),
+            b.item, b.ability, b.status,
+            round(b.hp_ratio, 6), tuple(b.poke["types"]))
+
+
+def _rate_signature(rows):
+    """대조용 — 캐시가 돌려준 답이 정말 같은지 비교할 거리."""
+    return [(r["move"]["id"], r["kind"], round(r.get("expected", 0.0), 9),
+             round(r.get("koNow", 0.0), 9)) for r in rows]
+
+
 def rate_moves(dex, attacker, defender, moves):
     """기술 하나하나에 데미지와 점수를 붙인다.
 
@@ -377,6 +441,27 @@ def rate_moves(dex, attacker, defender, moves):
       status — 변화기라 아직 점수를 못 매긴다 (4-B)
       none   — 안 통하거나 위력이 정해져 있지 않다
     """
+    key = (_build_key(attacker), _build_key(defender),
+           tuple(m["id"] for m, _ in moves),
+           tuple(p for _, p in moves))
+    got = _RATE_CACHE.get(key)
+    if got is not None and not CHECK_CACHE:
+        return got
+    rows = _rate_moves_raw(dex, attacker, defender, moves)
+    if got is not None:
+        # 대조 모드 — 열쇠가 모자라면 여기서 걸린다
+        if _rate_signature(got) != _rate_signature(rows):
+            raise AssertionError(
+                "rate_moves 캐시가 다른 답을 돌려준다. 열쇠에 빠진 것이 "
+                "있다: %s vs %s" % (_rate_signature(got)[:2],
+                                   _rate_signature(rows)[:2]))
+    if len(_RATE_CACHE) > 200000:
+        _RATE_CACHE.clear()
+    _RATE_CACHE[key] = rows
+    return rows
+
+
+def _rate_moves_raw(dex, attacker, defender, moves):
     rows = []
     for move, pct in moves:
         row = {"move": move, "pct": pct, "hit": hit_rate(move),

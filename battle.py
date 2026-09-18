@@ -372,10 +372,15 @@ _ITEM_CACHE = {}
 
 
 def item_behaviors(dex):
-    """도구 이름 -> 대전 중 효과 목록. dex 하나당 한 번만 읽는다."""
-    key = id(dex)
-    if key in _ITEM_CACHE:
-        return _ITEM_CACHE[key]
+    """도구 이름 -> 대전 중 효과 목록. dex 하나당 한 번만 읽는다.
+
+    ! 전에는 `id(dex)` 를 열쇠로 썼다. 파이썬은 객체가 사라지면 그 id 를
+      **다시 내준다.** 새 Dex 가 옛 Dex 의 id 를 물려받으면 남의 표를
+      돌려주게 된다. 조용히 틀어지는 종류라 dex 에 직접 붙인다.
+    """
+    got = getattr(dex, "_item_behaviors", None)
+    if got is not None:
+        return got
     out = {}
     for it in dex.items:
         d = it["description"] or ""
@@ -387,7 +392,10 @@ def item_behaviors(dex):
                 break            # 도구 하나에 규칙 하나면 충분하다
         if got:
             out[it["name"]] = got
-    _ITEM_CACHE[key] = out
+    try:
+        dex._item_behaviors = out
+    except AttributeError:
+        pass
     return out
 
 

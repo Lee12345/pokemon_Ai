@@ -795,6 +795,69 @@ def test_more_status_moves(dex):
           (was, now))
 
 
+def test_cache_honesty(dex):
+    """**캐시가 남의 답을 돌려주지 않는가.**
+
+    속도를 위해 `best.rate_moves` 를 외워 둔다. 열쇠에 하나라도 빠지면
+    조건이 다른데 같은 답을 돌려주게 되고, 그건 터지지 않고 조용히
+    틀린 수를 고르게 만든다 — 이 저장소가 고장나는 바로 그 방식이다.
+
+    그래서 `best.CHECK_CACHE = True` 모드를 만들어 뒀다. 캐시를 믿지
+    않고 매번 다시 계산해서 저장된 답과 대조하고, 다르면 터진다.
+    여기서 실제로 그 모드로 돌려 본다.
+    """
+    print("\n[40] 캐시가 정직한가")
+    import random
+
+    was = best.CHECK_CACHE
+    best.CHECK_CACHE = True
+    best._RATE_CACHE.clear()
+    try:
+        mp = [calc.popular_build(dex, dex.find_pokemon(n))[0]
+              for n in ("한카리아스", "아머까오", "누리레느")]
+        op = [calc.popular_build(dex, dex.find_pokemon(n))[0]
+              for n in ("하마돈", "갸라도스", "킬가르도")]
+        plans, _ = battle.build_plans(dex, mp, op)
+        oplan, _, _ = battle.opponent_plan(dex, op, mp)
+        rng = random.Random(1)
+        blew = None
+        try:
+            for _ in range(120):
+                battle.run_once(dex, mp, op, plans[0], oplan, rng)
+        except AssertionError as e:
+            blew = str(e)
+        check("3대3 120판을 대조 모드로 돌려도 캐시가 안 어긋난다",
+              blew is None, blew)
+        check("그동안 실제로 여러 조건을 봤다 (열쇠 %d개)"
+              % len(best._RATE_CACHE), len(best._RATE_CACHE) > 500,
+              len(best._RATE_CACHE))
+    finally:
+        best.CHECK_CACHE = was
+
+    # 열쇠가 상태를 실제로 가르는가 — 랭크만 바꿔도 다른 답이 나와야 한다
+    a = calc.popular_build(dex, dex.find_pokemon("한카리아스"))[0]
+    # ! 아머까오(비행)를 상대로 지진을 쓰면 무효라 'expected' 자체가 없다.
+    #   한 번 그렇게 짰다가 KeyError 로 터졌다. 실제로 통하는 짝을 쓴다.
+    d = calc.popular_build(dex, dex.find_pokemon("하마돈"))[0]
+    mv = [(dex.find_move("지진"), None)]
+    base = best.rate_moves(dex, a, d, mv)[0]["expected"]
+    a2 = calc.Build(dex, a.poke, sp=a.sp, nature=a.nature,
+                    ranks={"attack": 2}, item=a.item, ability=a.ability)
+    up = best.rate_moves(dex, a2, d, mv)[0]["expected"]
+    check("공격 랭크를 올리면 다른 답이 나온다 (%.1f -> %.1f)" % (base, up),
+          up > base, (base, up))
+    d2 = calc.Build(dex, d.poke, sp=d.sp, nature=d.nature,
+                    ranks={"defense": 2}, item=d.item, ability=d.ability)
+    down = best.rate_moves(dex, a, d2, mv)[0]["expected"]
+    check("상대 방어 랭크를 올리면 데미지가 준다 (%.1f -> %.1f)" % (base, down),
+          down < base, (base, down))
+    a3 = calc.Build(dex, a.poke, sp=a.sp, nature=a.nature, item=a.item,
+                    ability=a.ability, status="화상")
+    burn = best.rate_moves(dex, a3, d, mv)[0]["expected"]
+    check("화상이면 물리 데미지가 준다 (%.1f -> %.1f)" % (base, burn),
+          burn < base, (base, burn))
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2483,6 +2546,7 @@ def main():
     test_item_behaviors(dex)
     test_screens_and_weather(dex)
     test_more_status_moves(dex)
+    test_cache_honesty(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

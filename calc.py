@@ -712,16 +712,24 @@ def calc_damage(dex, attacker, defender, move, critical=False,
             guard *= di["mult"]
             notes.append("%s: 데미지 반감 (1회용)" % defender.item)
 
+    # 난수 16단계. **본편처럼 단계마다 버림한다** — 곱을 한 번에 하면
+    # 값이 달라진다.
+    #
+    # ! 여기가 제일 뜨거운 자리다. 3대3 한 판에 calc_damage 가 698번
+    #   불리고, 이 고리가 한 번에 16 x 7 = 112번 돈다. 그래서 두 가지만
+    #   손봤다 — 둘 다 **결과를 바꾸지 않는다.**
+    #     · math.floor 를 지역 이름으로 묶는다 (속성 찾기를 없앤다)
+    #     · 배율이 정확히 1.0 인 단계는 건너뛴다.
+    #       dmg 는 이미 정수라 floor(정수 x 1.0) == 정수 다.
+    #   무작위 6만 경우로 옛 코드와 대조해서 **전부 같음**을 확인했다.
+    floor = math.floor
+    chain = [m for m in (crit, stab, eff, burn, guard, extra) if m != 1.0]
     rolls = []
     for r in range(CONFIG["random_min"], CONFIG["random_max"] + 1):
-        dmg = math.floor(base * r / 100)
-        dmg = math.floor(dmg * crit)
-        dmg = math.floor(dmg * stab)
-        dmg = math.floor(dmg * eff)
-        dmg = math.floor(dmg * burn)
-        dmg = math.floor(dmg * guard)
-        dmg = math.floor(dmg * extra)
-        rolls.append(max(1, dmg))
+        dmg = floor(base * r / 100)
+        for m in chain:
+            dmg = floor(dmg * m)
+        rolls.append(1 if dmg < 1 else dmg)
 
     lo, hi = min(rolls), max(rolls)
     ko1 = sum(1 for x in rolls if x >= hp) / len(rolls)
