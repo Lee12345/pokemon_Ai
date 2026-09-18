@@ -973,11 +973,67 @@ def test_live(dex):
     check("상대 남은 HP 도 들어간다 (%d턴 -> %d턴)" % tuple(turns),
           turns[1] < turns[0], turns)
 
+    # ★ 내 파티를 **내가 적은 대로** 쓰는가 ---------------------------------
+    # ! 처음에는 이름과 기술만 받고 배분·성격·도구를 사다리 1위 것으로
+    #   멋대로 씌웠다. 상대는 모르니 사용률로 짐작하는 게 맞지만
+    #   **내 파티는 내가 안다.** 같은 아머까오라도 HB 장난꾸러기는
+    #   방어 172, HD 신중은 125 — 38% 차이다.
+    got = live.parse_evs("A32S32")[0]
+    check("노력치를 읽는다 (A32S32)",
+          got == {"attack": 32, "speed": 32}, got)
+    got = live.parse_evs("H16A22B2S26")[0]
+    check("여러 칸도 읽는다 (H16A22B2S26)",
+          got == {"hp": 16, "attack": 22, "defense": 2, "speed": 26}, got)
+    bad, why = live.parse_evs("A33")
+    check("한 칸 32 초과를 잡는다 (%s)" % why, bad is None and why)
+    bad2, why2 = live.parse_evs("H32B32S32")
+    check("합계 66 초과를 잡는다 (%s)" % why2, bad2 is None and why2)
+
+    line = "한카리아스 지진,역린 | 명랑 A32S32 기합의띠"
+    build, moves, filled, bad3 = live.read_line(dex, line)
+    check("파티 한 줄을 통째로 읽는다", bad3 is None, bad3)
+    check("적은 성격이 그대로 들어간다 (%s)"
+          % (build.nature and build.nature["name"]),
+          build.nature and build.nature["name"] == "명랑")
+    check("적은 노력치가 그대로 들어간다",
+          build.sp.get("attack") == 32 and build.sp.get("speed") == 32,
+          build.sp)
+    check("적은 도구가 그대로 들어간다 (%s)" % build.item,
+          build.item == "기합의띠")
+    check("다 적었으면 사용률로 채운 것이 없다", not filled, filled)
+
+    # 안 적으면 채우되 **반드시 드러낸다**
+    b2, _m2, filled2, _bad = live.read_line(dex, "한카리아스 지진,역린")
+    check("안 적으면 사용률로 채운다", bool(filled2), filled2)
+    check("무엇을 채웠는지 화면에 드러낸다",
+          "사용률로 채웠습니다" in live.describe_member(b2, ["지진"], filled2),
+          live.describe_member(b2, ["지진"], filled2))
+
+    # 적은 대로 쓰면 능력치가 실제로 달라지는가 (이게 핵심이다)
+    hb, _m, _f, _b = live.read_line(
+        dex, "아머까오 바디프레스 | 장난꾸러기 H32B32 울퉁불퉁멧")
+    hd, _m, _f, _b = live.read_line(
+        dex, "아머까오 바디프레스 | 신중 H32D32 먹다남은음식")
+    check("배분을 바꾸면 능력치가 실제로 달라진다 (방어 %d vs %d)"
+          % (hb.stat("defense"), hd.stat("defense")),
+          hb.stat("defense") > hd.stat("defense") + 20,
+          (hb.stat("defense"), hd.stat("defense")))
+    check("특방도 반대로 달라진다 (%d vs %d)"
+          % (hb.stat("spDef"), hd.stat("spDef")),
+          hd.stat("spDef") > hb.stat("spDef") + 20,
+          (hb.stat("spDef"), hd.stat("spDef")))
+
+    # 메가스톤을 적으면 메가로 싸운다
+    mg, _m, _f, _b = live.read_line(
+        dex, "한카리아스 지진 | 명랑 A32S32 한카리아스나이트Z")
+    check("메가스톤을 적으면 메가로 계산한다 (%s)" % mg.name,
+          "메가" in mg.name, mg.name)
+
     # ② live 가 그 값을 탐색까지 넘기는가 ------------------------------------
     # ! 한 번 여기서 빠뜨렸다. 화면에는 '상대 55%' 라고 찍히는데
     #   state() 가 opp_hp 를 안 넘겨서 계산은 만피로 하고 있었다.
-    party = [(P("아머까오"), ["바디프레스", "철벽", "날개쉬기", "브레이브버드"]),
-             (P("누리레느"), ["문포스", "냉동빔", "아쿠아제트", "하품"])]
+    party = [(P("아머까오"), ["바디프레스", "철벽", "날개쉬기", "브레이브버드"], []),
+             (P("누리레느"), ["문포스", "냉동빔", "아쿠아제트", "하품"], [])]
     f = live.Fight(dex, party)
     f.opp = dex.find_pokemon("한카리아스")
     f.opp_hp = 40.0
@@ -1015,7 +1071,7 @@ def test_live(dex):
     # ! 전에는 덥히는 판이 예산을 먹어서, 예산이 작으면 **한 판도 안
     #   돌린 채** 끝났다. 그런데 점수는 0.0 으로 나와서 '측정해 보니
     #   0점' 처럼 보였다.
-    got3 = search.best_action(dex, [b for b, _m in party],
+    got3 = search.best_action(dex, [row[0] for row in party],
                               dex.find_pokemon("한카리아스"),
                               my_moves=party[0][1], seconds=1.0,
                               state={"my_hp": [70, 100], "opp_hp": [100]})

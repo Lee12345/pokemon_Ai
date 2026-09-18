@@ -41,6 +41,7 @@
 import io
 import json
 import os
+import re
 import sys
 import time
 
@@ -116,8 +117,128 @@ def find_move_or_item(dex, text):
 # ---------------------------------------------------------------------------
 # 내 파티
 # ---------------------------------------------------------------------------
+#
+# **여기서 한 번 크게 틀렸다.** 처음에는 이름과 기술만 받고, 배분·성격·
+# 도구는 `calc.popular_build` 로 **사다리 1위 것을 멋대로 씌웠다.**
+# 상대는 모르니까 사용률로 짐작하는 게 맞지만, **내 파티는 내가 안다.**
+# 남의 배분으로 내 포켓몬을 계산하고 있었던 것이다.
+#
+# 얼마나 틀어지나 — 같은 아머까오인데
+#     HB 장난꾸러기   방어 172  특방 105
+#     HD 신중        방어 125  특방 150
+# 방어가 38% 차이다. 이 정도면 "한 대 버티나" 가 뒤집힌다.
+#
+# 그래서 배분·성격·도구를 받는다. 안 적으면 사용률로 채우되 **화면에
+# 큰 소리로 말한다** — 조용히 남의 배분을 쓰는 일이 없게.
+
+# 노력치 표기: A32S32 / H16A22B2S26 처럼 붙여 쓴다
+_EV = re.compile(r"([HABCDShabcds])\s*(\d{1,2})")
+
+# 챔피언스 규칙 (README '확인해 둔 게임 규칙' 참고)
+EV_MAX = 32          # 한 능력치에 최대
+EV_TOTAL = 66        # 합계 최대
+
+
+def parse_evs(text):
+    """'A32S32' -> ({'attack':32,'speed':32}, 알림글). 못 읽으면 (None, 이유)."""
+    if not _EV.search(text or ""):
+        return None, None
+    sp, seen = {}, []
+    for key, num in _EV.findall(text):
+        stat = calc.SPREAD_KEY.get(key.upper())
+        if not stat:
+            return None, "'%s' 는 모르는 능력치입니다 (H A B C D S)" % key
+        val = int(num)
+        if val > EV_MAX:
+            return None, ("%s%d — 한 능력치에 %d까지입니다"
+                          % (key.upper(), val, EV_MAX))
+        sp[stat] = val
+        seen.append("%s%d" % (key.upper(), val))
+    total = sum(sp.values())
+    if total > EV_TOTAL:
+        return None, "합이 %d입니다 — %d까지입니다" % (total, EV_TOTAL)
+    return sp, " ".join(seen)
+
+
+def parse_extra(dex, text):
+    """기술 뒤에 적은 배분·성격·도구를 읽는다.
+
+    돌려주는 것: (sp, nature, item, 못 읽은 낱말들)
+    """
+    sp = nature = item = None
+    unknown = []
+    for word in (text or "").replace(",", " ").split():
+        got, note = parse_evs(word)
+        if got:
+            sp = got
+            continue
+        if note:                       # 노력치처럼 생겼는데 규칙에 안 맞다
+            unknown.append("%s (%s)" % (word, note))
+            continue
+        try:
+            nature = dex.find_nature(word)
+            continue
+        except LookupError:
+            pass
+        kind, name = find_move_or_item(dex, word)
+        if kind == "도구":
+            item = name
+            continue
+        unknown.append(word)
+    return sp, nature, item, unknown
+
+
+def build_one(dex, poke, sp, nature, item):
+    """내가 적은 대로 만든다. 안 적은 것만 사용률로 채운다.
+
+    (빌드, 사용률로 채운 것들) 을 돌려준다.
+    """
+    base, _note = calc.popular_build(dex, poke)
+    filled = []
+    if sp is None:
+        sp = base.sp
+        filled.append("노력치")
+    if nature is None:
+        nature = base.nature
+        filled.append("성격")
+    if item is None:
+        item = base.item
+        filled.append("도구")
+    # 메가스톤을 들었으면 그 폼으로 싸운다 (popular_build 와 같은 규칙)
+    mega = dex.mega_by_item.get(item)
+    if mega and not poke.get("isMega") and mega["dexNo"] == poke["dexNo"]:
+        poke = mega
+    return calc.Build(dex, poke, sp=sp, nature=nature, item=item), filled
+def read_line(dex, line):
+    """파티 파일 한 줄을 읽는다.
+
+        한카리아스 지진,역린,화염방사,칼춤 | 명랑 A32S32 한카리아스나이트Z
+
+    세로줄(|) 뒤는 없어도 된다. 없으면 사용률로 채우고 그렇다고 알린다.
+    (빌드, [기술], 사용률로 채운 것들, 문제) 를 돌려준다.
+    """
+    head, _, tail = line.partition("|")
+    bits = head.split(None, 1)
+    poke, _note = find_poke(dex, bits[0])
+    if poke is None:
+        return None, None, None, "'%s' 이라는 포켓몬을 못 찾았습니다" % bits[0]
+
+    moves = []
+    for m in (bits[1].replace(",", " ").split() if len(bits) > 1 else []):
+        kind, name = find_move_or_item(dex, m)
+        if kind != "기술":
+            return None, None, None, ("'%s' 을 기술로 못 읽었습니다" % m)
+        moves.append(name)
+
+    sp, nature, item, unknown = parse_extra(dex, tail)
+    if unknown:
+        return None, None, None, ("못 알아들은 말: %s" % ", ".join(unknown))
+    build, filled = build_one(dex, poke, sp, nature, item)
+    return build, moves, filled, None
+
+
 def load_party(dex, path=PARTY_FILE):
-    """파일에서 내 파티를 읽는다. [(빌드, [기술이름])]."""
+    """파일에서 내 파티를 읽는다. [(빌드, [기술이름], 사용률로 채운 것들)]."""
     if not os.path.exists(path):
         return None
     out = []
@@ -126,28 +247,29 @@ def load_party(dex, path=PARTY_FILE):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            bits = line.split(None, 1)
-            poke, _note = find_poke(dex, bits[0])
-            if poke is None:
-                print("! 파티 파일에서 '%s' 을 못 읽었습니다" % bits[0])
+            build, moves, filled, bad = read_line(dex, line)
+            if bad:
+                print("! 파티 파일: %s" % bad)
                 return None
-            moves = []
-            if len(bits) > 1:
-                for m in bits[1].replace(",", " ").split():
-                    kind, name = find_move_or_item(dex, m)
-                    if kind != "기술":
-                        print("! '%s' 을 기술로 못 읽었습니다 (%s)"
-                              % (m, name if kind is None else kind))
-                        return None
-                    moves.append(name)
-            build = calc.popular_build(dex, poke)[0]
-            out.append((build, moves))
+            out.append((build, moves, filled))
     return out or None
 
 
+PARTY_HELP = u"""내 파티를 적으세요. 한 줄에 한 마리, 빈 줄이면 끝.
+
+  이름 기술,기술,기술,기술 | 성격 노력치 도구
+
+  예)  한카리아스 지진,역린,화염방사,칼춤 | 명랑 A32S32 한카리아스나이트Z
+       아머까오 바디프레스,철벽,날개쉬기,브레이브버드 | 장난꾸러기 H32B32 울퉁불퉁멧
+
+  노력치는 A32S32 처럼 붙여 씁니다 (H체력 A공격 B방어 C특공 D특방 S스피드).
+  한 칸에 32까지, 합쳐서 66까지입니다.
+  세로줄(|) 뒤는 안 적어도 되는데, 그러면 **사다리에서 제일 흔한 것**으로
+  채웁니다. 내 포켓몬인데 남의 배분으로 계산하게 되니 적는 편이 낫습니다."""
+
+
 def ask_party(dex):
-    print("내 파티를 적으세요. 한 줄에 한 마리, 빈 줄이면 끝.")
-    print("  예)  한카리아스 지진,역린,화염방사,칼춤")
+    print(PARTY_HELP)
     out = []
     while True:
         try:
@@ -156,36 +278,44 @@ def ask_party(dex):
             break
         if not line:
             break
-        bits = line.split(None, 1)
-        poke, note = find_poke(dex, bits[0])
-        if poke is None:
-            print("  ! %s" % (note or "못 찾았습니다"))
-            continue
-        moves = []
-        bad = False
-        for m in (bits[1].replace(",", " ").split() if len(bits) > 1 else []):
-            kind, name = find_move_or_item(dex, m)
-            if kind != "기술":
-                print("  ! %s" % (name if kind is None else "'%s' 은 기술이 아닙니다" % m))
-                bad = True
-                break
-            moves.append(name)
+        build, moves, filled, bad = read_line(dex, line)
         if bad:
+            print("  ! %s" % bad)
             continue
-        build = calc.popular_build(dex, poke)[0]
-        out.append((build, moves))
-        print("  %s%s" % (build.name, (" — " + "/".join(moves)) if moves else
-                          "  (기술을 안 적어서 사용률로 짐작합니다)"))
+        out.append((build, moves, filled))
+        print("  %s" % describe_member(build, moves, filled))
     if out:
-        try:
-            os.makedirs(os.path.dirname(PARTY_FILE))
-        except OSError:
-            pass
         with io.open(PARTY_FILE, "w", encoding="utf-8") as f:
-            for build, moves in out:
-                f.write("%s %s\n" % (build.poke["name"], ",".join(moves)))
+            f.write(u"# 이름 기술,기술,기술,기술 | 성격 노력치 도구\n")
+            for build, moves, _filled in out:
+                f.write(u"%s %s | %s %s %s\n"
+                        % (build.poke["name"], ",".join(moves),
+                           build.nature["name"] if build.nature else "",
+                           ev_text(build.sp), build.item or ""))
         print("\n%s 에 저장했습니다. 다음부터는 안 물어봅니다." % PARTY_FILE)
     return out or None
+
+
+def ev_text(sp):
+    """{'attack':32} -> 'A32'."""
+    back = dict((v, k) for k, v in calc.SPREAD_KEY.items())
+    got = [(back[k], v) for k, v in sp.items() if v and k in back]
+    got.sort(key=lambda x: "HABCDS".index(x[0]))
+    return "".join("%s%d" % (k, v) for k, v in got) or "무투자"
+
+
+def describe_member(build, moves, filled):
+    """한 마리를 한 줄로. **사용률로 채운 것은 반드시 드러낸다.**"""
+    out = "%s | %s %s %s" % (build.name,
+                             build.nature["name"] if build.nature else "-",
+                             ev_text(build.sp), build.item or "도구없음")
+    if moves:
+        out += " | " + "/".join(moves)
+    else:
+        out += " | 기술 안 적음"
+    if filled:
+        out += "   ← %s 는 사용률로 채웠습니다" % "·".join(filled)
+    return out
 
 
 def raw_input_(prompt):
@@ -224,7 +354,7 @@ class Fight(object):
         return self.seen.setdefault(key, set())
 
     def builds(self):
-        return [b for b, _m in self.party]
+        return [row[0] for row in self.party]
 
     def moves(self):
         return self.party[self.my_active][1] or None
@@ -270,7 +400,8 @@ def apply_token(fight, tok):
         poke, note = find_poke(dex, tok[1:])
         if poke is None:
             return "! %s" % (note or "못 찾았습니다")
-        for i, (b, _m) in enumerate(fight.party):
+        for i, row in enumerate(fight.party):
+            b = row[0]
             if b.poke["name"] == poke["name"] or b.name == poke["name"]:
                 fight.my_active = i
                 return "내가 %s 로 바꿨다" % b.name
@@ -383,7 +514,8 @@ def save_log(fight):
     with io.open(path, "w", encoding="utf-8") as f:
         f.write(u"# 실전 기록 — %s\n" % time.strftime("%Y-%m-%d %H:%M"))
         f.write(u"# 내 파티: %s\n\n"
-                % ", ".join(b.name for b, _m in fight.party))
+                % ", ".join(describe_member(b, m, f2)
+                            for b, m, f2 in fight.party))
         f.write(u"\n".join(fight.lines) + u"\n")
     return path
 
@@ -397,9 +529,16 @@ def main():
     party = load_party(dex)
     if party:
         print("내 파티 (%s):" % PARTY_FILE)
-        for b, m in party:
-            print("  %s — %s" % (b.name, "/".join(m) if m
-                                 else "기술 안 적음 (사용률로 짐작)"))
+        for build, moves, filled in party:
+            print("  " + describe_member(build, moves, filled))
+        guessed = sorted(set(x for _b, _m, f in party for x in (f or [])))
+        if guessed:
+            print("")
+            print("  ! %s 를 사용률로 채웠습니다. 내 포켓몬인데 남의 값으로"
+                  % "·".join(guessed))
+            print("    계산하게 됩니다. %s 를 고쳐서 적어 주세요 —"
+                  % PARTY_FILE)
+            print("    예)  한카리아스 지진,역린 | 명랑 A32S32 기합의띠")
     else:
         party = ask_party(dex)
     if not party:
@@ -413,7 +552,7 @@ def main():
     print("\n준비 중입니다 (처음 한 번만 걸립니다)...")
     t0 = time.time()
     try:
-        search.best_action(dex, [b for b, _m in party], party[0][0].poke,
+        search.best_action(dex, [row[0] for row in party], party[0][0].poke,
                            my_moves=party[0][1] or None, seconds=1.0)
     except Exception as e:
         print("  ! 준비 중에 문제가 있었습니다: %s" % e)
