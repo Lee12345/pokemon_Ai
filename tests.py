@@ -14,6 +14,7 @@ import sys
 import battle
 import best
 import calc
+import paths
 import combos
 import forms
 import scout
@@ -2691,6 +2692,7 @@ def test_rosters(dex):
           "나머지는?" in samples.report_rosters(dex, parties, name=A))
 
 def main():
+    paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
           % (len(dex.pokemon), len(dex.moves), len(dex.abilities), len(dex.items)))

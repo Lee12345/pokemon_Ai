@@ -60,15 +60,33 @@ def mine(*parts):
 
 
 def fix_console():
-    """윈도우 콘솔에서 한글이 깨지지 않게 한다.
+    """윈도우에서 한글을 찍다가 죽지 않게 한다.
 
-    윈도우는 콘솔 기본 인코딩이 cp949 라, UTF-8 로 적힌 글자가
-    깨지거나 프로그램이 통째로 죽는 일이 있다. 파이썬 3.7 부터는
-    `reconfigure` 로 바꿀 수 있다. 안 되면 조용히 넘어간다 —
-    **여기서 죽으면 프로그램이 아예 안 켜진다.**
+    **실제로 여기서 한 번 죽었다.** 깃허브의 윈도우에서 tests.py 가
+    첫 줄을 찍자마자 터졌다 —
+
+        UnicodeEncodeError: 'charmap' codec can't encode characters
+        File "...encodings\\cp1252.py", line 19, in encode
+
+    윈도우는 화면 인코딩이 cp949(한국어) 나 cp1252(영어) 라서,
+    UTF-8 로 적힌 한글을 그대로 찍으면 **프로그램이 통째로 죽는다.**
+    글자가 깨지는 정도가 아니라 죽는다. 리눅스·맥에서는 안 나는 일이라
+    여기서 짜는 동안에는 절대 못 만난다.
+
+    그래서 **모든 프로그램이 시작할 때 이걸 먼저 부른다.**
+    바꾸기에 실패하면 조용히 넘어간다 — 여기서 죽으면 본전도 못 찾는다.
     """
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
+            continue
         except (AttributeError, ValueError, OSError):
+            pass
+        # reconfigure 가 없는 옛 파이썬이면 감싸서 바꾼다
+        try:
+            import codecs
+            name = "stdout" if stream is sys.stdout else "stderr"
+            setattr(sys, name, codecs.getwriter("utf-8")(
+                stream.buffer, errors="replace"))
+        except Exception:
             pass

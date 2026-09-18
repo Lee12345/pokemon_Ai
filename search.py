@@ -48,6 +48,7 @@ import time
 import battle
 import best
 import calc
+import paths
 import scout
 
 
@@ -391,6 +392,7 @@ def report(dex, my_party, opp_poke, got, evidence=None):
 
 
 def main():
+    paths.fix_console()
     argv = sys.argv[1:]
     seconds, seen, moves, rest = 10.0, [], None, []
     i = 0
