@@ -73,9 +73,26 @@ def fix_console():
     글자가 깨지는 정도가 아니라 죽는다. 리눅스·맥에서는 안 나는 일이라
     여기서 짜는 동안에는 절대 못 만난다.
 
+    **찍는 쪽만 고치면 반쪽이다. 읽는 쪽도 고쳐야 한다.**
+    두 번째 빌드에서 그걸로 걸렸다 — 화면에는 한글이 잘 나오는데
+    사용자가 "한카리아스" 라고 치면 그게 깨져서 들어와
+    "못 찾았습니다" 가 됐다. 실전에서 이름을 한 글자도 못 치게 된다.
+
     그래서 **모든 프로그램이 시작할 때 이걸 먼저 부른다.**
     바꾸기에 실패하면 조용히 넘어간다 — 여기서 죽으면 본전도 못 찾는다.
     """
+    # 읽는 쪽 (사용자가 치는 한글)
+    try:
+        sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        try:
+            import codecs
+            sys.stdin = codecs.getreader("utf-8")(sys.stdin.buffer,
+                                                  errors="replace")
+        except Exception:
+            pass
+
+    # 찍는 쪽
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")

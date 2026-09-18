@@ -60,14 +60,34 @@ jobs:
             live.py
 
       # 묶은 것이 정말 켜지는지 확인한다. 자료를 못 찾으면 여기서 걸린다.
+      #
+      # ! 넣는 글을 **파일로 만들어서 준다.** printf 로 파이프에 밀어 넣으면
+      #   윈도우에서 한글이 깨져서 들어간다. 두 번째 빌드가 그걸로 걸렸는데,
+      #   화면 출력은 멀쩡해서 원인을 찾는 데 시간이 걸렸다.
       - name: 켜지는지 확인
         shell: bash
         run: |
           cd dist
-          printf '한카리아스 지진,역린,화염방사,칼춤\n\n하마돈 초3\nq\n\n' \
-            | ./"${{ matrix.name }}"* | tee out.txt
-          grep -q "=>" out.txt || (echo "추천이 안 나왔습니다" && exit 1)
-          rm -f out.txt
+          {
+            echo "한카리아스 지진,역린,화염방사,칼춤"
+            echo ""
+            echo "하마돈 초3"
+            echo "q"
+            echo ""
+          } > 넣을글.txt
+          ./"${{ matrix.name }}"* < 넣을글.txt > 나온글.txt 2>&1 || true
+          echo "----- 프로그램이 뱉은 것 -----"
+          cat 나온글.txt
+          echo "------------------------------"
+          grep -q "=>" 나온글.txt || {
+            echo "추천(=>)이 안 나왔습니다 — 위 출력을 보세요"
+            exit 1
+          }
+          grep -q "포켓몬 챔피언스" 나온글.txt || {
+            echo "한글이 깨졌습니다"
+            exit 1
+          }
+          rm -f 넣을글.txt 나온글.txt
 
       - uses: actions/upload-artifact@v4
         with:

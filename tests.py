@@ -1074,6 +1074,16 @@ def test_windows_safe(dex):
         blew = e
     check("fix_console 은 여러 번 불러도 안전하다", blew is None, blew)
 
+    # ! **찍는 쪽만 고치면 반쪽이다.** 화면에는 한글이 잘 나오는데
+    #   사용자가 "한카리아스" 라고 친 것이 깨져 들어와 "못 찾았습니다"
+    #   가 됐다. 실전에서 이름을 한 글자도 못 치게 된다.
+    src = io.open(os.path.join(root, "paths.py"), encoding="utf-8").read()
+    body = src[src.index("def fix_console"):]
+    check("읽는 쪽(stdin)도 UTF-8 로 맞춘다", "sys.stdin" in body,
+          body[:200])
+    check("찍는 쪽(stdout·stderr)도 맞춘다",
+          "sys.stdout" in body and "sys.stderr" in body)
+
     # 묶인 실행 파일에서 읽는 자리와 쓰는 자리가 갈려 있는가
     check("읽는 자리와 쓰는 자리를 따로 정한다",
           hasattr(paths, "read_root") and hasattr(paths, "write_root"))
