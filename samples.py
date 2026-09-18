@@ -345,6 +345,119 @@ def party_weight(party):
     return w
 
 
+# ---------------------------------------------------------------------------
+# 지금 어느 룰인가
+# ---------------------------------------------------------------------------
+#
+# **이걸 안 보고 한 번 크게 틀렸다. 기록으로 남긴다.**
+#
+# 사용률은 지금 룰(M-6) 것이고, 구축기사는 대부분 지난 룰(M-5) 것이다.
+# 룰이 바뀌면 **쓸 수 있는 포켓몬이 바뀐다.** 그걸 모르고 "사용률
+# 상위 30종 중 7종이 표본에 없다 — 구멍이다" 라고 보고했는데,
+# 그 7종은 구멍이 아니라 **M-6 에 새로 들어온 포켓몬**이었다.
+# M-5 기사에 없는 게 당연하다. 없는 것을 찾고 있었던 것이다.
+#
+# 세어 보면 바로 보인다 (703파티 기준, 2026-09-18) —
+#     M-5  250편      M-4  100편      M-6  **9편**
+# 9월 기사가 406편이나 되는데 그중 232편이 M-5 다. 시즌이 끝나면
+# "S5 최종 몇 위" 하는 회고 기사가 쏟아지기 때문이다. **게시 날짜로
+# 시즌을 가르면 안 되는 이유**가 이것이다 — 제일 큰 덩어리(9월 9일
+# 132편)가 전부 지난 룰 기사인데 새 달 이름표가 붙는다.
+#
+# 표본은 **경향성을 확인하려고 모으는 것**이지 없으면 안 되는 것이
+# 아니다. 채용률은 어차피 사용률에서 오고, 표본이 없는 종은 기술을
+# 서로 독립으로 뽑을 뿐이다 — 덜 정교해지는 것이지 틀리는 게 아니다.
+# 그러니 M-6 기사가 9편인 것 자체는 문제가 아니다.
+#
+# **문제가 되는 것은 딱 하나 — 다른 룰끼리 비교하는 것이다.**
+# M-6 사용률과 M-5 표본을 나란히 놓고 "여기가 비었다" 고 세면
+# 새로 들어온 포켓몬이 전부 구멍으로 잡힌다. 세기 전에 룰부터 맞춘다.
+# ## 지금 룰이 무엇인지는 **알아낼 수가 없다. 사용자가 알려 준 값이다.**
+#
+# 기사에서 알아내려고 해 봤는데 안 된다. 제일 최근 기사가 달고 있는
+# 이름표를 보면 M-5 가 나오고(2026-09-17 에도 M-5 기사가 올라온다),
+# 최근 30편을 세어도 M-5 19편 대 M-6 6편이다. 시즌이 끝나면 "S5 최종
+# 몇 위" 회고가 몇 주씩 쏟아지기 때문에 **어느 집계 창을 잡아도 지난
+# 룰이 이긴다.** 그래서 추측하지 않는다.
+CURRENT_RULE = "M-6"        # 사용자가 알려 준 값 (2026-09-18)
+MIN_RULE_ARTICLES = 3       # 이만큼은 있어야 '그 룰 기사가 있다' 고 본다
+
+
+def rule_counts(parties):
+    """룰 표기별 기사 수. {"M-5": 250, ...}"""
+    out = {}
+    for p in parties:
+        r = p.get("rule")
+        if r:
+            out[r] = out.get(r, 0) + 1
+    return out
+
+
+def by_rule(parties, rule):
+    """그 룰의 기사만. 룰 표기가 없는 기사는 뺀다 — 모르는 것은 섞지 않는다."""
+    return [p for p in parties if p.get("rule") == rule]
+
+
+def previous_rule(parties, rule=None):
+    """직전 룰. **기사가 제일 많은 다른 룰**로 정한다.
+
+    시즌이 끝나면 회고 기사가 쏟아지므로, 지금 룰이 아닌 것 중 제일
+    두꺼운 덩어리가 곧 직전 룰이다 (M-6 이 지금이면 M-5 가 250편).
+    """
+    rule = rule or CURRENT_RULE
+    count = rule_counts(parties)
+    other = [(n, r) for r, n in count.items() if r != rule]
+    return max(other)[1] if other else None
+
+
+def newcomers(parties, rule=None, prev=None):
+    """이번 룰에 새로 들어온 것으로 보이는 포켓몬. {이름: (지금, 직전)}.
+
+    직전 룰 기사에 **한 번도 안 나오는데** 지금 룰 기사에는 나오는 종.
+    표본이 적으니 단정하지 않는다 — 이름 그대로 '보이는' 것이다.
+    이걸 보는 이유는 하나뿐: **그런 종을 표본 구멍으로 세지 않기 위해서다.**
+    """
+    rule = rule or CURRENT_RULE
+    prev = prev or previous_rule(parties, rule)
+    now = {}
+    for m in members(by_rule(parties, rule), usable=False):
+        nm = m["poke"]["name"]
+        now[nm] = now.get(nm, 0) + 1
+    old = {}
+    for m in members(by_rule(parties, prev), usable=False):
+        nm = m["poke"]["name"]
+        old[nm] = old.get(nm, 0) + 1
+    return dict((nm, (n, 0)) for nm, n in now.items() if not old.get(nm))
+
+
+def rule_gap(parties, rule=None):
+    """지금 룰 표본이 얼마나 되나. (지금 룰 기사 수, 전체 중 비율, 설명줄들).
+
+    구조를 어느 룰에서 배우고 있는지를 숨기지 않고 보여 주는 자리다.
+    """
+    rule = rule or CURRENT_RULE
+    count = rule_counts(parties)
+    now = count.get(rule, 0)
+    tagged = sum(count.values())
+    share = (float(now) / tagged) if tagged else 0.0
+    say = []
+    order = sorted(count.items(), key=lambda kv: -kv[1])
+    say.append("룰 표기: " + " · ".join("%s %d편" % (r, n)
+                                       for r, n in order[:6]))
+    say.append("표기 없는 기사 %d편" % (len(parties) - tagged))
+    if share < 0.20:
+        say.append("지금 룰(%s) 기사는 %d편, 이름표 붙은 것의 %.0f%% 다. "
+                   "곧 **갈래는 지난 룰에서 배운 것**이다."
+                   % (rule, now, share * 100))
+        say.append("  채용률은 사용률에서 오므로 그대로다 — 덜 정교할 "
+                   "뿐 틀리지 않는다. 표본이 없는 종은 기술을 서로 "
+                   "독립으로 뽑는다.")
+        say.append("  다만 룰이 바뀌면 **쓸 수 있는 포켓몬이 바뀐다.** "
+                   "사용률 상위인데 표본에 없는 종은 '구멍' 이 아니라 "
+                   "새로 들어온 종일 수 있다. 세기 전에 룰부터 맞춘다.")
+    return now, share, say
+
+
 def members(parties, season=None, weighted=False, usable=True):
     """개체를 하나씩. weighted 면 (개체, 값어치) 로 준다.
 

@@ -870,38 +870,47 @@ def report(dex, poke, seen=None):
 
 
 # ---------------------------------------------------------------------------
-# 덮개 — **사용률 순서로** 본다
+# 덮개 — 사용률 순서로 본다. **단, 룰을 맞춰 놓고 본다.**
 # ---------------------------------------------------------------------------
 #
-# `survey()` 는 표본이 많은 순서로 줄을 세운다. 그건 **우리가 가진 것**을
-# 보여 주는 표다. 그것만 보고 있으면 표본이 제일 많은 한 마리(한카리아스,
-# 222마리, 전체의 7%)를 계속 들여다보게 된다. 실제로 그랬다 — 테스트도
-# 그 한 마리로만 짰다가 깨졌다.
+# `survey()` 는 표본이 많은 순서로 줄을 세운다. 그것만 보면 표본이 제일
+# 많은 한 마리(한카리아스)를 계속 들여다보게 된다. 이 표는 반대로
+# 사용률 순서로 세워서 **어디에 갈래 모델이 안 붙었는지**를 본다.
 #
-# 이 표는 반대다. **사용률 순서로** 줄을 세우고 표본이 있는지를 본다.
-# 곧 **중요한데 못 보고 있는 것**을 찾는 표다.
+# **여기서 한 번 크게 틀렸다. 기록으로 남긴다.**
 #
-# 703파티에서 처음 돌렸을 때 나온 것 (2026-09-18) —
-#   · 상위 30종 중 **7종에 갈래 모델이 아예 없다.**
-#     고릴타(10위) 9마리, 드닐레이브(7위) 11마리, 갑주무사(5위) 13마리,
-#     에이스번(20위) 4마리, 빠르모트(26위) 2마리.
-#     이 포켓몬들은 기술을 **서로 독립**으로 뽑는다 — 1-A·1-C 를 만든
-#     이유였던 바로 그 상태로 남아 있다.
-#   · 못 읽어서가 아니다. 명단에 나온 횟수 자체가 그만큼이다
-#     (고릴타는 703파티 중 9번). 파서 문제가 아니라 **표본이 지금
-#     메타를 안 담고 있는 것**이다.
-#   · **보만다는 사용률 1위인데 표본에서는 28위(42마리)** 다.
-#     상위 30종의 순위 어긋남이 중앙값 8칸, 최대 115칸이었다.
+#   처음 만들었을 때 "상위 30종 중 7종에 표본이 없다 — 구멍이다" 라고
+#   보고했다. 틀렸다. 사용률은 **M-6** 것이고 구축기사는 대부분
+#   **M-5** 것인데 그걸 나란히 놓고 센 것이다. 룰이 바뀌면 쓸 수 있는
+#   포켓몬이 바뀐다. 그 7종(갑주무사·드닐레이브·고릴타·에이스번·
+#   빠르모트·에써르 등)은 **M-6 에 새로 들어온 포켓몬**이었다.
+#   M-5 기사에 없는 게 당연하다. 없는 것을 찾고 있었던 것이다.
 #
-# 이건 형태 단위로 재던 `thin_forms()` 를 **종 단위로** 옮긴 것이다.
-# 원인도 같다 — 구조는 옛 메타에서 배우고 수준은 지금 메타에서 가져온다.
-def coverage(dex, top=30):
-    """사용률 상위 종이 표본에 얼마나 있는가. [(순위, 이름, 표본, 갈래, 흠)]."""
+#   자료에는 룰 이름표가 처음부터 들어 있었다(`party["rule"]`).
+#   안 보고 셌다.
+#
+#   교훈: **세기 전에 두 자료가 같은 룰인지부터 맞춘다.**
+#
+# 그리고 표본이 없다는 것 자체는 사고가 아니다. 표본은 경향성을
+# 확인하려고 모으는 것이고, 없으면 그 종은 기술을 서로 독립으로 뽑는다.
+# 채용률은 사용률에서 그대로 오므로 **덜 정교할 뿐 틀리지 않는다.**
+# 그래서 이 표는 '구멍' 이라고 부르지 않고 무엇 때문인지를 나눠서 적는다.
+def coverage(dex, top=30, rule=None):
+    """사용률 상위 종에 갈래 모델이 붙었나.
+
+    [(순위, 이름, 전체표본, 지금룰표본, 표본순위, 왜)].
+
+    `지금룰표본` 이 0 이면 **그 룰에 새로 들어온 종**일 수 있다.
+    그건 모으기를 빼먹은 게 아니라 기사가 아직 없는 것이다.
+    """
     import json
     import os
 
-    byp = samples.by_pokemon(loaded(dex))
-    rows = []
+    rule = rule or samples.CURRENT_RULE
+    parties = loaded(dex)
+    prev = samples.previous_rule(parties, rule)
+    byp = samples.by_pokemon(parties)
+    now = samples.by_pokemon(samples.by_rule(parties, rule))
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "data", "usage_single.json")
     try:
@@ -909,79 +918,84 @@ def coverage(dex, top=30):
             listed = json.load(f)["pokemon"]
     except (IOError, OSError, ValueError, KeyError):
         return []
-    # 표본에서 몇 번째로 많이 나오는지도 같이 준다 — 두 순서가 얼마나
-    # 어긋나 있는지가 이 표의 핵심이다.
     order = sorted(byp.items(), key=lambda kv: -len(kv[1]))
     srank = dict((nm, i + 1) for i, (nm, _v) in enumerate(order))
+    fresh = samples.newcomers(parties, rule)
+
+    rows = []
     for e in sorted(listed, key=lambda x: x.get("rank") or 10 ** 6):
         rank = e.get("rank")
         if not rank or rank > top:
             continue
         nm = e["name"]
         n = len(byp.get(nm) or [])
+        n_now = len(now.get(nm) or [])
         try:
             pk = dex.find_pokemon(nm)
         except LookupError:
-            rows.append((rank, nm, n, 0, srank.get(nm), "도감에 없음"))
+            rows.append((rank, nm, n, n_now, srank.get(nm), "도감에 없음"))
             continue
         got = archetypes(dex, pk)
         k = len(got[1]) if got else 0
-        if n < MIN_SAMPLES:
-            why = "갈래 모델 없음 — 기술을 서로 독립으로 뽑는다"
-        elif thin_forms(dex, pk):
-            why = "형태가 사용률과 자릿수로 어긋남"
+        if nm in fresh:
+            # **먼저 본다.** 이걸 뒤에 두면 신규종이 '표본 부족' 으로
+            # 잡혀서 구멍처럼 보인다. 한 번 그렇게 틀렸다.
+            why = "%s 신규로 보인다 (직전 %s 기사에 없음)" % (rule, prev)
+        elif n >= MIN_SAMPLES:
+            why = "형태가 사용률과 자릿수로 어긋남" if thin_forms(dex, pk) else ""
         else:
-            why = ""
-        rows.append((rank, nm, n, k, srank.get(nm), why))
-    return rows
+            why = "표본 %d마리 — 기술을 서로 독립으로 뽑는다" % n
+        rows.append((rank, nm, n, n_now, srank.get(nm), why, k))
+    return [r if len(r) == 7 else r + (0,) for r in rows]
 
 
-def coverage_report(dex, top=30):
+def coverage_report(dex, top=30, rule=None):
     import best
 
-    rows = coverage(dex, top)
+    rule = rule or samples.CURRENT_RULE
+    parties = loaded(dex)
+    rows = coverage(dex, top, rule)
     L = []
     line = "=" * 78
     L.append(line)
-    L.append("  사용률 상위 %d종을 표본이 얼마나 덮고 있나" % top)
+    L.append("  사용률 상위 %d종에 갈래 모델이 붙었나" % top)
     L.append(line)
+    n_rule, share, say = samples.rule_gap(parties, rule)
+    L.append("  사용률은 지금 룰(%s) 것이다. 표본은 —" % rule)
+    for x in say:
+        L.append("    " + x)
+    L.append("-" * 78)
     if not rows:
         L.append("  사용률 자료를 못 읽었다.")
         L.append(line)
         return "\n".join(L)
-    head = [("사용률", 7), ("이름", 14), ("표본", 7), ("표본순위", 10),
+    head = [("사용률", 7), ("이름", 14), ("표본", 7), ("%s만" % rule, 8),
             ("갈래", 6)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
-    n_none = n_thin = 0
-    gaps = []
-    for rank, nm, n, k, sr, why in rows:
-        if sr:
-            gaps.append(abs(sr - rank))
-        cells = [str(rank), nm, str(n), (str(sr) if sr else "-"),
-                 ("%d개" % k) if k else "-"]
+    thin = indep = fresh = 0
+    for rank, nm, n, n_now, sr, why, k in rows:
+        cells = [str(rank), nm, str(n), str(n_now), ("%d개" % k) if k else "-"]
         mark = ("   <-- " + why) if why else ""
-        if why.startswith("갈래 모델 없음"):
-            n_none += 1
+        if "신규로 보인다" in why:
+            fresh += 1
+        elif "독립" in why:
+            indep += 1
         elif why:
-            n_thin += 1
+            thin += 1
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip()
                  + mark)
     L.append("-" * 78)
-    L.append("  갈래 모델이 아예 없는 종 %d개 · 형태가 어긋난 종 %d개 "
-             "(상위 %d종 중)" % (n_none, n_thin, len(rows)))
-    if gaps:
-        gaps.sort()
-        mid = gaps[len(gaps) // 2]
-        L.append("  사용률 순위와 표본 순위의 어긋남 — 중앙값 %d칸, 최대 %d칸"
-                 % (mid, gaps[-1]))
+    L.append("  상위 %d종 중 — 갈래 모델 붙음 %d · 표본이 얇아 독립으로 뽑음 %d"
+             % (len(rows), len(rows) - thin - indep - fresh, indep))
+    L.append("                형태가 어긋남 %d · %s 신규로 보임 %d"
+             % (thin, rule, fresh))
     L.append("")
-    L.append("  ! 이 표는 **우리가 가진 것**이 아니라 **못 가진 것**을 본다.")
-    L.append("    표본이 많은 순서로 보면(python combos.py) 한카리아스가 맨")
-    L.append("    위에 있어서 계속 그 한 마리만 들여다보게 된다. 여기서는")
-    L.append("    사용률 순서로 세우기 때문에 구멍이 위로 올라온다.")
-    L.append("    못 읽어서 빈 것이 아니라 **기사에 안 나온 것**이다 —")
-    L.append("    표본이 지금 메타를 아직 안 담고 있다는 뜻이다.")
+    L.append("  ! 표본이 없는 것은 사고가 아니다. 채용률은 사용률에서")
+    L.append("    그대로 오므로 틀리지 않는다 — 기술을 서로 묶어 주지")
+    L.append("    못할 뿐이다. 표본은 경향성을 확인하는 데 쓴다.")
+    L.append("  ! '%s 만' 칸이 0 인 종을 구멍으로 세지 마라. 룰이 바뀌면" % rule)
+    L.append("    쓸 수 있는 포켓몬이 바뀐다. 실제로 그렇게 한 번 틀렸다.")
     L.append(line)
     return "\n".join(L)
 

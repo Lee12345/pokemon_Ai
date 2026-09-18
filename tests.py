@@ -1835,13 +1835,32 @@ def test_combos(dex):
     check("덮개 표는 사용률 순서다 (표본 순서가 아니다)",
           [r[0] for r in cov] == sorted(r[0] for r in cov),
           [r[0] for r in cov[:5]])
-    holes = [r[1] for r in cov if r[2] < combos.MIN_SAMPLES]
-    check("표본이 모자란 상위종을 집어낸다 (%d종: %s)"
-          % (len(holes), ", ".join(holes[:4])),
-          all(len(samples.by_pokemon(combos.loaded(dex)).get(h) or [])
-              < combos.MIN_SAMPLES for h in holes), holes)
-    check("덮개 보고서가 나온다",
-          "사용률 상위" in combos.coverage_report(dex, top=10))
+    # ★ 제일 중요한 것 — **룰 신규종을 표본 구멍으로 세지 않는가.**
+    # 사용률은 지금 룰(M-6) 것이고 기사는 대부분 지난 룰(M-5) 것이다.
+    # 그걸 모르고 세면 M-6 에 새로 들어온 포켓몬이 전부 "표본이 없다"
+    # 로 잡힌다. 실제로 그렇게 한 번 보고했다.
+    parties = combos.loaded(dex)
+    fresh = samples.newcomers(parties)
+    check("직전 룰에 없던 종을 신규로 집어낸다 (%d종: %s)"
+          % (len(fresh), ", ".join(sorted(fresh)[:4])),
+          len(fresh) >= 1, sorted(fresh))
+    thin = [r[1] for r in cov if r[2] < combos.MIN_SAMPLES]
+    marked_fresh = [r[1] for r in cov if "신규" in r[5]]
+    check("표본 얇은 상위종 중 신규종은 따로 표시된다 (%d중 %d)"
+          % (len(thin), len(marked_fresh)),
+          all(nm in fresh for nm in marked_fresh)
+          and not any(nm in fresh and nm not in marked_fresh
+                      for nm in thin),
+          (thin, marked_fresh))
+    check("남은 것만 진짜 표본 부족이다 (%s)"
+          % ", ".join(nm for nm in thin if nm not in fresh),
+          all(len(samples.by_pokemon(parties).get(nm) or [])
+              < combos.MIN_SAMPLES
+              for nm in thin if nm not in fresh), thin)
+    rep = combos.coverage_report(dex, top=10)
+    check("덮개 보고서가 나온다", "사용률 상위" in rep)
+    check("보고서가 어느 룰끼리 비교하는지 밝힌다",
+          samples.CURRENT_RULE in rep and "룰 표기" in rep)
 
     # -- 두 마진이 다 지켜지는가 (제일 중요) -------------------------------
     worst = 0.0
