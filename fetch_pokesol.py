@@ -73,11 +73,16 @@ def get(url):
     return raw.decode("utf-8")
 
 
-def sitemap_urls(limit=None):
+def sitemap_urls(limit=None, since=None):
     """사이트맵에서 기사 주소를 최신순으로.
 
     robots.txt 가 기사 페이지를 허용하면서 **사이트맵을 안내**한다.
     목록 페이지를 긁는 것보다 이쪽이 사이트가 의도한 방법이다.
+
+    since 에 'YYYY-MM' 을 주면 그 달 이후만 받는다. 사이트맵이 다섯 달치
+    (2026-05~09, 3464편) 인데 **달마다 룰이 다르다.** 최신 달은 이미 거의
+    받았으므로 물량을 늘리려면 내려가야 하고, 그러면 메타가 섞인다.
+    어디까지 내려갈지는 무엇에 쓸 것인지에 따라 다르므로 부르는 쪽이 정한다.
     """
     xml = get(SITEMAP)
     rows = []
@@ -86,8 +91,14 @@ def sitemap_urls(limit=None):
         if not loc or "/articles/" not in loc.group(1):
             continue
         mod = re.search(r"<lastmod>([^<]+)</lastmod>", block)
-        rows.append((mod.group(1) if mod else "", loc.group(1)))
+        when = mod.group(1) if mod else ""
+        if since and when[:7] < since:
+            continue
+        rows.append((when, loc.group(1)))
     rows.sort(reverse=True)          # 최신 기사부터 — 시즌이 가까울수록 좋다
+    if rows:
+        sys.stderr.write("  사이트맵 기사 %d편 (%s ~ %s)\n"
+                         % (len(rows), rows[-1][0][:10], rows[0][0][:10]))
     urls = [u for _, u in rows]
     return urls[:limit] if limit else urls
 
@@ -307,14 +318,37 @@ def main():
               % (left, len(doc["parties"])))
         return
 
+    since = None
+    if "--이후" in args:
+        i = args.index("--이후")
+        since = args[i + 1]            # 'YYYY-MM'
+        args = args[:i] + args[i + 2:]
     if "--목록" in args:
         i = args.index("--목록")
         want = int(args[i + 1])
         args = args[:i] + args[i + 2:]
-        print("사이트맵에서 최신 기사 %d편을 고르는 중..." % want)
-        urls += sitemap_urls(want)
+        print("사이트맵에서 최신 기사 %d편을 고르는 중%s..."
+              % (want, (" (%s 이후만)" % since) if since else ""))
+        urls += sitemap_urls(want, since)
+    # champs 카드가 가리키는 pokesol 기사도 같이 받는다.
+    # champs 는 **순위가 100% 달려 있어서** 값어치가 높은 표본이다
+    # (pokesol 사이트맵에서 온 기사는 28% 만 순위가 있다).
+    if "--champs도" in args:
+        args = [a for a in args if a != "--champs도"]
+        try:
+            with open(OUT, encoding="utf-8") as f:
+                doc = json.load(f)
+            got = [p.get("url") for p in doc.get("parties") or []
+                   if p.get("source") == "champs"
+                   and "pokesol" in (p.get("url") or "")]
+            print("  champs 가 가리키는 pokesol 기사 %d편을 같이 받는다" % len(got))
+            urls += got
+        except Exception as e:
+            print("  champs 주소를 못 읽음: %s" % e)
+
     urls += [a for a in args if a.startswith("http")]
     urls = [u for u in urls if "pokesol." in u]
+    urls = list(dict.fromkeys(urls))        # 순서 유지하며 중복 제거
     if not urls:
         sys.exit("pokesol.app 기사 주소나 --목록 N 을 주세요.\n"
                  "(다른 사이트는 배분이 이미지 안이라 글자로는 못 읽습니다)")

@@ -519,6 +519,109 @@ def move_pairs(parties, poke_name, season=None, min_count=3,
 
 
 # ---------------------------------------------------------------------------
+# 동반 출현 — 어느 포켓몬끼리 같은 파티에 들어가나
+# ---------------------------------------------------------------------------
+#
+# **사용률로는 원리상 못 얻는 정보다.** 사용률은 포켓몬마다 "몇 %가 쓴다" 만
+# 주고, "둘이 같은 파티에 있나" 는 안 준다. 그건 파티 명단을 봐야 나온다.
+#
+# 그리고 이건 champs 카드가 주는 **유일한** 정보이기도 하다. 카드에는 기술도
+# 배분도 없어서 세기 맞추기(--맞추기)와 기술 조합(--쌍)에는 한 마리도 기여를
+# 못 하는데, 명단은 온전하다. 그 792마리가 여기서 처음 값을 한다.
+#
+# 쓸 곳은 분명하다 — **6마리 중 3마리 선출(pick.py)** 이다. 선출 화면에서
+# 상대 6마리를 보는데, 실전에서 정작 필요한 것은 "어느 셋이 나올까" 다.
+# 페리퍼가 보이면 메가대짱이가 같이 있다(리프트 18.6, 잔비+쓱쓱)는 것을
+# 알면 그 예측이 달라진다.
+#
+# ! 이것만은 **메타에 매인다.** 세기(form_mismatch 등)는 "특수형은 특공 깎는
+#   성격을 안 쓴다" 처럼 사람의 습성이라 시즌이 바뀌어도 그대로인데, 어느
+#   조합이 세냐는 룰이 바뀌면 바뀐다. 그래서 여기서는 **시기로 걸러낼 수
+#   있게** 해 두고, 보고서가 어느 시기 표본인지 밝힌다.
+
+def rosters(parties, since=None, rule=None, min_size=4, max_size=8):
+    """파티별 포켓몬 명단. (명단, 값어치) 목록.
+
+    명단은 champs 카드만으로 만들어진 파티도 온전하므로 `members()` 의
+    '못 읽은 개체' 걸러내기를 타지 않는다 — 여기서는 그게 자료다.
+    """
+    out = []
+    for p in parties:
+        if since and (p.get("publishedAt") or "")[:7] < since:
+            continue
+        if rule and p.get("rule") != rule:
+            continue
+        names = sorted(set(m["poke"]["name"] for m in p["members"]
+                           if m.get("poke")))
+        if min_size <= len(names) <= max_size:
+            out.append((names, party_weight(p)))
+    return out
+
+
+def pair_lift(parties, since=None, rule=None, min_seen=15, min_both=5):
+    """같이 나오는 쌍 / 서로 안 나오는 쌍.
+
+    (A, B, 같이, A, B, 기대, 리프트) 목록과 명단 수.
+
+    `--쌍` 에서 배운 것을 그대로 적용한다 — 리프트만으로 줄 세우면 드문 것끼리
+    우연히 안 겹쳐 0.00 이 제일 커 보인다. **기대값과 실제의 차이**로 세운다.
+    """
+    rows = rosters(parties, since, rule)
+    if not rows:
+        return [], 0
+    total = sum(w for _, w in rows)
+    solo, pair = {}, {}
+    for names, w in rows:
+        for a in names:
+            solo[a] = solo.get(a, 0.0) + w
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                key = (names[i], names[j])
+                pair[key] = pair.get(key, 0.0) + w
+    out = []
+    for (a, b), both in pair.items():
+        if solo[a] < min_seen or solo[b] < min_seen or both < min_both:
+            continue
+        expect = solo[a] * solo[b] / total
+        if expect <= 0:
+            continue
+        out.append((a, b, both, solo[a], solo[b], expect, both / expect))
+    out.sort(key=lambda r: -abs(r[2] - r[5]))
+    return out, len(rows)
+
+
+def partners(parties, name, since=None, rule=None, min_seen=8, top=8):
+    """이 포켓몬을 봤을 때 같이 있을 만한 놈들. (상대, 조건부 확률, 리프트).
+
+    선출 예측에 쓰는 형태다 — "페리퍼가 보인다. 나머지는?"
+    """
+    rows = rosters(parties, since, rule)
+    total = sum(w for _, w in rows)
+    with_it = [(ns, w) for ns, w in rows if name in ns]
+    mass = sum(w for _, w in with_it)
+    if mass <= 0:
+        return [], 0.0
+    solo = {}
+    for ns, w in rows:
+        for a in ns:
+            solo[a] = solo.get(a, 0.0) + w
+    got = {}
+    for ns, w in with_it:
+        for a in ns:
+            if a != name:
+                got[a] = got.get(a, 0.0) + w
+    out = []
+    for a, w in got.items():
+        if solo.get(a, 0) < min_seen:
+            continue
+        base = solo[a] / total
+        cond = w / mass
+        out.append((a, cond, cond / base if base > 0 else 0.0))
+    out.sort(key=lambda r: -r[1])
+    return out[:top], mass
+
+
+# ---------------------------------------------------------------------------
 # 보고서
 # ---------------------------------------------------------------------------
 def report(dex, parties, bad):
@@ -718,6 +821,87 @@ def report_pairs(dex, parties, name, season=None):
     return "\n".join(L)
 
 
+def report_rosters(dex, parties, since=None, rule=None, name=None):
+    import best
+
+    L = []
+    line = "=" * 78
+    L.append(line)
+    L.append("  동반 출현 — 어느 포켓몬끼리 같은 파티에 들어가나"
+             + (" (%s 이후)" % since if since else "")
+             + (" [%s]" % rule if rule else ""))
+    L.append(line)
+
+    if name:
+        got, mass = partners(parties, name, since, rule)
+        if not got:
+            L.append("  '%s' 표본이 부족하다." % name)
+            L.append(line)
+            return "\n".join(L)
+        L.append("  **%s 가 상대 파티에 보인다. 나머지는?**" % name)
+        L.append("  (표본 값어치 %.0f 어치의 파티에서 같이 나온 놈들)" % mass)
+        L.append("-" * 78)
+        head = [("같이 있을 놈", 16), ("이 파티에서", 12), ("평소", 10),
+                ("몇 배", 9)]
+        L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+        for a, cond, lift in got:
+            # 확률만 보고 표시하면 안 된다. 한카리아스는 아무 파티에나 62%
+            # 들어 있어서, 같이 나올 확률이 56% 여도 **평소보다 낮은** 것이다
+            # (0.9배). 그런 줄에 '거의 같이 온다' 를 붙이면 거꾸로 읽힌다.
+            # 확률이 높고 **평소보다도 높을 때**만 표시한다.
+            mark = ""
+            if cond >= 0.5 and lift >= 1.2:
+                mark = "   ← 거의 같이 온다"
+            elif lift >= 2.0:
+                mark = "   ← 눈여겨볼 것"
+            elif lift <= 0.6:
+                mark = "   ← 오히려 덜 나온다"
+            cells = [a, "%.0f%%" % (cond * 100),
+                     "%.0f%%" % (cond / lift * 100) if lift else "-",
+                     "%.1f배" % lift]
+            L.append("  " + "".join(best._pad(c, w)
+                                    for c, (h, w) in zip(cells, head)).rstrip()
+                     + mark)
+        L.append("-" * 78)
+        L.append("  선출 화면에서 상대 6마리를 볼 때 쓰는 표다. 6마리를 다 보고")
+        L.append("  나서도 '어느 셋이 나올까' 가 남는데, 이게 그 재료다.")
+        L.append(line)
+        return "\n".join(L)
+
+    rows, n = pair_lift(parties, since, rule)
+    if not rows:
+        L.append("  명단이 부족하다.")
+        L.append(line)
+        return "\n".join(L)
+    L.append("  명단 %d편 · 견줄 만한 쌍 %d개" % (n, len(rows)))
+    L.append("  (각자 값어치 15 이상 나오고, 같이 5 이상 나온 쌍만 본다)")
+    L.append("-" * 78)
+    head = [("포켓몬 A", 15), ("포켓몬 B", 15), ("같이", 8), ("기대", 8),
+            ("리프트", 9)]
+    L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
+    for a, b, both, _sa, _sb, expect, lift in rows[:16]:
+        mark = ""
+        if lift >= 1.5:
+            mark = "   ← 같이 든다"
+        elif lift <= 0.7:
+            mark = "   ← 서로 안 든다"
+        cells = [a, b, "%.0f" % both, "%.1f" % expect, "%.2f" % lift]
+        L.append("  " + "".join(best._pad(c, w)
+                                for c, (h, w) in zip(cells, head)).rstrip()
+                 + mark)
+    L.append("-" * 78)
+    L.append("  리프트 1 보다 크면 **같은 파티에 들어간다**, 작으면")
+    L.append("  **같은 자리를 경쟁한다**는 뜻이다.")
+    L.append("  **이건 사용률로는 원리상 못 얻는다** — 사용률은 포켓몬마다")
+    L.append("  몇 %가 쓰는지만 주고, 둘이 같은 파티인지는 안 준다.")
+    L.append("")
+    L.append("  ! 이 표만은 메타에 매인다. 세기(--맞추기)는 사람의 습성이라")
+    L.append("    시즌이 바뀌어도 그대로인데, 어느 조합이 세냐는 룰이 바뀌면")
+    L.append("    바뀐다. `--이후 2026-09` 나 `--룰 M-6` 으로 좁혀서 볼 것.")
+    L.append(line)
+    return "\n".join(L)
+
+
 def main():
     dex = calc.Dex()
     argv = sys.argv[1:]
@@ -732,8 +916,22 @@ def main():
         path = argv[i + 1]
         argv = argv[:i] + argv[i + 2:]
 
+    since = rule = None
+    if "--이후" in argv:
+        i = argv.index("--이후")
+        since = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    if "--룰" in argv:
+        i = argv.index("--룰")
+        rule = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+
     parties, bad = load(dex, path)
-    if "--맞추기" in argv:
+    if "--동반" in argv:
+        i = argv.index("--동반")
+        who = argv[i + 1] if i + 1 < len(argv) else None
+        print(report_rosters(dex, parties, since, rule, who))
+    elif "--맞추기" in argv:
         print(report_fit(dex, parties, season))
     elif "--쌍" in argv:
         i = argv.index("--쌍")

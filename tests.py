@@ -1918,6 +1918,102 @@ def test_fetch_champs(dex):
           samples.party_weight(parties[0])
           > samples.party_weight({"source": "pokesol", "rank": 3}))
 
+def test_rosters(dex):
+    """동반 출현 — champs 카드(명단만 있는 것)가 처음 값을 하는 자리."""
+    print("\n[35] 동반 출현")
+    import json
+    import os
+    import tempfile
+
+    def write(doc):
+        fd, path = tempfile.mkstemp(suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False)
+        return path
+
+    def party(names, rank=None, when="2026-09-01T00:00:00Z", rule=None,
+              src="champs"):
+        return {"source": src, "rank": rank, "rule": rule,
+                "publishedAt": when, "url": "u%d" % abs(hash(tuple(names))),
+                "members": [{"name": n, "moves": [], "evs": {}} for n in names]}
+
+    # 한 쌍만 늘 같이 나오게 만들어 놓고, 그것만 잡히는지 본다
+    # 이름은 데이터에 있는 그대로 써야 한다. '페리퍼' 가 아니라 '패리퍼' 다 —
+    # 처음에 틀리게 써서 개체가 조용히 빠지고 명단이 45편으로 줄었다.
+    A, B = "패리퍼", "대짱이"
+    filler = ["한카리아스", "아머까오", "누리레느", "하마돈"]
+    doc = {"parties": []}
+    for i in range(30):
+        doc["parties"].append(party([A, B] + filler[: 2 + i % 2]))
+    for i in range(30):
+        doc["parties"].append(party(filler + ["따라큐", "브리두라스"]))
+    path = write(doc)
+    try:
+        parties, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+
+    got = samples.rosters(parties)
+    check("명단은 기술·배분이 없어도 살아 있다 (%d편)" % len(got),
+          len(got) == 60, len(got))
+    check("반대로 members() 는 그 개체를 안 준다 (셀 것이 없으므로)",
+          len(list(samples.members(parties))) == 0)
+
+    rows, n = samples.pair_lift(parties, min_seen=5, min_both=3)
+    lift = dict(((a, b), lf) for a, b, _c, _sa, _sb, _e, lf in rows)
+
+    def L(a, b):
+        return lift.get((a, b), lift.get((b, a)))
+
+    check("짜 놓은 쌍이 제일 크게 잡힌다 (리프트 %.1f)" % (L(A, B) or 0),
+          L(A, B) and L(A, B) > 1.8, L(A, B))
+    check("같이 안 나오게 만든 쌍은 1 아래",
+          L(A, "따라큐") is None or L(A, "따라큐") < 1.0, L(A, "따라큐"))
+    check("리프트가 아니라 기대값 차이로 줄 세운다",
+          rows[0][0] in (A, B) or abs(rows[0][2] - rows[0][5])
+          >= abs(rows[-1][2] - rows[-1][5]))
+
+    # 짝 예측
+    pals, mass = samples.partners(parties, A, min_seen=5)
+    check("A 를 봤을 때 B 가 1등", pals and pals[0][0] == B, pals[:2])
+    check("조건부 확률이 1 에 가깝다 (%.2f)" % pals[0][1],
+          pals[0][1] > 0.9, pals[0][1])
+
+    # 값어치가 반영되는가 — champs(3배)가 pokesol(1배)보다 무겁다
+    mixed = {"parties": [party([A, B] + filler[:2], rank=1, src="champs")]
+             + [party([A, "따라큐"] + filler[:2], rank=1, src="pokesol")
+                for _ in range(2)]}
+    path = write(mixed)
+    try:
+        mp, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    pals2, _ = samples.partners(mp, A, min_seen=0)
+    d2 = dict((a, c) for a, c, _l in pals2)
+    check("champs 파티가 더 무겁게 셰어진다 (%s vs %s)"
+          % (round(d2.get(B, 0), 2), round(d2.get("따라큐", 0), 2)),
+          d2.get(B, 0) > d2.get("따라큐", 0) / 2.0, d2)
+
+    # 시기·룰로 좁힐 수 있는가 (이 표만은 메타에 매인다)
+    doc2 = {"parties": [party([A, B] + filler[:2], when="2026-09-01T00:00:00Z",
+                              rule="M-6"),
+                        party(filler + ["따라큐", "브리두라스"],
+                              when="2026-05-01T00:00:00Z", rule="M-3")]}
+    path = write(doc2)
+    try:
+        p2, _ = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    check("시기로 좁힌다",
+          len(samples.rosters(p2, since="2026-08")) == 1
+          and len(samples.rosters(p2)) == 2)
+    check("룰로 좁힌다", len(samples.rosters(p2, rule="M-6")) == 1)
+
+    # 보고서
+    check("보고서가 나온다", "동반 출현" in samples.report_rosters(dex, parties))
+    check("짝 예측 보고서도 나온다",
+          "나머지는?" in samples.report_rosters(dex, parties, name=A))
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1957,6 +2053,7 @@ def main():
     test_fetch_pokesol(dex)
     test_combos(dex)
     test_fetch_champs(dex)
+    test_rosters(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
