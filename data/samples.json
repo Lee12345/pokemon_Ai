@@ -37014,71 +37014,120 @@
   },
   {
    "source": "champs",
-   "url": "https://pokesol.app/u/ftn_poke/articles/f45faf94b9410c0d",
-   "title": "【シングルM-4 最終5位 紫電アマガライチュウ】",
    "season": null,
    "rule": "M-4",
    "rank": 5,
-   "trainer": "OPENER",
-   "publishedAt": "2026-08-13T14:51:40.358Z",
-   "parsedBy": "카드+본문없음",
-   "offRoster": [],
+   "publishedAt": "2026-08-10T11:11:08.983Z",
+   "title": "【シングルM-4 最終5位 紫電アマガライチュウ】",
+   "url": "https://pokesol.app/u/ftn_poke/articles/f45faf94b9410c0d",
    "members": [
     {
-     "name": "メガライチュウＹ",
-     "item": "ライチュウナイトＹ",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "name": "メガライチュウY",
+     "item": "ライチュウナイトY",
+     "ability": "ノーガード",
+     "nature": "おくびょう",
+     "evs": {
+      "H": 30,
+      "B": 31,
+      "S": 5
+     },
+     "moves": [
+      "でんじほう",
+      "きあいだま",
+      "くさむすび",
+      "わるだくみ"
+     ]
     },
     {
      "name": "アーマーガア",
      "item": "たべのこし",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "ability": "ミラーアーマー",
+     "nature": "わんぱく",
+     "evs": {
+      "H": 32,
+      "A": 2,
+      "B": 17,
+      "D": 15
+     },
+     "moves": [
+      "ブレイブバード",
+      "ビルドアップ",
+      "とんぼがえり",
+      "はねやすめ"
+     ]
     },
     {
      "name": "ガブリアス",
      "item": "こだわりスカーフ",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "ability": "さめはだ",
+     "nature": "ようき",
+     "evs": {
+      "A": 31,
+      "B": 3,
+      "S": 32
+     },
+     "moves": [
+      "じしん",
+      "げきりん",
+      "がんせきふうじ",
+      "ステルスロック"
+     ]
     },
     {
      "name": "アシレーヌ",
      "item": "ラムのみ",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "ability": "げきりゅう",
+     "nature": "ひかえめ",
+     "evs": {
+      "H": 32,
+      "B": 10,
+      "C": 1,
+      "S": 23
+     },
+     "moves": [
+      "うたかたのアリア",
+      "ムーンフォース",
+      "アクアジェット",
+      "アンコール"
+     ]
     },
     {
      "name": "マスカーニャ",
      "item": "きあいのタスキ",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "ability": "しんりょく",
+     "nature": "いじっぱり",
+     "evs": {
+      "A": 32,
+      "B": 2,
+      "S": 32
+     },
+     "moves": [
+      "トリックフラワー",
+      "じごくづき",
+      "ふいうち",
+      "どくびし"
+     ]
     },
     {
      "name": "メガマフォクシー",
      "item": "マフォクシナイト",
-     "tera": null,
-     "ability": null,
-     "nature": null,
-     "evs": {},
-     "moves": []
+     "ability": "ふゆう",
+     "nature": "ひかえめ",
+     "evs": {
+      "H": 15,
+      "B": 7,
+      "C": 14,
+      "S": 30
+     },
+     "moves": [
+      "だいもんじ",
+      "サイコショック",
+      "マジカルシャイン",
+      "みがわり"
+     ]
     }
-   ]
+   ],
+   "trainer": "OPENER"
   },
   {
    "source": "champs",

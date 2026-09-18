@@ -30,6 +30,34 @@ pokesol 17 · hatenablog 계열 26 · note 9 · 네이버 3 · 기타였다.
     이미지다** (팀빌더 스크린샷). 실제로 훑어보니 노력치 표기가 0건이었다.
     게다가 산문에서 기술을 줍는 것은 **해 봤지만 틀렸다** — 아래 (4) 참고.
 
+## champs 는 왜 pokesol 처럼 안 되나 — 사이트가 아니라 **글쓴이**가 갈랐다
+
+"champs 기사도 링크를 따라가면 pokesol 처럼 샘플이 있을 텐데" 라는 물음에
+직접 세 봤다. **갈림은 champs/pokesol 이 아니라 구조화 데이터/스크린샷이다.**
+
+champs 가 가리키는 132편의 호스트를 세면 note.com 37 · pokesol 7 ·
+yakkun 5 · 네이버 4 · 나머지는 하테나블로그 여럿으로 흩어진다.
+하테나블로그·note 에는 팀빌더가 없으니 글쓴이가 스크린샷을 붙인다.
+
+그런데 pokesol 로 나가는 7편조차 **6편이 카드 없는(스크린샷) 기사**였다.
+pokesol 에 팀빌더가 있어도 **쓰는 사람만 쓴다.** (내가 사이트맵에서 받은
+pokesol 기사도 약 17%는 카드가 없었다.)
+
+그래서 champs 링크가 데이터를 덜 주는 것은 champs 탓이 아니고,
+**높은 순위에 오른 사람들이 하테나블로그·note 를 즐겨 쓰기 때문**이다.
+
+! 그 7편 중 카드가 있던 **1편을 실제로 놓쳤다.** pokesol 은 React 로 만든
+  곳이라 HTML 안에 본문이 아예 없는데(주소 뒤 `.data` 를 붙여야 나온다)
+  여기서 raw HTML 만 보고 있었다. `fetch_linked` 가 pokesol 주소는
+  fetch_pokesol 으로 넘기도록 고쳤다 — 개체 6마리를 되살렸다.
+
+## '질이 좋다' 는 두 가지 뜻이 섞였다
+
+champs 기사를 3배로 보는 것은 **순위 검증** 때문이다 (132편 전부 순위가
+붙어 있고, pokesol 사이트맵에서 온 기사는 28%만 순위가 있다).
+**데이터 충실도는 반대다** — champs 카드는 이름·도구뿐이고, 구조화된 카드가
+있는 쪽은 pokesol 이다. 두 축을 섞어 읽으면 안 된다.
+
 그래서 카드로 파티를 잡고, 기사가 **구조화돼 있을 때만**(표·data-*)
 기술을 주워 **이름으로 합친다**. 산문 기사는 카드 몫만 받는다.
 
@@ -496,6 +524,26 @@ def merge_card(party, card):
     }
 
 
+def fetch_linked(url):
+    """champs 카드가 가리키는 **외부 기사**를 받아서 파싱한다.
+
+    pokesol 은 따로 다뤄야 한다. React 로 만든 곳이라 **HTML 안에 본문이
+    아예 없다** — 주소 뒤에 `.data` 를 붙여야 나온다. 여기서 raw HTML 만
+    보다가 champs 가 가리킨 pokesol 기사 7편 중 카드가 있던 1편을 놓쳤다.
+    그쪽은 fetch_pokesol 이 이미 할 줄 아니 그대로 넘긴다.
+    """
+    if "pokesol." in url:
+        try:
+            import fetch_pokesol
+            got = fetch_pokesol.fetch_one(url)
+            if got.get("members"):
+                got["source"] = "champs"      # champs 색인에서 온 것임을 남긴다
+                return got
+        except Exception:
+            pass
+    return parse_article(get(url), url)
+
+
 def fetch_all(urls, cards=None):
     doc = load_out()
     have = set((p.get("url") or "").rstrip("/") for p in doc["parties"])
@@ -509,7 +557,7 @@ def fetch_all(urls, cards=None):
             time.sleep(DELAY)
         card = index.get(u.rstrip("/"))
         try:
-            party = parse_article(get(u), u)
+            party = fetch_linked(u)
         except Exception as e:
             # 본문을 못 받아도 카드가 있으면 명단과 도구는 건진다.
             print("  본문 실패: %s — %s" % (u, e))
