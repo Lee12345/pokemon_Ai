@@ -28783,6 +28783,8982 @@
      ]
     }
    ]
+  },
+  {
+   "source": "champs",
+   "url": "https://reboiona.hatenablog.com/entry/2026/09/10/174818",
+   "title": "【M-5】神速ルカリザスタン【最終2位】 - 人生詰みサイクル",
+   "season": null,
+   "rule": "M-5",
+   "rank": 2,
+   "trainer": "rebo®",
+   "publishedAt": "2026-09-10T17:48:18+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://claris-bradbury.hatenablog.com/entry/2026/09/09/%E3%80%90M-5_%E6%9C%80%E7%B5%825%E4%BD%8D%E3%80%91%E5%A4%A7%E7%A9%BA%E9%AD%94%E8%A1%93",
+   "title": "【M-5 最終5位】大空魔術 - 華氏451度",
+   "season": null,
+   "rule": "M-5",
+   "rank": 5,
+   "trainer": "Dr.Latancy",
+   "publishedAt": "2026-09-09T18:37:53+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バイバニラ",
+     "item": "とけないこおり",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pkmn-ys1224.hatenablog.com/entry/2026/09/10/201858",
+   "title": "【M-5最終10位、レート2579】力戦奮闘ルカリザスタン改 【ポケモンチャンピオンズ】 - せっきーのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 10,
+   "trainer": "せっきー",
+   "publishedAt": "2026-09-10T20:18:58+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://csunny.hatenablog.com/entry/2026/09/10/120245",
+   "title": "【チャンピオンズM-5最終13位レート2570】呪いハッサムサイクル - さにーの構築置場",
+   "season": null,
+   "rule": "M-5",
+   "rank": 13,
+   "trainer": "おはかまいり",
+   "publishedAt": "2026-09-10T12:02:45+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "サザンドラ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ハバンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/fair_ferret658/n/n9cda605f3364",
+   "title": "ポケモンチャンピオンズM-5シングル最終17位最終レート2549サイクルもどきギャラハッサム｜hoosedeer",
+   "season": null,
+   "rule": "M-5",
+   "rank": 17,
+   "trainer": "負けたくない",
+   "publishedAt": "2026-09-10T00:44:20.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガバンギラス",
+     "item": "バンギラスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "スピンロトム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "ようせいのハネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://blog.naver.com/jiwon0523-/224408200144",
+   "title": "シーズン5 最終19位 構築記事",
+   "season": null,
+   "rule": "M-5",
+   "rank": 19,
+   "trainer": "따라큐",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "ハバンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://m.cafe.naver.com/kemipoke/1514?art=aW50ZXJuYWwtY2FmZS1hcnRpY2xlLXJlYWQtc2hhcmUtbGluaw.eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjYWZlVHlwZSI6IkNBRkVfSUQiLCJhcnRpY2xlSWQiOjE1MTQsImlzc3VlZEF0IjoxNzg5MzUyNDA1MDQxLCJjYWZlSWQiOjMxNTM0OTE0fQ.yVd-u-IGgDhCVq5WJ9XDsYfQHwafzGEFu_zdHIt1_4s",
+   "title": "네이버 카페",
+   "season": null,
+   "rule": "M-5",
+   "rank": 23,
+   "trainer": "케미",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガリザードンＸ",
+     "item": "リザードナイトＸ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲッコウガ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://gokugokupoke.hatenablog.com/entry/2026/09/09/191637",
+   "title": "M-5:2538/2515 【最終32位&amp;46位】お願いサザングロス - つぶし",
+   "season": null,
+   "rule": "M-5",
+   "rank": 32,
+   "trainer": "シベギガス",
+   "publishedAt": "2026-09-09T19:16:37+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ピクシー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オニシズクモ",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://watabou828poke.hatenablog.com/entry/2026/09/09/221747",
+   "title": "【S5最終39位・MCS26.08 最終12位】神算鬼謀グロスゲンガー - わたぼうのブログ",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 39,
+   "trainer": "わたぼう",
+   "publishedAt": "2026-09-09T22:17:47+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://carbon-poke.hatenablog.com/entry/2026/09/11/001529",
+   "title": "【シーズンM-5 最終40位】ガブエッテ展開スタンダード - サイクル初心者",
+   "season": null,
+   "rule": "M-5",
+   "rank": 40,
+   "trainer": "Trustworthy",
+   "publishedAt": "2026-09-11T00:15:29+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "メタルコート",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://aosanfn2525.hatenablog.com/entry/2026/09/11/122241",
+   "title": "【M-5】月兆フロルカイリューハッサム【最終41位/レート2507】 - Liberation of the End",
+   "season": null,
+   "rule": "M-5",
+   "rank": 41,
+   "trainer": "ルオンノタル",
+   "publishedAt": "2026-09-11T12:22:41+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カイリュー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ho-kama.hatenablog.com/entry/2026/09/09/225316",
+   "title": "M-5 最終42位 最終レート2506 - ho-kamaのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 42,
+   "trainer": "ほうかま",
+   "publishedAt": "2026-09-09T22:53:16+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドヒドイデ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/nuikoguma/n/nbe44779fcb0d",
+   "title": "シーズン M-5 アマガカビゲン｜ヌイコグマ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 47,
+   "trainer": "ぬいこ",
+   "publishedAt": "2026-09-11T07:29:24.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カビゴン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://tanpaku-pk2.hatenablog.com/entry/2026/09/10/193154",
+   "title": "波導の勇者と紅の閃光 腹ペコ勇者の高火力サイクル - tanpaku_pk2’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 48,
+   "trainer": "たんぱくしつ",
+   "publishedAt": "2026-09-10T19:31:54+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カビゴン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://harubouzu11.hatenablog.com/entry/2026/09/10/145052",
+   "title": "【チャンピオンズシーズンM-5最終49位】双璧カバアマガ - harubouzu11’s blog",
+   "season": null,
+   "rule": "M-5",
+   "rank": 49,
+   "trainer": "42045",
+   "publishedAt": "2026-09-10T14:50:52+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://kariya-mob.hatenablog.com/entry/2026/09/09/111420",
+   "title": "【チャンピオンズM-5 53位 おさかな一本釣りスタン】 - 灯台の女神様",
+   "season": null,
+   "rule": "M-5",
+   "rank": 53,
+   "trainer": "なるせ",
+   "publishedAt": "2026-09-09T11:14:20+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://rumshu-poke.hatenablog.com/entry/2026/09/09/145139",
+   "title": "M-5 最終58位 ミミロップ全力サポートサイクル制圧パ - Rumshu_poke’s blog",
+   "season": null,
+   "rule": "M-5",
+   "rank": 58,
+   "trainer": "らむしゅ",
+   "publishedAt": "2026-09-09T14:51:39+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤドキング (ガラル)",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yasuosandayo.hatenablog.com/entry/2026/09/09/173141",
+   "title": "【シーズンM-5最終61位】 オボンガブ軸サイクル - yasuoblog",
+   "season": null,
+   "rule": "M-5",
+   "rank": 61,
+   "trainer": "やすお",
+   "publishedAt": "2026-09-09T17:31:41+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://kanata-k.hatenadiary.com/entry/2026/09/09/161053",
+   "title": "【レギュM-5】レート2461 ペンドラー・サーナイト軸の自分流結論パ【最終63位】 - カラミンゴファミリー",
+   "season": null,
+   "rule": "M-5",
+   "rank": 63,
+   "trainer": "カナタ",
+   "publishedAt": "2026-09-09T16:10:53+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペンドラー",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーナイト",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/mi_mori_hawksfan/n/n71dc8ad1aee8",
+   "title": "【Single M-5 最終64位】激情確信犯スタン｜momo",
+   "season": null,
+   "rule": "M-5",
+   "rank": 64,
+   "trainer": "SASURAInoUTA",
+   "publishedAt": "2026-09-09T15:02:59.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＸ",
+     "item": "リザードナイトＸ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://tusshii-poke.hatenadiary.jp/entry/2026/09/10/180114",
+   "title": "Champions シーズンM-5 最終65位 電磁波ブリエッテスタン - tusshii-pokeのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 65,
+   "trainer": "ちいさきもの",
+   "publishedAt": "2026-09-10T18:01:14+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "イダイトウ (オス)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://rukiapoke.hatenablog.com/entry/2026/09/09/193330",
+   "title": "チャンピオンズM-5 最終71位 - 尸魂界",
+   "season": null,
+   "rule": "M-5",
+   "rank": 71,
+   "trainer": "ロブチェン",
+   "publishedAt": "2026-09-09T19:33:30+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カイリュー",
+     "item": "たつじんのおび",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バイバニラ",
+     "item": "とけないこおり",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オオニューラ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://kobayashitx.hatenablog.jp/entry/2026/09/12/000000",
+   "title": "【M-5/74位】フラガブカバガルド【まどマギネタバレ注意】 - 小林の小話",
+   "season": null,
+   "rule": "M-5",
+   "rank": 74,
+   "trainer": "SrWonderLAND",
+   "publishedAt": "2026-09-12T00:00:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://karten-222.hatenablog.com/entry/2026/09/10/144223",
+   "title": "最終79位 ドラミアマガ終 - Karten_222’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 79,
+   "trainer": "しゅうじ",
+   "publishedAt": "2026-09-10T14:42:23+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガドラミドロ",
+     "item": "ドラミドナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yakkun.com/bbs/party/n8704",
+   "title": "MB M-5シングル 攻撃的バンギアマガ構築 最終87位（レート2470.893）｜ポケモンパーティ構築 - ポケモン徹底攻略",
+   "season": null,
+   "rule": "M-5",
+   "rank": 87,
+   "trainer": "ついたち",
+   "publishedAt": "2026-09-13T20:39:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ジュカイン",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガバンギラス",
+     "item": "バンギラスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "http://blog.livedoor.jp/forpoke/archives/97752131.html",
+   "title": "【シーズンM-5 最終88位】メガジュカインサイクルパ2.0 : ウルトラメガZリーフストーム",
+   "season": null,
+   "rule": "M-5",
+   "rank": 88,
+   "trainer": "リョウ",
+   "publishedAt": "2026-09-09T23:12:42+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガジュカイン",
+     "item": "ジュカインナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://gara4poke.hatenablog.com/entry/2026/09/09/160338",
+   "title": "【シングルM-5 最終90位】メガライチュウY単騎サイクル - ガラシ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 90,
+   "trainer": "アシナ",
+   "publishedAt": "2026-09-09T16:03:38+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ゲンガー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガオガエン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/kiz_z98745/n/nf5f814eb9431",
+   "title": "ポケモン対戦で勝つ方法論 定石と研究｜かきます",
+   "season": null,
+   "rule": "M-5",
+   "rank": 127,
+   "trainer": "キタバタケ",
+   "publishedAt": "2026-09-13T12:37:14.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＸ",
+     "item": "リザードナイトＸ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフシギバナ",
+     "item": "フシギバナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メタモン",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/orando_pokemon/n/nc630ea345323",
+   "title": "【シーズンM-5/最終129位】クチートと大きいあさがお【最終レート2431】｜オランド@",
+   "season": null,
+   "rule": "M-5",
+   "rank": 129,
+   "trainer": "おらんじーな",
+   "publishedAt": "2026-09-09T17:59:55.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヒートロトム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/leal_pansy7908/n/n0fd90f9c1d00",
+   "title": "【M-5】レート2426最終136位｜むゆ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 136,
+   "trainer": "むゆ",
+   "publishedAt": "2026-09-10T09:55:59.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://sylphisyuu.hatenablog.jp/entry/2026/09/10/181836",
+   "title": "【M-5使用構築】権謀術数ゾロビビヨン【最終2424(140位)】 - シンプル・イズ・ベスト",
+   "season": null,
+   "rule": "M-5",
+   "rank": 140,
+   "trainer": "ぅゅし:)",
+   "publishedAt": "2026-09-10T18:18:36+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガジュペッタ",
+     "item": "ジュペッタナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゾロアーク (ヒスイ)",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ビビヨン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バシャーモ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフシギバナ",
+     "item": "フシギバナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/aizi_poke/n/nfc092f2ac58f",
+   "title": "【M-5最終160位】影踏みストーキングサイクル｜アイジ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 160,
+   "trainer": "まつもと",
+   "publishedAt": "2026-09-10T00:25:07.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://barechau-kamo.hatenablog.com/entry/2026/09/09/204700",
+   "title": "【M-5 最終163位】煌めきのロップイダイ revenge - ばれちゃうかもの日記かも？",
+   "season": null,
+   "rule": "M-5",
+   "rank": 163,
+   "trainer": "ララティーナ",
+   "publishedAt": "2026-09-09T20:47:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/https_jyararanga/n/nb615f52cf259",
+   "title": "ガブフラエッテミトムサイクル【シーズンM-5 最終166位】｜ジャラ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 166,
+   "trainer": "ジャラランガ",
+   "publishedAt": "2026-09-10T22:33:38.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "メタルコート",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://lanturn.hatenadiary.jp/entry/2026/09/11/225909",
+   "title": "【M-5 最終170位】一意専心ガルアシレ - Raging Volt Switch",
+   "season": null,
+   "rule": "M-5",
+   "rank": 170,
+   "trainer": "たまらし",
+   "publishedAt": "2026-09-11T22:59:09+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガガルーラ",
+     "item": "ガルーラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://keykko.hatenablog.com/entry/2026/09/11/005848",
+   "title": "【シーズンM-5最終181位レート2417】カバドリガブ改 - 砂老人の語り場",
+   "season": null,
+   "rule": "M-5",
+   "rank": 181,
+   "trainer": "Key",
+   "publishedAt": "2026-09-11T00:58:48+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "さらさらいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドリュウズ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガガブリアス",
+     "item": "ガブリアスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://uster-ml.hatenadiary.com/entry/2026/09/09/234125",
+   "title": "【ポケモンチャンピオンズ】シーズンM-5使用構築 最終レート2417 &amp; 2405（187位 &amp; 302位） - ウスターの貯蔵庫",
+   "season": null,
+   "rule": "M-5",
+   "rank": 187,
+   "trainer": "ウスター",
+   "publishedAt": "2026-09-09T23:41:25+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガカメックス",
+     "item": "カメックスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミズズ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガキラフロル",
+     "item": "キラフロルナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バイバニラ",
+     "item": "とけないこおり",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://or-5282517.hatenablog.com/entry/2026/09/09/233118",
+   "title": "チャンピオンズS5シングル190位 ギャラドスマフォクシー - ちえなみにっき",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 190,
+   "trainer": "カレンデュラ",
+   "publishedAt": "2026-09-09T23:31:18+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/emiya_922/n/nb5997a76ac5d",
+   "title": "【シーズンM-5 シングル 最終198位】 業火滅却カバリザ 【ポケモンチャンピオンズ】｜Emiya",
+   "season": null,
+   "rule": "M-5",
+   "rank": 198,
+   "trainer": "Emiya",
+   "publishedAt": "2026-09-12T14:11:07.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://blog.naver.com/lee0826-/224407671991",
+   "title": "[포켓몬 챔피언스] M-5 싱글 2416 (세계 203위) 달성 파티 소개",
+   "season": null,
+   "rule": "M-5",
+   "rank": 203,
+   "trainer": "푸름",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "りゅうのキバ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://sunagakure.hatenablog.com/entry/2026/09/09/225835",
+   "title": "M-5 シングル最終204位 主役の座を奪われたメガニウムの末路 - メガニウム使いの日記帳",
+   "season": null,
+   "rule": "M-5",
+   "rank": 204,
+   "trainer": "crow",
+   "publishedAt": "2026-09-09T22:58:35+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ラウドボーン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/kabigon123456ab/articles/5fd9c4d1e4b9f617",
+   "title": "世界207位獲得！一撃必殺パーティ！",
+   "season": null,
+   "rule": "M-5",
+   "rank": 207,
+   "trainer": "かびごん",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カビゴン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイロス",
+     "item": "カイロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドリュウズ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドラパルト",
+     "item": "たつじんのおび",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://nut-poke.hatenablog.com/entry/2026/09/09/200000",
+   "title": "M-5シングル 215位 2415.105【最終チャンピオン級】 - ギアステーション",
+   "season": null,
+   "rule": "M-5",
+   "rank": 215,
+   "trainer": "メア",
+   "publishedAt": "2026-09-09T20:00:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲンガー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オオニューラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤドキング",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://www.haradapokemon.com/entry/2026/09/09/175359",
+   "title": "【S5最終レート2414&amp;219位】メガスコヴィランサイクル構築 - haradaのポケモンブログ",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 219,
+   "trainer": "はらだちゃん",
+   "publishedAt": "2026-09-09T17:53:59+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ピクシー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バンギラス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスコヴィラン",
+     "item": "スコヴィラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yakkun.com/bbs/party/n8672",
+   "title": "M5シングル 壁クエスコノヨ構築 最終227位/292位｜ポケモンパーティ構築 - ポケモン徹底攻略",
+   "season": null,
+   "rule": "M-5",
+   "rank": 227,
+   "trainer": "かっぴー",
+   "publishedAt": "2026-09-09T19:05:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "クエスパトラ",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "コノヨザル",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガピクシー",
+     "item": "ピクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガオガエン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "シュカのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://hetai870.hatenablog.com/entry/2026/09/10/134534",
+   "title": "【M−5シングル 最終228位 2413】サイクル撲滅委員会inチャンピオンズ 復活のミミイダイトウ - hetai870’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 228,
+   "trainer": "ハレルヤ",
+   "publishedAt": "2026-09-10T13:45:34+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "ピントレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://moco12060908.hatenablog.com/entry/2026/09/09/172056",
+   "title": "【シーズンM-5 最終240位】土下座フルパワー - 狂犬の日記",
+   "season": null,
+   "rule": "M-5",
+   "rank": 240,
+   "trainer": "もこ",
+   "publishedAt": "2026-09-09T17:20:56+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "イダイトウ (メス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://nanapanman77.hatenablog.com/entry/2026/09/09/211043",
+   "title": "Ligpect マフォクシー M-5最終243位 - nanapanman77のブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 243,
+   "trainer": "きり",
+   "publishedAt": "2026-09-09T21:10:43+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフシギバナ",
+     "item": "フシギバナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yakkun.com/bbs/party/n8666",
+   "title": "気合いと噛み合い ガブニンフハッサム｜ポケモンパーティ構築 - ポケモン徹底攻略",
+   "season": null,
+   "rule": "M-5",
+   "rank": 245,
+   "trainer": "ヌメロ・ドス",
+   "publishedAt": "2026-09-09T18:46:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "ピントレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ajifly358.hatenablog.com/entry/2026/09/12/154441",
+   "title": "【シーズンM-5シングル】バトン展開ペンドラーサーフチリーン【最終250位/レート2411.761】 - Ajifly358のブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 250,
+   "trainer": "ばーす",
+   "publishedAt": "2026-09-12T15:44:41+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガチリーン",
+     "item": "チリーンナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ペンドラー",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/dust_dutosu/n/nc5f6d0f1b317",
+   "title": "ポケモンチャンピオンズ シーズンM-5 シングル 最終261位 雨と鋼鉄vol.2｜だすと",
+   "season": null,
+   "rule": "M-5",
+   "rank": 261,
+   "trainer": "だし",
+   "publishedAt": "2026-09-10T21:49:02.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ripperkososikou.hatenablog.com/entry/2026/09/09/185144",
+   "title": "【M4 最終266位 レート2409】激情閉幕ルカカイリュー【Pokémon champions】 - じゅばの玩具箱 Twitter：https://x.com/SCARSJuba",
+   "season": null,
+   "rule": "M-5",
+   "rank": 266,
+   "trainer": "ジャック",
+   "publishedAt": "2026-09-09T18:51:44+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://banatarou.hatenadiary.org/entry/2026/09/08/190305",
+   "title": "シーズンM5 ミミイダイ(5期連続) 使用構築と結果 - ばなたろうのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 280,
+   "trainer": "ばなたろう",
+   "publishedAt": "2026-09-08T19:03:05+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/kame_teppen/n/nf97bc6f2ef72",
+   "title": "【M-5 シングル】最終チャンピオン級達成！対面カビゴン構築(選出コントロール)【ポケモンチャンピオンズ】｜カメさん",
+   "season": null,
+   "rule": "M-5",
+   "rank": 290,
+   "trainer": "ちいおじ",
+   "publishedAt": "2026-09-09T15:17:15.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスコヴィラン",
+     "item": "スコヴィラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マリルリ",
+     "item": "リンドのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カビゴン",
+     "item": "ヨプのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/quon_poke/n/nebb1a853fe36",
+   "title": "夏休みレポとM-5【最終293位、NOVA Swift準優勝】｜quon ポケモン つよいもん",
+   "season": null,
+   "rule": "M-5",
+   "rank": 293,
+   "trainer": "quon",
+   "publishedAt": "2026-09-11T23:14:43.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "シュカのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://rurunosuke.hatenablog.com/entry/2026/09/09/212721",
+   "title": "【M-5 最終295位】回復技不要の対面構築なのだ・。・ - ルルのポケモン構築記事・。・",
+   "season": null,
+   "rule": "M-5",
+   "rank": 295,
+   "trainer": "ルル・。・",
+   "publishedAt": "2026-09-09T21:27:21+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガガルーラ",
+     "item": "ガルーラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ibunekot.hatenablog.com/entry/2026/09/09/164702",
+   "title": "【シーズンM-5 最終300位/レート2406】全力ルカリオ【ポケモンチャンピオンズ】 - ルカリオ好きな人のブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 300,
+   "trainer": "イブ",
+   "publishedAt": "2026-09-09T16:47:02+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカエンジシ",
+     "item": "カエンジシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://taosan-poke.hateblo.jp/entry/2026/09/14/155203",
+   "title": "M-5 最終329位(最終2392,最高2502) M-Cでもイダイトウ♀を活躍させる方法募集 - たおさんの部屋",
+   "season": null,
+   "rule": "M-5",
+   "rank": 329,
+   "trainer": "たおさん",
+   "publishedAt": "2026-09-14T15:52:03+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "サザンドラ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (メス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/tarborpoke/n/n1d6bcb647573",
+   "title": "【最終349位】Pokémon Champions レギュレーションM-B シーズン3 1メガコータスマフォクシー構築【最終レート2371】｜たーぼー",
+   "season": 3,
+   "rule": "M-5",
+   "rank": 349,
+   "trainer": "たーぼー",
+   "publishedAt": "2026-09-13T01:45:56.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "コータス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ホルード",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "フシギバナ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/prominence756/n/n3fe8a3c5dd11",
+   "title": "最終351位 力ずくドデカバシ｜prominence756",
+   "season": null,
+   "rule": "M-5",
+   "rank": 351,
+   "trainer": "ナイトキラー",
+   "publishedAt": "2026-09-11T19:42:29.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ドデカバシ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://patpory2.hatenablog.com/entry/2026/09/09/000000",
+   "title": "1dayカバルカ - 人の構築を勝手にパクリおすTV",
+   "season": null,
+   "rule": "M-5",
+   "rank": 363,
+   "trainer": "フレグランス",
+   "publishedAt": "2026-09-09T11:00:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/letzte_ehre_pk/n/nc83e74325061",
+   "title": "ハッサムエッテ対面龍拳爆発｜アベル",
+   "season": null,
+   "rule": "M-5",
+   "rank": 376,
+   "trainer": "ベジット",
+   "publishedAt": "2026-09-09T18:02:43.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://hiyokopoke.hatenablog.com/entry/2026/09/09/210811",
+   "title": "チャンピオンズ(シーズンＭ-5) - hiyokopokeのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 390,
+   "trainer": "アチャモ",
+   "publishedAt": "2026-09-09T21:08:11+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガピクシー",
+     "item": "ピクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pawmimi.hatenadiary.com/entry/2026/09/09/182052",
+   "title": "【シーズンM-5】 最終401位 ブリミミイダイニウム - pawmimiのブログ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 401,
+   "trainer": "ぱも",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカエンジシ",
+     "item": "カエンジシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yuya317317.hatenablog.com/entry/2026/09/09/153415",
+   "title": "【M-5 最終402位】1メガ構築ドドゲギャラクシー改 - ゆうゆうじてき",
+   "season": null,
+   "rule": "M-5",
+   "rank": 402,
+   "trainer": "ゆう",
+   "publishedAt": "2026-09-09T15:34:15+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "りゅうのキバ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/pathetic/n/n1aba9685786c",
+   "title": "[シーズンM-5 最終415位] 完全模倣カイリューハッサム｜freesia",
+   "season": null,
+   "rule": "M-5",
+   "rank": 415,
+   "trainer": "まじょがり",
+   "publishedAt": "2026-09-10T19:14:09.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://www.panipanipanipa.com/entry/2026/09/09/212201",
+   "title": "【M-5 442位 最高2388最終2327 】 遅いメガラグと速いメガグロス - ぱにぱにぱにぱ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 442,
+   "trainer": "ぱにぱに",
+   "publishedAt": "2026-09-09T21:22:01+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヒートロトム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://blory.hatenablog.com/entry/2026/09/09/201124",
+   "title": "【シングル M‐5 最終451位】 兎の花園 - 「生きるとは、旅をすること。」",
+   "season": null,
+   "rule": "M-5",
+   "rank": 451,
+   "trainer": "りっちゃん",
+   "publishedAt": "2026-09-09T20:11:24+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/gonzamas8810/n/n9ab1109e6127",
+   "title": "【最終457位】ブラゲン構築｜シーズン５構築記事｜ゴンザマロス",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 457,
+   "trainer": "ごごごんざ",
+   "publishedAt": "2026-09-10T13:34:58.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブラッキー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/jolly_shark9509/n/ne68ea7cc7251",
+   "title": "【シーズンM-5 シングル 最終459位】メガギャラ対面構築~ギャラドスと過ごした三か月~｜はるさき",
+   "season": null,
+   "rule": "M-5",
+   "rank": 459,
+   "trainer": "あきさめ",
+   "publishedAt": "2026-09-09T21:13:01.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ゲンガー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/jolly_badger1955/n/n05ddb54829a9",
+   "title": "(最終481位)M-5 奥義ガブハッサム｜Chapter",
+   "season": null,
+   "rule": "M-5",
+   "rank": 481,
+   "trainer": "naka",
+   "publishedAt": "2026-09-09T22:13:08.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "りゅうのキバ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/dragonite3055/n/n270dae0beefc",
+   "title": "シーズンM-5 最終489位 ご注文は最後のミラコかw｜かいりゅーぽけ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 489,
+   "trainer": "ノーポイッ！",
+   "publishedAt": "2026-09-09T18:15:50.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブラッキー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/kurono_0173/n/nee661914500c",
+   "title": "〔Champs 〕M-5シングル最終516位 ヤバソチャ対面構築！｜クロノ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 516,
+   "trainer": "クロノ",
+   "publishedAt": "2026-09-09T18:30:46.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤバソチャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガムクホーク",
+     "item": "ムクホークナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://esora113.hatenablog.com/entry/2026/09/10/033211",
+   "title": "【M-5最終522位】強面カバドリガブ【R2311】 - 絵空事の切れ端",
+   "season": null,
+   "rule": "M-5",
+   "rank": 522,
+   "trainer": "エソラ",
+   "publishedAt": "2026-09-10T03:32:11+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガガブリアス",
+     "item": "ガブリアスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "さらさらいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドリュウズ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ruland-poke.hatenadiary.jp/entry/2026/09/09/%E3%80%90%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3%E3%83%81%E3%83%A3%E3%83%B3%E3%83%94%E3%82%AA%E3%83%B3%E3%82%BAM-B%E6%9C%80%E7%B5%82540%E4%BD%8D%E3%80%91%E6%AC%A0%E9%99%A5%E5%BF%AB%E6%99%B42%E8%BB%B8",
+   "title": "【ポケモンチャンピオンズM-B最終540位】欠陥快晴2軸対面構築 - Ruland_pokeの日記",
+   "season": null,
+   "rule": "M-5",
+   "rank": 540,
+   "trainer": "Ruland",
+   "publishedAt": "2026-09-09T23:13:03+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "フシギバナ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカメックス",
+     "item": "カメックスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "コータス",
+     "item": "あついいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://akaiyuki.hatenablog.com/entry/2026/09/11/132801",
+   "title": "realistic sunny 初代晴れ〜シーズンM-5最終R2307.557位〜 - 赤い雪が降る頃に",
+   "season": null,
+   "rule": "M-5",
+   "rank": 557,
+   "trainer": "ユキ",
+   "publishedAt": "2026-09-11T13:28:01+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "エルフーン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "コータス",
+     "item": "あついいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "フシギバナ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカメックス",
+     "item": "カメックスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/jolly_drake1660/n/nbf966abbf026",
+   "title": "【MB-5 r2307最終558位】 シロナパ｜らんぷ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 558,
+   "trainer": "ranpu",
+   "publishedAt": "2026-09-10T00:49:24.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミカルゲ",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ロズレイド",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミロカロス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ジャラランガ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/pecopecodiary21/articles/109fe116be0a2544",
+   "title": "【MB M-5 2306 568位】受けない受けサイクル",
+   "season": null,
+   "rule": "M-5",
+   "rank": 568,
+   "trainer": "いろぺこ",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドヒドイデ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/rosy_squid2276/n/n2009c82b2be6",
+   "title": "[シーズン5 シングル]メガバシャーモ入り対面構築(1メガ構築)(最終2300達成)｜天利優",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 576,
+   "trainer": "ティエン",
+   "publishedAt": "2026-09-13T10:01:08.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ゲンガー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ロゼルのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "こうかくレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガバシャーモ",
+     "item": "バシャーモナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/rabbitkanons/articles/e8e2102547a346ff",
+   "title": "M-5",
+   "season": null,
+   "rule": "M-5",
+   "rank": 579,
+   "trainer": "ちきふわ",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://kaipuupoke.hatenablog.com/entry/2026/09/10/120534",
+   "title": "チャンピオンズM5最終595位最高2330とか最終2305ブリマフォニューラ - マジフレ中毒者の独り言",
+   "season": null,
+   "rule": "M-5",
+   "rank": 595,
+   "trainer": "夏空と走馬灯",
+   "publishedAt": "2026-09-10T12:05:34+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マニューラ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://hanamarupoke.hatenablog.com/entry/2026/09/10/144447",
+   "title": "【ポケモンチャンピオンズ シーズンMー5最終605位】壁バトンギャラフラエッテ - はなまるぽけの備忘録",
+   "season": null,
+   "rule": "M-5",
+   "rank": 605,
+   "trainer": "たか",
+   "publishedAt": "2026-09-10T14:44:47+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バシャーモ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドラパルト",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/yukke_pokemon/n/nb95dc3829b6e",
+   "title": "【ポケモンチャンピオンズ M-5】最終607位／レート2303 メガリザX軸対面構築｜ユッケ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 607,
+   "trainer": "ユッケ",
+   "publishedAt": "2026-09-11T17:27:06.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＸ",
+     "item": "リザードナイトＸ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/tate_pokesv/articles/9b77e87262aa21e3",
+   "title": "【M-5 最終610位/R2303】ガブニンフギャラクシー巧",
+   "season": null,
+   "rule": "M-5",
+   "rank": 610,
+   "trainer": "バーチカル",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://salt-pokem.hatenablog.com/entry/2026/09/10/144710",
+   "title": "【M5 最終698位 レート2290】ゲンガーグロススタン - そると",
+   "season": null,
+   "rule": "M-5",
+   "rank": 698,
+   "trainer": "そると",
+   "publishedAt": "2026-09-10T14:47:10+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://debirin.hatenablog.com/entry/2026/09/11/180023",
+   "title": "【M-5 最終705位 レート2288】 - はるかなそらへ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 705,
+   "trainer": "devi*",
+   "publishedAt": "2026-09-11T18:00:23+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲッコウガ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "バイバニラ",
+     "item": "とけないこおり",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "http://vibgyor516.blog.fc2.com/blog-entry-99.html",
+   "title": "【ポケモンチャンピオンズシーズンM-5シングル】わんだほら～！？なトリルミミクチイダイトウ雌と黒い霧グレイシア！ 【最終レート2288.261/最終順位709位】",
+   "season": null,
+   "rule": "M-5",
+   "rank": 709,
+   "trainer": "wing",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "グレイシア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (メス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/shigeru_887/n/nc5b6d03fc981",
+   "title": "[Pokémon Champions M-3 Singles | Final Rating 2409] Dragapult–Tinkaton–Charizard: Team Development an｜シゲル｜Shigeru Lab",
+   "season": null,
+   "rule": "M-5",
+   "rank": 723,
+   "trainer": "シゲル",
+   "publishedAt": "2026-09-14T02:09:34.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドラパルト",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "デカヌチャン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲッコウガ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://dedekasupoly2.hatenablog.com/entry/2026/09/09/172012",
+   "title": "ラグハッサムサイクルの欠陥 最終R2286 - dedekasupoly2’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 724,
+   "trainer": "ふぅちゃん",
+   "publishedAt": "2026-09-09T17:20:12+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ムクホーク",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゾロアーク (ヒスイ)",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://sunsundayo.hatenablog.com/entry/2026/09/10/163159",
+   "title": "【MB−5 最終725位】かたやぶりコンビ！ - sunsundayoの日記",
+   "season": null,
+   "rule": "M-5",
+   "rank": 725,
+   "trainer": "すんちゃん",
+   "publishedAt": "2026-09-10T16:31:59+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "マンムー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガエンブオー",
+     "item": "エンブオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ムクホーク",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://penpenpendlar.hatenablog.com/entry/2026/09/09/181404",
+   "title": "【M-5 最終748位（R2384） ペリラグのラグもステロあくびしたって良い】 - ペンドラー・バトン 数奇なるポケ日誌",
+   "season": null,
+   "rule": "M-5",
+   "rank": 748,
+   "trainer": "セドン",
+   "publishedAt": "2026-09-09T18:14:04+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ラグラージ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ペリッパー",
+     "item": "しめったいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キュウコン (アローラ)",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://nogael.hatenablog.com/entry/2026/09/13/212626",
+   "title": "【最終755位／レート2283.634】メガフラエッテwith御三家【シングル／M-5／チャンピオンズ】 - かえるのおきみやげ。",
+   "season": null,
+   "rule": "M-5",
+   "rank": 755,
+   "trainer": "ルエカ",
+   "publishedAt": "2026-09-13T21:26:26+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ラウドボーン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフシギバナ",
+     "item": "フシギバナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://mrmpm.hatenablog.com/entry/2026/09/09/190000",
+   "title": "M-5 ゲンガーグロス - 雨ときどき",
+   "season": null,
+   "rule": "M-5",
+   "rank": 767,
+   "trainer": "ひかみメルル",
+   "publishedAt": "2026-09-09T19:00:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://marusya-poke.hatenablog.com/entry/2026/09/09/180225",
+   "title": "【M-5 最終767位】対面展開フロルホーク - marusya_poke’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 767,
+   "trainer": "リシテア",
+   "publishedAt": "2026-09-09T18:02:25+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ブリジュラス",
+     "item": "ピントレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガムクホーク",
+     "item": "ムクホークナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/bracky_love/articles/160bcede7f2915f3",
+   "title": "M-Bシーズン5 783位 2シーズン連続3桁ブラッキー構築",
+   "season": null,
+   "rule": "M-5",
+   "rank": 783,
+   "trainer": "ワカ",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ブラッキー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギルガルド",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ソクノのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://espressozin.hatenablog.com/entry/2026/09/09/202023",
+   "title": "ポケモンチャンピオンズ 最終三桁への挑戦 - espressozin’s blog",
+   "season": null,
+   "rule": "M-5",
+   "rank": 785,
+   "trainer": "ジン",
+   "publishedAt": "2026-09-09T20:20:23+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブラッキー",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/ahirupoke/n/n1c478260cfc0",
+   "title": "【M5 788位】 ビルドアップで仕上げるボディビルダーメガラグラージ ペリラグ雨パ｜あひるん",
+   "season": null,
+   "rule": "M-5",
+   "rank": 788,
+   "trainer": "あひるんZ",
+   "publishedAt": "2026-09-09T15:55:04.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "しめったいわ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヌメルゴン (ヒスイ)",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメガニウム",
+     "item": "メガニウムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オオニューラ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "コノヨザル",
+     "item": "でんきだま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pompia.hatenablog.com/entry/2026/09/09/175100",
+   "title": "【M-5 最終796位 2280】スターライト【ポケモンチャンピオンズシングル】 - 素人のポケモンバトル",
+   "season": null,
+   "rule": "M-5",
+   "rank": 796,
+   "trainer": "POM",
+   "publishedAt": "2026-09-09T17:51:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ホルード",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミズズ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドラパルト",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/bo_no111/n/n2746530c1f62",
+   "title": "ポケモンチャンピオンズ構築紹介「Simple is the best」【最終799位】【ノーマル統一】｜ボーノ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 799,
+   "trainer": "ボーノ！",
+   "publishedAt": "2026-09-09T23:55:53.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ゾロアーク (ヒスイ)",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メタモン",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカエンジシ",
+     "item": "カエンジシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドデカバシ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イッカネズミ",
+     "item": "こうかくレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://aoharu0329.hateblo.jp/entry/2026/09/09/213002",
+   "title": "【M-5最終803位】終焉ゲンアマガ - Evolutionary Process",
+   "season": null,
+   "rule": "M-5",
+   "rank": 803,
+   "trainer": "Astronauts",
+   "publishedAt": "2026-09-09T21:30:02+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/kusum0n/n/nac9f4f5fc4f8",
+   "title": "【シーズンM-5 最終804位】トリルクチイダイ｜モンクス",
+   "season": null,
+   "rule": "M-5",
+   "rank": 804,
+   "trainer": "モンクス",
+   "publishedAt": "2026-09-11T18:38:51.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "エルレイド",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤバソチャ",
+     "item": "ナモのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "タブンネ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (メス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/4508satoshi/n/ndb3e6501c68f",
+   "title": "M-5 ロンゲヤドキンライチュ｜慧",
+   "season": null,
+   "rule": "M-5",
+   "rank": 806,
+   "trainer": "のぞみ",
+   "publishedAt": "2026-09-09T21:13:14.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ヤドキング",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オーロンゲ",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミズズ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガペンドラー",
+     "item": "ペンドラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://gomazuae.hatenablog.com/entry/2026/09/09/173909",
+   "title": "【s5 最終808位】雨パ+トリルで択に勝ちたい - gomazuaeのポケモン日記",
+   "season": null,
+   "rule": "M-5",
+   "rank": 808,
+   "trainer": "ごま",
+   "publishedAt": "2026-09-09T17:39:09+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ムシャーナ",
+     "item": "カシブのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/pal640/n/n3acf3972a9b2",
+   "title": "【ポケモンチャンピオンズ M-5 最高・最終レート2279・834位】練度とヤンキーは紙一重【役割論理・ヤーティ】｜PAL",
+   "season": null,
+   "rule": "M-5",
+   "rank": 834,
+   "trainer": "K",
+   "publishedAt": "2026-09-11T21:39:29.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ギャラドス",
+     "item": "たつじんのおび",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガバンギラス",
+     "item": "バンギラスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "ものしりメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/kuroma24/n/n1d9e47036360",
+   "title": "ポケモンチャンピオンズ 【シーズンM-5 最終835位】万年5桁順位、レート1500台で沼ってたけどとある女Vと芸人がめちゃレート上げてんの見て悔しくてガチったら最終3桁行けた。【最終レート2279.3｜くろま",
+   "season": null,
+   "rule": "M-5",
+   "rank": 835,
+   "trainer": "ラブライブ！",
+   "publishedAt": "2026-09-09T18:53:04.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ペリッパー",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガラグラージ",
+     "item": "ラグラージナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yakkun.com/bbs/party/n8673",
+   "title": "【M-5シングル 最終835位/レート2279】タブンネ・クチート・ビビヨン｜ポケモンパーティ構築 - ポケモン徹底攻略",
+   "season": null,
+   "rule": "M-5",
+   "rank": 835,
+   "trainer": "パラリラ",
+   "publishedAt": "2026-09-09T21:25:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ビビヨン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "タブンネ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガクチート",
+     "item": "クチートナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://kaerumomizi.hatenablog.jp/entry/2026/09/14/000739",
+   "title": "【M-5最終844位・MCS26.08最終65位】鋼炎双刃 ムドーブレイズ - 蛙椛",
+   "season": null,
+   "rule": "M-5",
+   "rank": 844,
+   "trainer": "プラム",
+   "publishedAt": "2026-09-14T00:07:39+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガエアームド",
+     "item": "エアームドナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キュウコン (アローラ)",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "イトケのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オニシズクモ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://charonpoke.hatenablog.com/entry/2026/09/13/165008",
+   "title": "【M-5シングル 最終855位（R2278.094）】構築記事 ガブゲンスタンダード改 - charonpoke’s blog",
+   "season": null,
+   "rule": "M-5",
+   "rank": 855,
+   "trainer": "ソード",
+   "publishedAt": "2026-09-13T16:50:08+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://al-dente.hatenablog.com/entry/2026/09/12/125338",
+   "title": "ポケモンチャンピオンズM-5 最終873位 バカ火力押し付けサイクル - al_dente diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 873,
+   "trainer": "あるでんて",
+   "publishedAt": "2026-09-12T12:53:38+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "マンムー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/naokichanote2274/n/n09f2c3a06942",
+   "title": "【M-5 最終911位】リザY対面構築｜なおきちゃ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 911,
+   "trainer": "なおきちゃ",
+   "publishedAt": "2026-09-11T02:54:16.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "のろいのおふだ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/ponponty/n/n33946e7004b1",
+   "title": "【M−5最終916位R2274】アグロ毒菱膝栗毛｜スミス",
+   "season": null,
+   "rule": "M-5",
+   "rank": 916,
+   "trainer": "ぽんぽんちい",
+   "publishedAt": "2026-09-11T00:23:49.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ゲッコウガ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガバシャーモ",
+     "item": "バシャーモナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/haganea/n/nb0d2ccc8f725",
+   "title": "S5シングル使用構築_悪統一｜ハガネア",
+   "season": 5,
+   "rule": "M-5",
+   "rank": 937,
+   "trainer": "サバタ",
+   "publishedAt": "2026-09-10T17:44:34.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤミラミ",
+     "item": "ひかりのねんど",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガオガエン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ワルビアル",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "オーロンゲ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドドゲザン",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/mtak6tcc/n/nb275695b396e",
+   "title": "ポケモンチャンピオンズ942位｜Fusion",
+   "season": null,
+   "rule": "M-5",
+   "rank": 942,
+   "trainer": "おかねほしい",
+   "publishedAt": "2026-09-10T23:07:42.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフシギバナ",
+     "item": "フシギバナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスコヴィラン",
+     "item": "スコヴィラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲンガー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスターミー",
+     "item": "スターミナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハリーマン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドデカバシ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://tromboy7.hatenablog.com/entry/2026/09/12/221309",
+   "title": "【シーズンM-5レート2273最終946位】マンムーグロスは止まらない！ - tromboy7’s diary",
+   "season": null,
+   "rule": "M-5",
+   "rank": 946,
+   "trainer": "トロンボ",
+   "publishedAt": "2026-09-12T22:13:09+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マンムー",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "ピントレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/oxi1192_pokemon/articles/352f272c9eda17ee",
+   "title": "シーズンM5最終954位 ミミズズライチュウ",
+   "season": null,
+   "rule": "M-5",
+   "rank": 954,
+   "trainer": "おきし",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "アシレーヌ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガキラフロル",
+     "item": "キラフロルナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミズズ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yakkun.com/bbs/party/n8676",
+   "title": "【MB M-5シングル最終976位 R2271】 ガン攻めハバネロドラホーク ｜ポケモンパーティ構築 - ポケモン徹底攻略",
+   "season": null,
+   "rule": "M-5",
+   "rank": 976,
+   "trainer": "ボルテッカー",
+   "publishedAt": "2026-09-09T22:14:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガスコヴィラン",
+     "item": "スコヴィラナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドラパルト",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ムクホーク",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/proper_lemur8835/n/n68c8c2f85246",
+   "title": "シングルM-5最終977位｜あのQoo",
+   "season": null,
+   "rule": "M-5",
+   "rank": 977,
+   "trainer": "トレーナー",
+   "publishedAt": "2026-09-09T18:36:31.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ソウブレイズ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "たつじんのおび",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミロカロス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://sso-061.hatenablog.com/entry/2026/08/06/213307",
+   "title": "【M-4 最終1位】結論ドヒドアマガ - soraぽけ",
+   "season": null,
+   "rule": "M-4",
+   "rank": 1,
+   "trainer": "ばつびょう",
+   "publishedAt": "2026-08-06T21:33:07+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ドヒドイデ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "カゴのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "くろいメガネ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://x.com/Uy16X/status/2084958724595355895?s=20",
+   "title": "@Uy16X",
+   "season": null,
+   "rule": "M-4",
+   "rank": 2,
+   "trainer": "じゃんきー",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://blog.naver.com/2tjqja/224370602372",
+   "title": "【ポケモン超流シングル】 シーズン4 レーティング2560 最終3位 獲得構築",
+   "season": null,
+   "rule": "M-4",
+   "rank": 3,
+   "trainer": "모노",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://magico.hatenablog.jp/entry/2026/08/08/120910",
+   "title": "【シーズンM-4 最終4位】未完成限界プレイング - magicoのブログ",
+   "season": null,
+   "rule": "M-4",
+   "rank": 4,
+   "trainer": "モスノウ",
+   "publishedAt": "2026-08-08T12:09:10+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ウルガモス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガルカリオ",
+     "item": "ルカリオナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ニンフィア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://pokesol.app/u/ftn_poke/articles/f45faf94b9410c0d",
+   "title": "【シングルM-4 最終5位 紫電アマガライチュウ】",
+   "season": null,
+   "rule": "M-4",
+   "rank": 5,
+   "trainer": "OPENER",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガライチュウＹ",
+     "item": "ライチュウナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガマフォクシー",
+     "item": "マフォクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://rukiapoke.hatenablog.com/entry/2026/08/05/203044",
+   "title": "チャンピオンズM-4 最終7位 全破壊対面構築 - 尸魂界",
+   "season": null,
+   "rule": "M-4",
+   "rank": 7,
+   "trainer": "ビャクヤ",
+   "publishedAt": "2026-08-05T20:30:44+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "キラフロル",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "たつじんのおび",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://megahushigisou.hatenablog.com/entry/2026/08/05/222128",
+   "title": "永劫カイリューハッサム【シングルシーズン-M4/最終8位】 - ちぷ日記",
+   "season": null,
+   "rule": "M-4",
+   "rank": 8,
+   "trainer": "リボルブート",
+   "publishedAt": "2026-08-05T22:21:28+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "カシブのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ゲッコウガ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://x.com/lgl_m/status/2084902152632484052?s=20",
+   "title": "@lgl_m",
+   "season": null,
+   "rule": "M-4",
+   "rank": 9,
+   "trainer": "ろくろ",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ギャラドス",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://ikatako07.hatenablog.com/entry/2026/08/05/225057",
+   "title": "【M-4 シングル 最終10位】続カイリューハッサム - 全力バレット",
+   "season": null,
+   "rule": "M-4",
+   "rank": 10,
+   "trainer": "そらをとぶ",
+   "publishedAt": "2026-08-05T22:50:57+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガカイリュー",
+     "item": "カイリュナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サザンドラ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "サーフゴー",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://www.youtube.com/watch?v=jnnWBC_FP4U",
+   "title": "【レンタルIDあり】シーズン4で1位チャレンジまでいった&quot;新メタグロス構築&quot;を徹底解説！【ポケモンチャンピオンズ】",
+   "season": 4,
+   "rule": "M-4",
+   "rank": 12,
+   "trainer": "バンビー",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガメタグロス",
+     "item": "メタグロスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "イダイトウ (オス)",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://note.com/bonobonnie_poke/n/nf18fa6bac8ce",
+   "title": "S4 最終14位 定数かげふみサイクル｜ぼのぼに",
+   "season": 4,
+   "rule": "M-4",
+   "rank": 14,
+   "trainer": "トレーナー",
+   "publishedAt": "2026-09-13T13:48:12.000+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ダイケンキ (ヒスイ)",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲンガー",
+     "item": "ゲンガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アーマーガア",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "しんぴのしずく",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガミミロップ",
+     "item": "ミミロップナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://harubouzu11.hatenablog.com/entry/2026/08/06/152854",
+   "title": "【シーズンM-4最終16位】覇道ガブキングエッテ - harubouzu11’s blog",
+   "season": null,
+   "rule": "M-4",
+   "rank": 16,
+   "trainer": "よるばんち",
+   "publishedAt": "2026-08-06T15:28:54+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガフラエッテ",
+     "item": "フラエッテナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ヤドキング",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "メタルコート",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "マスカーニャ",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://blog.naver.com/suzupoke1010/224369814136",
+   "title": "[포켓몬 챔피언스] M-4 싱글 최종 17위 달성 구축 소개",
+   "season": null,
+   "rule": "M-4",
+   "rank": 17,
+   "trainer": "Suzu",
+   "publishedAt": null,
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "こだわりスカーフ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "ピントレンズ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウルガモス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガピクシー",
+     "item": "ピクシナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "https://yu7u.hateblo.jp/entry/2026/08/05/231400",
+   "title": "対面展開 - ものおき",
+   "season": null,
+   "rule": "M-4",
+   "rank": 18,
+   "trainer": "ふじた",
+   "publishedAt": "2026-08-05T23:14:00+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "メガギャラドス",
+     "item": "ギャラドスナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ブリジュラス",
+     "item": "しろいハーブ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "アシレーヌ",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガハッサム",
+     "item": "ハッサムナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "カバルドン",
+     "item": "オボンのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ガブリアス",
+     "item": "ラムのみ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
+  },
+  {
+   "source": "champs",
+   "url": "http://blog.livedoor.jp/sibakentomodachi/archives/1084401284.html",
+   "title": "MB-4【最終１９位】ちゃぼ式ネオ・ギャラクシープライマルバレットカスタム【レート２５１５】 : ハッサムと僕の365日",
+   "season": null,
+   "rule": "M-4",
+   "rank": 19,
+   "trainer": "ちゃぼまつ",
+   "publishedAt": "2026-07-27T14:13:23+09:00",
+   "parsedBy": "카드+본문없음",
+   "offRoster": [],
+   "members": [
+    {
+     "name": "ガブリアス",
+     "item": "きあいのタスキ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ハッサム",
+     "item": "メタルコート",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガゲッコウガ",
+     "item": "ゲッコウガナイト",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ミミッキュ",
+     "item": "いのちのたま",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "ウォッシュロトム",
+     "item": "たべのこし",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    },
+    {
+     "name": "メガリザードンＹ",
+     "item": "リザードナイトＹ",
+     "tera": null,
+     "ability": null,
+     "nature": null,
+     "evs": {},
+     "moves": []
+    }
+   ]
   }
  ]
 }

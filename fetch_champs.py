@@ -13,19 +13,42 @@ champs.pokedb.tokyo 는 **클라우드 IP 를 통째로 막는다.** robots.txt 
 기기(아이패드/컴퓨터)나 와이파이와는 무관하고, **로컬 실행이냐 클라우드 실행이냐**
 의 문제다.
 
-## 그래서 이 파일은 반만 완성돼 있다
+## champs 는 기사를 갖고 있지 않다 — 색인일 뿐이다
 
-**HTML 구조를 못 봐서 파싱만 비어 있다.** 나머지는 다 돼 있다 —
-주소 모으기, 일본어→한국어 잇기, 중복 거르기, 요청 간격, 중간 저장,
-게시일 채우기, `samples.json` 형식 맞추기.
+집 회선에서 실제로 받아 보고 알게 된 것이다 (2026-09-18).
+
+**champs 에는 기사 본문이 없다.** 목록의 카드마다 파티 6마리와 도구가
+아이콘으로 박혀 있고, 본문 링크는 **외부 블로그로 나간다.** 60편을 세 보니
+pokesol 17 · hatenablog 계열 26 · note 9 · 네이버 3 · 기타였다.
+그래서 champs 안에는 기사 주소라는 것이 아예 없다 (`/article/search` 뿐이다).
+
+여기서 얻을 수 있는 것이 둘로 갈린다.
+
+  * **카드** — 이름·도구·테라스탈·순위·룰·트레이너가 구조적으로 박혀 있다.
+    확실하지만 **기술·배분·성격·특성이 없다.**
+  * **외부 기사** — 기술·도구·성격이 글에 적혀 있다. 그런데 **배분은 거의
+    이미지다** (팀빌더 스크린샷). 실제로 훑어보니 노력치 표기가 0건이었다.
+    게다가 산문에서 기술을 줍는 것은 **해 봤지만 틀렸다** — 아래 (4) 참고.
+
+그래서 카드로 파티를 잡고, 기사가 **구조화돼 있을 때만**(표·data-*)
+기술을 주워 **이름으로 합친다**. 산문 기사는 카드 몫만 받는다.
+
+## 배분이 없는 개체를 조용히 넣으면 안 된다
+
+`forms.spread_class({})` 는 `"-"` 를 돌려준다. 이건 "무투자" 라는 **실재하는
+형태**다. 배분을 못 읽은 개체를 그냥 넣으면 공격형이 전부 무투자로 분류돼
+`samples.py --맞추기` 의 도구·메가 세기가 조용히 틀어진다.
+그래서 배분을 못 읽은 개체는 `"evs": {}` 로 두고, samples.py 쪽에서
+**맞추기에서만 빼고 기술 조합에는 쓴다** (`--쌍` 은 형태를 안 본다).
+
+## 전략
 
 `--구조` 로 한 편을 받아 보면 **무엇을 어떻게 파싱해야 하는지 찍어 준다.**
-그걸 보고 `parse_article` 안의 전략 하나만 채우면 된다.
-
-일본 구축기사는 보통 셋 중 하나다. 셋 다 시도해 보고 되는 것을 쓴다.
+그걸 보고 `STRATEGIES` 에 전략을 넣는다. 지금 셋이 들어 있다.
   1. `data-*` 속성에 박힌 구조화 데이터 (pokesol 이 이 방식이었다)
-  2. 표(table) — 포켓몬 한 줄에 기술·도구·배분
-  3. 그냥 글 — 이러면 자동은 못 하고 사람이 봐야 한다
+  2. champs 카드 한 장 (카드만 따로 넘겼을 때)
+  3. 표(table) — 포켓몬 한 줄에 기술·도구·배분
+  4. 그냥 글 — **짜 봤다가 뺐다.** 왜 뺐는지는 STRATEGIES 바로 위에 적어 뒀다.
 
 ## 넣는 형식
 
@@ -161,39 +184,81 @@ def _known_names():
 # ---------------------------------------------------------------------------
 # 2. 주소 모으기
 # ---------------------------------------------------------------------------
-def list_urls(limit=200):
-    """기사 주소를 모은다. 사이트맵이 있으면 그쪽, 없으면 목록 페이지."""
-    for path in ("/sitemap.xml", "/api/sitemap.xml", "/robots.txt"):
-        try:
-            body = get(BASE + path)
-        except Exception:
-            continue
-        if path.endswith("robots.txt"):
-            m = re.search(r"Sitemap:\s*(\S+)", body, re.I)
-            if m:
-                try:
-                    body = get(m.group(1))
-                except Exception:
-                    continue
-            else:
-                continue
-        urls = re.findall(r"<loc>([^<]*article[^<]*)</loc>", body)
-        if urls:
-            print("  사이트맵에서 기사 %d편" % len(urls))
-            return urls[:limit]
+# 카드 한 장이 기사 한 편이다. 카드 안에 파티가 통째로 들어 있고,
+# 푸터의 링크만 바깥(블로그)으로 나간다.
+_CARD_RE = re.compile(r'<article[^>]*class="[^"]*article-card[^"]*"[^>]*>(.*?)</article>',
+                      re.S)
 
-    # 목록 페이지를 넘겨 가며 모은다
+
+def _icon_title(chunk, kind):
+    """`<i class="... poke-icon ..." title="ガブリアス">` 에서 title 을 꺼낸다.
+
+    class 와 title 사이에 줄바꿈이 들어 있어서 `\\s*` 가 꼭 필요하다.
+    """
+    m = re.search(r'<i[^>]*class="[^"]*%s[^"]*"\s*title="([^"]*)"' % kind, chunk)
+    return m.group(1) if m else None
+
+
+def _card_members(card):
+    """카드 한 장에서 6마리를 꺼낸다. 이름과 도구는 확실하고, 나머지는 없다."""
+    m = re.search(r'article-card-pokemons"[^>]*>(.*)$', card, re.S)
+    blob = m.group(1) if m else card
+    out = []
+    for chunk in re.split(r'<div[^>]*class="article-card-pokemon"[^>]*>', blob)[1:]:
+        name = _icon_title(chunk, "poke-icon")
+        if not name:
+            continue
+        out.append({
+            "name": name,
+            "item": _icon_title(chunk, "item-icon"),
+            "tera": _icon_title(chunk, "terastal-icon"),
+            "ability": None, "nature": None,
+            "evs": {}, "moves": [],
+        })
+    return out
+
+
+def parse_card(card):
+    """카드 한 장 -> 파티 하나. 본문 주소는 바깥 블로그를 가리킨다."""
+    tag = re.search(r'<span[^>]*class="tag[^"]*"[^>]*>([^<]*)</span>', card)
+    label = _text(tag.group(1)) if tag else ""
+    season, _, rule = title_info(label)
+    rank = re.search(r"<span>\s*(\d{1,5})\s*位\s*</span>", card)
+    who = re.search(r'<p[^>]*class="title[^"]*"[^>]*>([^<]*)</p>', card)
+    foot = re.search(r'<footer[^>]*class="card-footer"[^>]*>\s*<a[^>]*href="([^"]+)"',
+                     card)
+    title = re.search(r'card-footer.*?<span>(.*?)</span>', card, re.S)
+    return {
+        "url": foot.group(1) if foot else None,
+        "title": _text(title.group(1)) if title else "",
+        "season": season, "rule": rule,
+        "rank": int(rank.group(1)) if rank else None,
+        "trainer": _text(who.group(1)) if who else None,
+        "members": _card_members(card),
+    }
+
+
+def collect_cards(limit=200, rule=0):
+    """목록 페이지를 넘겨 가며 카드를 모은다. 한 쪽에 30편이다.
+
+    사이트맵은 안 본다 — champs 의 `<loc>` 에 걸리는 article 주소는
+    `/article/search` 뿐이라 기사가 아니다. robots.txt 도 403 이다.
+    """
     seen, out = set(), []
-    for page in range(1, 40):
+    for page in range(1, 60):
         try:
-            html = get("%s/article/search?rule=0&page=%d" % (BASE, page))
+            html = get("%s/article/search?rule=%d&page=%d" % (BASE, rule, page))
         except Exception as e:
             print("  목록 %d쪽 실패: %s" % (page, e))
             break
-        got = re.findall(r'href="(/article/[^"?#]+)"', html)
-        fresh = [BASE + u for u in got if u not in seen]
-        for u in got:
-            seen.add(u)
+        cards = [parse_card(c) for c in _CARD_RE.findall(html)]
+        fresh = [c for c in cards if c["url"] and c["url"] not in seen]
+        for c in cards:
+            if c["url"]:
+                seen.add(c["url"])
+        if not cards:
+            print("  목록 %d쪽 — 카드가 없다. 여기서 멈춘다." % page)
+            break
         if not fresh:
             break
         out += fresh
@@ -202,6 +267,11 @@ def list_urls(limit=200):
             break
         time.sleep(DELAY)
     return out[:limit]
+
+
+def list_urls(limit=200):
+    """기사 주소를 모은다. **바깥 블로그 주소가 나온다** — champs 것이 아니다."""
+    return [c["url"] for c in collect_cards(limit) if c["url"]]
 
 
 # ---------------------------------------------------------------------------
@@ -261,9 +331,49 @@ def strategy_tables(html):
     return members
 
 
+def strategy_champs_card(html):
+    """(2) champs 카드 한 장. 기사 본문이 아니라 목록의 카드다.
+
+    카드가 딱 한 장일 때만 쓴다. 목록 페이지를 통째로 넘기면 서른 파티가
+    한 덩어리로 섞이므로, 그쪽은 `collect_cards` 가 따로 맡는다.
+    """
+    cards = _CARD_RE.findall(html)
+    if len(cards) != 1:
+        return []
+    return _card_members(cards[0])
+
+
+# ---------------------------------------------------------------------------
+# (4) 그냥 글 — **짜 봤다가 뺐다.** 기록으로 남긴다
+# ---------------------------------------------------------------------------
+#
+# 외부 기사의 다수(hatenablog 계열 26/60)가 이 형태다. 그래서 이름 뒤 창을
+# 훑어 기술을 줍는 전략을 짜서 돌려 봤는데, **그럴듯한데 틀린 값**이 나왔다.
+# 한 편(reboiona, M-5 최종2위)을 손으로 대조한 결과다.
+#
+#   * 개체 구획은 있다. `・メガルカリオ` 처럼 가운뎃점 제목으로 나뉜다.
+#     그런데 항목 표지(技構成·持ち物·性格·努力値)는 **한 개도 없다.**
+#   * 구획을 정확히 잘라도 기술이 어긋난다 —
+#       ・メガルカリオ  -> 인파이트/코메트펀치/칼춤/신속        (맞음)
+#       ・ガブリアス    -> 본문이 **예전 구성과 최종 구성을 둘 다** 서술한다.
+#                          앞에서 4개를 집으면 버린 구성을 집는다.
+#       ・メガリザードンY -> 구획 안에 **상대 가브리아스의 기술**
+#                          (바위사태·스톤에지…)이 먼저 나온다.
+#   * 구획을 안 나누면 더 나쁘다. 구축경위에 적힌 가상적(메타그로스·플라엣테·
+#     님피아)이 파티원으로 잡히고 셋이 같은 기술 4개를 나눠 가졌다.
+#
+# 기술 조합(samples.move_pairs)은 "어떤 기술끼리 같이 다니는가"를 세는 것이
+# 전부다. 틀린 기술을 섞으면 그 표가 존재 이유를 잃는다. **없는 것이 낫다.**
+# 그래서 산문 기사에서는 카드가 주는 것(이름·도구·순위)만 받는다.
+# 이 파일 맨 위 설명에 적힌 "3. 그냥 글 — 자동은 못 한다" 가 맞았다.
+#
+# 다시 해 볼 사람에게: 구획 제목(`・`, `【】`, `◆`)으로 자르는 것까지는 된다.
+# 막히는 곳은 **한 구획 안에서 자기 기술과 남의 기술을 가르는 것**이다.
+
 # 되는 순서대로 시도한다. 새 전략을 쓰면 여기 넣으면 된다.
 STRATEGIES = [
     ("data-* 속성", strategy_data_attrs),
+    ("champs 카드", strategy_champs_card),
     ("표", strategy_tables),
 ]
 
@@ -327,9 +437,69 @@ def save_out(doc):
         json.dump(doc, f, ensure_ascii=False, indent=1)
 
 
-def fetch_all(urls):
+def _norm(text):
+    """전각/반각을 맞춘다. 게임 파일은 'メガリザードンＹ', 기사는 'Y' 를 쓴다."""
+    out = []
+    for ch in text or "":
+        o = ord(ch)
+        if 0xFF01 <= o <= 0xFF5E:
+            ch = chr(o - 0xFEE0)
+        elif ch == "　":
+            ch = " "
+        out.append(ch)
+    return "".join(out).replace(" ", "").lower()
+
+
+def merge_card(party, card):
+    """카드(이름·도구·순위)와 기사(기술·성격)를 **이름으로 합친다.**
+
+    카드 쪽이 파티 명단의 기준이다 — 아이콘이라 틀릴 일이 없다. 파티는
+    여섯이고 카드에 여섯이 다 있다. 기사에서 주운 기술·성격·특성·배분을
+    그 위에 얹는다.
+
+    **기사에만 있고 카드에 없는 이름은 파티에 넣지 않는다.** 구축경위에
+    적힌 가상적이 파티원으로 섞여 들어와 파티가 열한 마리가 되는 일이
+    있었다. 대신 버렸다는 사실을 `offRoster` 에 남긴다 — 폼 표기가
+    어긋나서 못 이은 것인지 남의 포켓몬인지 나중에 봐야 하기 때문이다.
+    """
+    got = {}
+    for m in (party or {}).get("members") or []:
+        got.setdefault(_norm(m.get("name")), m)
+
+    members = []
+    for base in card["members"]:
+        m = dict(base)
+        art = got.pop(_norm(base["name"]), None)
+        if art:
+            m["moves"] = art.get("moves") or []
+            m["nature"] = art.get("nature") or m.get("nature")
+            m["ability"] = art.get("ability") or m.get("ability")
+            m["evs"] = art.get("evs") or {}
+            m["item"] = m.get("item") or art.get("item")
+        members.append(m)
+    off = [m.get("name") for m in got.values() if m.get("name")]
+
+    title = (party or {}).get("title") or card["title"]
+    season, rank, rule = title_info(title)
+    return {
+        "source": "champs",
+        "url": card["url"],
+        "title": card["title"] or title,
+        "season": card["season"] or season,
+        "rule": card["rule"] or rule,
+        "rank": card["rank"] or rank,
+        "trainer": card.get("trainer"),
+        "publishedAt": (party or {}).get("publishedAt"),
+        "parsedBy": "카드+%s" % ((party or {}).get("parsedBy") or "본문없음"),
+        "offRoster": off,
+        "members": members,
+    }
+
+
+def fetch_all(urls, cards=None):
     doc = load_out()
     have = set((p.get("url") or "").rstrip("/") for p in doc["parties"])
+    index = dict((c["url"].rstrip("/"), c) for c in (cards or []) if c["url"])
     added = empty = 0
     how = {}
     for n, u in enumerate(urls):
@@ -337,12 +507,18 @@ def fetch_all(urls):
             continue
         if n:
             time.sleep(DELAY)
+        card = index.get(u.rstrip("/"))
         try:
             party = parse_article(get(u), u)
         except Exception as e:
-            print("  실패: %s — %s" % (u, e))
-            continue
-        if not party["members"]:
+            # 본문을 못 받아도 카드가 있으면 명단과 도구는 건진다.
+            print("  본문 실패: %s — %s" % (u, e))
+            party = None
+            if not card:
+                continue
+        if card:
+            party = merge_card(party, card)
+        if not party or not party["members"]:
             empty += 1
             continue
         how[party["parsedBy"]] = how.get(party["parsedBy"], 0) + 1
@@ -360,6 +536,19 @@ def fetch_all(urls):
           % (len(doc["parties"]), added, empty))
     if how:
         print("  쓴 전략: " + ", ".join("%s %d편" % (k, v) for k, v in how.items()))
+
+    # 배분과 기술이 얼마나 채워졌는지 **반드시 같이 알린다.** 카드만으로도
+    # 개체는 만들어지므로, 숫자만 보면 다 받은 것처럼 착각하기 쉽다.
+    mem = [m for p in doc["parties"] for m in p["members"]]
+    if mem:
+        ev = sum(1 for m in mem if m.get("evs"))
+        mv = sum(1 for m in mem if m.get("moves"))
+        print("  개체 %d마리 — 기술 있음 %d (%.0f%%), 배분 있음 %d (%.0f%%)"
+              % (len(mem), mv, mv * 100.0 / len(mem), ev, ev * 100.0 / len(mem)))
+        if ev * 2 < len(mem):
+            print("  ! 배분이 없는 개체가 많다. 구축기사는 배분을 이미지로 올린다.")
+            print("    samples.py 는 배분 없는 개체를 --맞추기 에서 빼고")
+            print("    --쌍(기술 조합) 에만 쓴다. 조용히 무투자로 세지 않는다.")
     if empty and not added:
         print("\n  ! 한 편도 못 읽었다. `--구조 <기사주소>` 로 모양을 먼저 보고")
         print("    STRATEGIES 에 전략을 하나 더 넣어야 한다.")
@@ -384,9 +573,13 @@ def main():
     if "--받기" in args:
         i = args.index("--받기")
         urls = [a for a in args[i + 1:] if a.startswith("http")]
+        cards = None
         if not urls:
-            urls = list_urls(200)
-        fetch_all(urls)
+            # 주소를 안 주면 목록부터 본다. 이때 카드도 같이 쥐고 있어야
+            # 도구·순위를 잃지 않는다 — 기사 본문에는 그게 없을 때가 많다.
+            cards = collect_cards(200)
+            urls = [c["url"] for c in cards if c["url"]]
+        fetch_all(urls, cards)
         return
     print(__doc__)
 

@@ -259,6 +259,12 @@ def load(dex, path=None, bad=None):
             members.append({
                 "poke": poke, "moves": moves, "item": item,
                 "nature": nature, "ability": ability, "evs": evs,
+                # **배분을 읽었는가.** 안 읽은 것과 무투자는 다르다.
+                # spread_class({}) 는 '-'(무투자) 를 돌려주는데, 그건
+                # 실재하는 형태다. 구축기사는 배분을 이미지로 올리는 일이
+                # 많아서, 못 읽은 개체를 그냥 두면 공격형이 통째로
+                # 무투자로 세어진다. 맞추기에서 빼려고 표시해 둔다.
+                "has_evs": bool(evs),
                 "cls": forms.spread_class(
                     dict((calc.SPREAD_KEY[k], v) for k, v in evs.items()
                          if k in calc.SPREAD_KEY)),
@@ -339,13 +345,29 @@ def party_weight(party):
     return w
 
 
-def members(parties, season=None, weighted=False):
-    """개체를 하나씩. weighted 면 (개체, 값어치) 로 준다."""
+def members(parties, season=None, weighted=False, usable=True):
+    """개체를 하나씩. weighted 면 (개체, 값어치) 로 준다.
+
+    `usable` 이면 **아무것도 못 읽은 개체는 안 준다.** 기술도 배분도 없는
+    개체는 이름과 도구밖에 없어서 셀 것이 없는데, 그냥 흘려보내면
+    두 군데가 조용히 틀어진다.
+
+      * 형태가 `'-'`(무투자) 로 잡힌다. 이건 **실재하는 형태**라서
+        report 의 '형태(표본)' 칸과 combos 의 갈래 세기가 같이 오염된다.
+        (한카리아스가 내구 54% 로 나왔다. 사용률은 AS 47% 다.)
+      * move_pairs 의 분모에 들어가 기술 확률을 깎는다.
+
+    champs 카드는 명단과 도구만 준다 (기사 본문에는 배분이 이미지라 없다).
+    그 개체들이 여기 걸린다. **버리는 것이 아니라 세지 않는 것이다** —
+    samples.json 에는 그대로 남고, report 가 몇 마리인지 밝힌다.
+    """
     for p in parties:
         if season is not None and p.get("season") != season:
             continue
         w = party_weight(p) if weighted else None
         for m in p["members"]:
+            if usable and not (m["moves"] or m.get("has_evs")):
+                continue
             yield (m, w) if weighted else m
 
 
@@ -397,6 +419,11 @@ def loglik(dex, parties, part, season=None):
     total, used = 0.0, 0
     eps = 1e-9
     for m, w in members(parties, season, weighted=True):
+        # 배분을 못 읽은 개체는 형태를 모르는 것이지 무투자인 것이 아니다.
+        # 세기 맞추기는 전부 형태를 조건으로 걸므로 여기서 뺀다.
+        # (기술 조합 move_pairs 는 형태를 안 보므로 그쪽에서는 그대로 쓴다.)
+        if not m.get("has_evs"):
+            continue
         poke, cls = m["poke"], m["cls"]
         if part == "moves":
             classes, weights, mv, table = forms.conditional_table(dex, poke)
@@ -518,6 +545,29 @@ def report(dex, parties, bad):
     if len(when) > 1:
         L.append("  ! 시기가 섞여 있다. 메타가 다르므로 한 덩어리로 보면 안 된다.")
         L.append("    (제목에 시즌이 없으면 게시 연월로 묶는다)")
+
+    # 무엇이 비었는지 먼저 알린다. 개체 수만 보면 다 받은 줄 알기 쉽다.
+    allm = [m for p in parties for m in p["members"]]
+    if allm:
+        ev = sum(1 for m in allm if m.get("has_evs"))
+        mv = sum(1 for m in allm if m["moves"])
+        none = sum(1 for m in allm if not (m["moves"] or m.get("has_evs")))
+        L.append("  채워진 칸: 기술 %d/%d (%.0f%%) · 배분 %d/%d (%.0f%%)"
+                 % (mv, len(allm), mv * 100.0 / len(allm),
+                    ev, len(allm), ev * 100.0 / len(allm)))
+        if none:
+            L.append("  ! 기술도 배분도 없는 개체 %d마리는 **아래 수치에서 뺐다.**"
+                     % none)
+            L.append("    이름과 도구밖에 없어서 셀 것이 없다. champs 카드만으로")
+            L.append("    만들어진 개체다 — 기사 본문은 배분을 이미지로 올린다.")
+            L.append("    그냥 두면 형태가 무투자('-') 로 잡혀 아래 '형태(표본)'")
+            L.append("    칸과 combos 의 갈래 세기가 같이 틀어진다.")
+        rest = sum(1 for m in allm if m["moves"] and not m.get("has_evs"))
+        if rest:
+            L.append("  ! 기술은 있는데 배분이 없는 개체 %d마리는 **--맞추기 에서만**"
+                     % rest)
+            L.append("    뺀다. 세기 맞추기는 전부 형태를 조건으로 걸기 때문이다.")
+            L.append("    기술 조합(--쌍) 은 형태를 안 보므로 그대로 쓴다.")
 
     if len(bad):
         L.append("-" * 78)
