@@ -398,8 +398,10 @@ import math
 KNOBS = {
     "form_mismatch":          [0.001, 0.005, 0.02, 0.05, 0.10, 0.15,
                                0.25, 0.40, 0.60, 1.0],
-    "nature_mismatch":        [0.001, 0.005, 0.01, 0.02, 0.05, 0.10,
-                               0.20, 0.40, 1.0],
+    # 0.001 아래를 넣어 둔다. 안 넣으면 0.001 이 뽑힐 때 '격자 끝' 으로
+    # 보이는데, 실제로는 **거기가 최댓값**이다 (더 내리면 나빠진다).
+    "nature_mismatch":        [1e-5, 1e-4, 3e-4, 0.001, 0.003, 0.005, 0.01,
+                               0.02, 0.05, 0.10, 0.20, 0.40, 1.0],
     "item_tendency_strength": [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.5, 6.0, 8.0],
     "mega_stat_strength":     [0.0, 0.75, 1.5, 2.5, 4.0, 6.0, 9.0],
 }
@@ -656,8 +658,12 @@ def report_fit(dex, parties, season=None):
             edge.append(key)
         if used < 200:
             mark = "   (표본 %d마리 — 200 넘어야 대충, 800 넘어야 확실)" % used
-        cells = [key, "%.2f" % now,
-                 "%.2f" % pick if pick is not None else "-", str(used)]
+        # 0.001 이 '0.00' 으로 뭉개지면 안 된다. 작은 값은 지수로 찍는다.
+        def show(v):
+            if v is None:
+                return "-"
+            return ("%.4g" % v) if v < 0.01 else ("%.2f" % v)
+        cells = [key, show(now), show(pick), str(used)]
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip() + mark)
     L.append("-" * 78)
