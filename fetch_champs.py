@@ -135,12 +135,27 @@ def _text(fragment):
     return " ".join(t.split())
 
 
+def _katakana(text):
+    """가타카나가 섞인 이름인가.
+
+    일본어 **포켓몬 이름은 가타카나**로 쓴다 (ガブリアス). 반면 폼 이름은
+    히라가나인 것이 있다 (あおいはな = 푸른꽃, あまみずのすがた = 빗물의 모습).
+    이름표에는 둘이 같이 들어 있어서, 안 거르면 기사 본문의 평범한 히라가나가
+    포켓몬 이름으로 잘못 잡힌다. 표를 읽을 때 특히 위험하다.
+    """
+    return any(0x30A1 <= ord(c) <= 0x30FA for c in text or "")
+
+
 def _known_names():
     p = os.path.join(HERE, "data", "names_ja.json")
     if not os.path.exists(p):
         return []
     with open(p, encoding="utf-8") as f:
-        return list((json.load(f).get("pokemon") or {}).keys())
+        table = json.load(f).get("pokemon") or {}
+    names = [n for n in table if len(n) >= 3 and _katakana(n)]
+    # 긴 이름부터 본다 — 'メガボーマンダ' 를 'ボーマンダ' 로 잘못 잡지 않도록
+    names.sort(key=lambda n: -len(n))
+    return names
 
 
 # ---------------------------------------------------------------------------

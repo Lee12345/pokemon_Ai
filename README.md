@@ -537,6 +537,12 @@ python sensitivity.py --형태
 
 `fetch_champs.py` 를 **집 회선에서** 돌리면 된다.
 
+> **다른 컴퓨터에서도 저장소만 받으면 바로 된다.** 로토덱스(`../pokemon_dashboard`)
+> 는 필요 없다. 그건 `build_usage.py` 로 사용률을 **새로 만들** 때만 쓰는 것이고,
+> 그 결과물(`data/usage_single.json`)과 일본어 이름표(`data/names_ja.json`)는
+> 이미 저장소에 들어 있다. 외부 라이브러리도 안 쓴다 — 파이썬 3 만 있으면 된다.
+> (`raw/` 만 빠져 있는데 그건 `build_data.py` 가 언제든 다시 받는 캐시다.)
+
 ```
 python fetch_champs.py --구조 <기사주소>     # 먼저 이걸로 구조를 본다
 python fetch_champs.py --목록 200            # 기사 주소를 모은다
