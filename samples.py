@@ -735,6 +735,26 @@ def report(dex, parties, bad):
     return "\n".join(L)
 
 
+# 가능도가 이만큼 안에 들어오면 **구별이 안 되는 것**으로 본다.
+# 모수 하나에 대한 우도비 검정의 95% 문턱이다 (카이제곱 3.84 / 2).
+#
+# 이 숫자가 왜 필요한가 — 메가 세기를 한 번 잘못 내렸다. 표본 1,291마리에서
+# 최댓값이 0.75 로 나왔고, **곡선이 평평하다는 것을 측정해서 알고 있었는데도**
+# 그리로 옮겼다. 표본을 2,896마리로 늘리니 1.5 가 맞았고 0.75 는 6.2 나빴다.
+# 고원의 최댓값은 잡음이다. 그래서 argmax 만 찍지 않고 **고원 범위**를 같이
+# 찍고, 지금 값이 그 안에 있으면 '구별 안 됨' 이라고 알린다.
+PLATEAU = 1.92
+
+
+def plateau(rows):
+    """가능도 최고에서 PLATEAU 안에 들어오는 값들의 범위. (하한, 상한, 개수)."""
+    if not rows:
+        return None
+    top = max(r[1] for r in rows)
+    inside = [r[0] for r in rows if top - r[1] <= PLATEAU]
+    return (min(inside), max(inside), len(inside)) if inside else None
+
+
 def report_fit(dex, parties, season=None):
     import best
 
@@ -745,7 +765,8 @@ def report_fit(dex, parties, season=None):
              (" (시즌%s)" % season if season is not None else ""))
     L.append(line)
     got = fit(dex, parties, season)
-    head = [("가정값", 26), ("지금", 8), ("표본이 고른 값", 16), ("표본 수", 9)]
+    head = [("가정값", 24), ("지금", 8), ("최고", 8),
+            ("구별 안 되는 범위", 20), ("표본", 7)]
     L.append("  " + "".join(best._pad(h, w) for h, w in head).rstrip())
     edge = []
     for key in sorted(KNOBS):
@@ -753,24 +774,37 @@ def report_fit(dex, parties, season=None):
         used = max((r[2] for r in rows), default=0)
         now = calc.CONFIG[key]
         grid = KNOBS[key]
-        mark = ""
-        if pick is not None and abs(pick - now) > 1e-9:
-            mark = "   ← 바꿔야 한다"
         if pick is not None and pick in (grid[0], grid[-1]):
-            mark += "  ! 격자 끝"
             edge.append(key)
-        if used < 200:
-            mark = "   (표본 %d마리 — 200 넘어야 대충, 800 넘어야 확실)" % used
         # 0.001 이 '0.00' 으로 뭉개지면 안 된다. 작은 값은 지수로 찍는다.
         def show(v):
             if v is None:
                 return "-"
             return ("%.4g" % v) if v < 0.01 else ("%.2f" % v)
-        cells = [key, show(now), show(pick), str(used)]
+
+        band = plateau(rows)
+        mark = ""
+        if band and band[0] <= now <= band[1]:
+            # 지금 값이 고원 안이면 **옮길 근거가 없다.** 최댓값이 달라도
+            # 그 차이는 표본 잡음이다. 한 번 여기서 틀렸다 (메가 1.5 -> 0.75).
+            mark = "   구별 안 됨 — 그대로 둘 것"
+        elif pick is not None and abs(pick - now) > 1e-12:
+            mark = "   ← 바꿔야 한다"
+        if used < 200:
+            mark = "   (표본 %d마리 — 200 넘어야 대충, 800 넘어야 확실)" % used
+        span = ("%s ~ %s" % (show(band[0]), show(band[1]))) if band else "-"
+        cells = [key, show(now), show(pick), span, str(used)]
         L.append("  " + "".join(best._pad(c, w)
                                 for c, (h, w) in zip(cells, head)).rstrip() + mark)
     L.append("-" * 78)
+    L.append("  '구별 안 되는 범위' 는 가능도가 최고에서 %.2f 안에 들어오는 구간이다"
+             % PLATEAU)
+    L.append("  (모수 하나 우도비 검정의 95% 문턱). **지금 값이 그 안이면 옮기지"
+             " 않는다** —")
+    L.append("  고원의 최댓값은 잡음이다. 한 번 여기서 틀렸다 (메가 1.5 → 0.75 →"
+             " 다시 1.5).")
     if edge:
+        L.append("")
         L.append("  ! 격자 끝에서 뽑힌 값이 있다 (%s)." % ", ".join(edge))
         L.append("    진짜 값은 그 바깥일 수 있다. 격자를 넓혀서 다시 재야 한다.")
         L.append("")

@@ -1389,10 +1389,28 @@ def test_forms_body(dex):
           after < before * 0.4, (before, after))
 
 def _fake_parties(dex, truth, n=24, seed=1, pokes=None):
-    """정답을 아는 가짜 표본. 맞추기가 그 값을 되찾는지 보려고 만든다."""
+    """정답을 아는 가짜 표본. 맞추기가 그 값을 되찾는지 보려고 만든다.
+
+    ! **갈래 모델(1-C)을 끄고 만든다.** 안 끄면 조용히 딴 것을 재게 된다 —
+      scout 는 표본이 있는 포켓몬이면 (형태 x 갈래) 표로 기술을 뽑는데,
+      `samples.loglik` 은 1-A 의 형태별 표로 가능도를 매긴다. 생성기와
+      추정기가 다른 모델이 되어, 정답 0.05 를 넣었는데 0.005 가 (그것도
+      25.0 이라는 큰 차이로) 나왔다. 1-C 를 넣은 뒤 이 검증이 계속
+      통과하고 있었던 것은 한 칸 이내 허용 때문이었다.
+
+      form_mismatch 는 **1-A 의 계수**이므로 1-A 모델에서 재는 것이 맞다.
+      1-C 표로 재면 그 표가 표본에서 나온 것이라 같은 자료를 두 번 쓰게 된다.
+    """
     import random
+
+    import combos
     pokes = pokes or ["한카리아스", "보만다", "리자몽", "망나뇽"]
     old = dict((k, calc.CONFIG[k]) for k in samples.KNOBS)
+    keep_min = combos.MIN_SAMPLES
+    combos.MIN_SAMPLES = 10 ** 9          # 갈래 모델을 끈다
+    combos._CACHE.clear()
+    combos._BY_FORM.clear()
+    combos._FULL.clear()
     calc.CONFIG.update(truth)
     samples._clear()
     scout._WEIGHT_CACHE.clear()
@@ -1412,6 +1430,10 @@ def _fake_parties(dex, truth, n=24, seed=1, pokes=None):
             parties.append({"season": 6, "rank": i + 1, "members": mem})
     finally:
         calc.CONFIG.update(old)
+        combos.MIN_SAMPLES = keep_min
+        combos._CACHE.clear()
+        combos._BY_FORM.clear()
+        combos._FULL.clear()
         samples._clear()
         scout._WEIGHT_CACHE.clear()
     return {"parties": parties}
@@ -1493,7 +1515,16 @@ def test_samples(dex):
             parties, _ = samples.load(dex, path)
         finally:
             os.unlink(path)
-        got = samples.fit(dex, parties)
+        # 잴 때도 1-C 를 끈다. 가짜 표본을 1-A 로 만들었으므로 짝이 맞아야 한다.
+        import combos as _cb
+        _keep = _cb.MIN_SAMPLES
+        _cb.MIN_SAMPLES = 10 ** 9
+        _cb._CACHE.clear(); _cb._BY_FORM.clear(); _cb._FULL.clear()
+        try:
+            got = samples.fit(dex, parties)
+        finally:
+            _cb.MIN_SAMPLES = _keep
+            _cb._CACHE.clear(); _cb._BY_FORM.clear(); _cb._FULL.clear()
         pick, rows = got["form_mismatch"]
         used = max(r[2] for r in rows)
         # 표본 100마리로는 한 칸 어긋날 수 있다. 정확히 맞으려면 800마리쯤
