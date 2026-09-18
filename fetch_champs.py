@@ -2,8 +2,10 @@
 """
 champs.pokedb.tokyo 구축기사 수집기 — **집 회선에서 돌리는 용도**.
 
-    python fetch_champs.py --구조 <기사주소>     # 먼저 이걸로 구조를 본다
-    python fetch_champs.py --목록 200            # 기사 주소를 모은다
+    python fetch_champs.py --살펴보기            # 검색을 무엇으로 좁힐 수 있나
+    python fetch_champs.py --구조 <기사주소>     # 기사 한 편의 구조를 본다
+    python fetch_champs.py --전부 5000           # 색인을 통째로 훑어서 받는다
+    python fetch_champs.py --목록 200            # 주소만 모아서 본다
     python fetch_champs.py --받기 <주소> [...]   # 받아서 data/samples.json 에 넣는다
 
 ## 왜 따로 있나
@@ -56,6 +58,25 @@ pokesol 17 · hatenablog 계열 26 · note 9 · 네이버 3 · 기타였다.
 
     다만 산문에서 **기술**을 줍는 것은 **해 봤지만 틀렸다** — 아래 (4) 참고.
     배분은 형식이 정해져 있어 되고, 기술은 안 된다. 둘을 구분할 것.
+
+## 132편은 색인의 전부가 아니다
+
+`--목록 200` 으로 돌려서 132편이 나왔는데, **그게 끝이 아니다.**
+`collect_cards` 가 `?rule=0` **한 가지 필터만** 훑고, 한 쪽이 비면 바로
+멈추게 돼 있었다. 그런데 받아 둔 132편에 룰이 **M-3·M-4·M-5**, 시즌이
+**S4·S5** 로 섞여 있다. 즉 색인은 여러 룰·시즌을 담고 있고 `rule=0` 은
+그중 하나를 고르는 값일 뿐이다.
+
+그래서 셋을 고쳤다.
+
+  * `--살펴보기` — 검색 페이지의 `select`·`option`·검색 링크·총 건수(`N件`)
+    를 찍어 준다. **무엇으로 좁힐 수 있는지 모으기 전에 확인**하는 자리다.
+  * `collect_cards` 가 한 쪽이 비었다고 바로 안 멈춘다 (세 쪽 연속 비어야
+    끝으로 본다). 색인의 끝인지 일시적인 것인지 구분이 안 됐기 때문이다.
+  * `--전부` / `collect_all` 이 `rule` 을 0부터 올려 가며 훑는다.
+    몇 가지인지 모르므로 **세 번 연속 헛짚을 때까지** 올린다.
+    `extra` 로 `&season=5` 처럼 다른 질의를 덧붙일 수도 있다
+    (이름은 `--살펴보기` 로 먼저 확인할 것).
 
 ## champs 는 왜 pokesol 처럼 안 되나 — 사이트가 아니라 **글쓴이**가 갈랐다
 
@@ -293,16 +314,81 @@ def parse_card(card):
     }
 
 
-def collect_cards(limit=200, rule=0):
+# 검색 페이지에 총 건수가 찍혀 있을 수 있다. 일본 사이트는 보통 'N件' 이다.
+# 먼저 이걸 읽으면 **몇 편을 받아야 하는지 모으기 전에 안다.**
+_TOTAL = re.compile(r"([\d,]{1,9})\s*(?:件|本|記事)")
+
+
+def probe_search(rule=0, save=True):
+    """검색 페이지를 한 번 받아서 **무엇으로 좁힐 수 있는지** 찍어 준다.
+
+    앞서 `?rule=0` 하나만 훑어서 132편에서 멈췄다. 그런데 받아 놓은 자료에
+    룰이 M-3·M-4·M-5, 시즌이 S4·S5 로 섞여 있다. 즉 **rule=0 은 여러 필터
+    중 하나**이고, 색인에는 훨씬 많이 있다는 뜻이다. 그 필터를 찾는 자리다.
+    """
+    url = "%s/article/search?rule=%d" % (BASE, rule)
+    html = get(url)
+    if save:
+        path = os.path.join(HERE, "raw", "champs_search.html")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+    print("=" * 74)
+    print("  champs 검색 페이지 살펴보기  (%s)" % url)
+    print("=" * 74)
+    cards = _CARD_RE.findall(html)
+    print("  카드 %d장 · 받은 크기 %d bytes" % (len(cards), len(html)))
+    got = _TOTAL.findall(html)
+    if got:
+        print("  ! 총 건수로 보이는 숫자: %s" % ", ".join(got[:6]))
+        print("    -> 이게 색인 전체 편수라면 그만큼 받아야 한다.")
+    else:
+        print("  총 건수 표기를 못 찾았다. 마지막 쪽 번호로 대신 세야 한다.")
+
+    print("-" * 74)
+    print("  [좁히는 데 쓸 수 있는 것들]")
+    for name, pat in (
+            ("select 이름", r'<select[^>]*name="([^"]+)"'),
+            ("select 값", r'<option[^>]*value="([^"]*)"[^>]*>([^<]{1,22})'),
+            ("검색 링크", r'href="(/article/search\?[^"]+)"'),
+            ("input 이름", r'<input[^>]*name="([^"]+)"'),
+    ):
+        hits = re.findall(pat, html)
+        if not hits:
+            continue
+        flat = []
+        for h in hits[:24]:
+            flat.append(" ".join(h) if isinstance(h, tuple) else h)
+        print("    %-12s %s" % (name, " | ".join(flat[:12])))
+    print("-" * 74)
+    print("  마지막 쪽으로 보이는 번호: %s"
+          % (sorted(set(int(x) for x in re.findall(r"[?&]page=(\d+)", html)))
+             [-6:] or "없음"))
+    print("=" * 74)
+    print("  다음: 위 [좁히는 데 쓸 수 있는 것들] 을 보고 rule 값이 몇 가지인지,")
+    print("  시즌·룰 파라미터가 따로 있는지 확인한 뒤 collect_cards 를 그 값마다")
+    print("  돌려라. `--전부` 가 rule 을 0..N 까지 훑는다.")
+    return html
+
+
+def collect_cards(limit=200, rule=0, extra="", quiet=False):
     """목록 페이지를 넘겨 가며 카드를 모은다. 한 쪽에 30편이다.
 
     사이트맵은 안 본다 — champs 의 `<loc>` 에 걸리는 article 주소는
     `/article/search` 뿐이라 기사가 아니다. robots.txt 도 403 이다.
+
+    extra 에 `&season=5` 처럼 덧붙일 질의를 줄 수 있다. 어떤 이름을 쓰는지는
+    `probe_search` 로 먼저 확인할 것.
+
+    ! 한 쪽이 비었다고 바로 멈추지 않는다. 앞서 132편에서 끊겼는데 그게
+      색인의 끝인지 일시적인 것인지 구분이 안 됐다. 두 쪽까지 더 보고 판단한다.
     """
     seen, out = set(), []
-    for page in range(1, 60):
+    empty = 0
+    for page in range(1, 200):
         try:
-            html = get("%s/article/search?rule=%d&page=%d" % (BASE, rule, page))
+            html = get("%s/article/search?rule=%d&page=%d%s"
+                       % (BASE, rule, page, extra))
         except Exception as e:
             print("  목록 %d쪽 실패: %s" % (page, e))
             break
@@ -311,16 +397,56 @@ def collect_cards(limit=200, rule=0):
         for c in cards:
             if c["url"]:
                 seen.add(c["url"])
-        if not cards:
-            print("  목록 %d쪽 — 카드가 없다. 여기서 멈춘다." % page)
-            break
         if not fresh:
-            break
+            empty += 1
+            if empty >= 3:      # 세 쪽 연속 새것이 없으면 끝으로 본다
+                if not quiet:
+                    print("  목록 %d쪽 — 세 쪽 연속 새것이 없다. 끝으로 본다."
+                          % page)
+                break
+            time.sleep(DELAY)
+            continue
+        empty = 0
         out += fresh
-        print("  목록 %d쪽 — 기사 %d편 (누적 %d)" % (page, len(fresh), len(out)))
+        if not quiet and (page <= 3 or page % 5 == 0):
+            print("  목록 %d쪽 — 새 기사 %d편 (누적 %d)"
+                  % (page, len(fresh), len(out)))
         if len(out) >= limit:
+            if not quiet:
+                print("  limit %d 에 닿아서 멈춘다 (더 있을 수 있다)" % limit)
             break
         time.sleep(DELAY)
+    return out[:limit]
+
+
+def collect_all(limit=5000, rules=None, extras=None):
+    """rule(그리고 덧붙일 질의)을 바꿔 가며 **색인을 통째로** 훑는다.
+
+    `rule=0` 하나만 보면 132편에서 끊겼다. 받아 둔 자료에 룰이 M-3~M-5,
+    시즌이 S4~S5 로 섞여 있으니 색인에는 더 있다는 뜻이다.
+    몇 가지인지 모르므로 **빈 결과가 세 번 연속 나올 때까지** 올려 본다.
+    """
+    rules = rules if rules is not None else range(0, 12)
+    extras = extras or [""]
+    seen, out = set(), []
+    miss = 0
+    for rule in rules:
+        hit = 0
+        for extra in extras:
+            got = collect_cards(limit=limit, rule=rule, extra=extra, quiet=True)
+            fresh = [c for c in got if c["url"] and c["url"] not in seen]
+            for c in got:
+                if c["url"]:
+                    seen.add(c["url"])
+            out += fresh
+            hit += len(fresh)
+        print("  rule=%-2s  새 기사 %4d편 (누적 %d)" % (rule, hit, len(out)))
+        miss = miss + 1 if hit == 0 else 0
+        if miss >= 3:
+            print("  rule 을 세 번 연속 헛짚었다. 여기서 멈춘다.")
+            break
+        if len(out) >= limit:
+            break
     return out[:limit]
 
 
@@ -636,6 +762,18 @@ def main():
     if "--구조" in args:
         i = args.index("--구조")
         show_structure(args[i + 1])
+        return
+    if "--살펴보기" in args:
+        i = args.index("--살펴보기")
+        rule = int(args[i + 1]) if i + 1 < len(args) and args[i + 1].isdigit() else 0
+        probe_search(rule)
+        return
+    if "--전부" in args:
+        i = args.index("--전부")
+        want = int(args[i + 1]) if i + 1 < len(args) and args[i + 1].isdigit() else 5000
+        cards = collect_all(limit=want)
+        print("\n색인에서 기사 %d편을 찾았다." % len(cards))
+        fetch_all([c["url"] for c in cards if c["url"]], cards)
         return
     if "--목록" in args:
         i = args.index("--목록")
