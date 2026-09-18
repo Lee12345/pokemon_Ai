@@ -1825,6 +1825,24 @@ def test_combos(dex):
     check("경고가 아무 데서나 뜨지는 않는다 (%d/%d종)" % (n_warn, n_spec),
           n_spec >= 10 and n_warn <= n_spec * 0.3, (n_warn, n_spec))
 
+    # -- 구멍을 사용률 순서로 보는가 ---------------------------------------
+    # survey() 는 표본이 많은 순서라 한카리아스가 맨 위에 온다. 그것만
+    # 보고 있으면 **중요한데 표본이 없는 종**이 영영 안 보인다. 실제로
+    # 그래서 이 테스트 자체가 한 마리로만 짜였다가 깨졌다.
+    cov = combos.coverage(dex, top=30)
+    check("덮개 표가 사용률 상위 30종을 준다 (%d종)" % len(cov),
+          len(cov) >= 25, len(cov))
+    check("덮개 표는 사용률 순서다 (표본 순서가 아니다)",
+          [r[0] for r in cov] == sorted(r[0] for r in cov),
+          [r[0] for r in cov[:5]])
+    holes = [r[1] for r in cov if r[2] < combos.MIN_SAMPLES]
+    check("표본이 모자란 상위종을 집어낸다 (%d종: %s)"
+          % (len(holes), ", ".join(holes[:4])),
+          all(len(samples.by_pokemon(combos.loaded(dex)).get(h) or [])
+              < combos.MIN_SAMPLES for h in holes), holes)
+    check("덮개 보고서가 나온다",
+          "사용률 상위" in combos.coverage_report(dex, top=10))
+
     # -- 두 마진이 다 지켜지는가 (제일 중요) -------------------------------
     worst = 0.0
     names = []
