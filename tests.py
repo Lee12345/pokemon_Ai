@@ -937,6 +937,94 @@ def test_search(dex):
           [r["name"] for r in got2["rows"] if r["dropped"]])
 
 
+def test_live(dex):
+    """실전 도구 — **넣은 값이 계산까지 닿는가.**
+
+    여기서 세 가지를 잡았다. 셋 다 화면에는 멀쩡해 보였다.
+    """
+    print("\n[42] 실전 도구 (live.py)")
+    import random
+    import live
+    import search
+
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+
+    # ① 남은 HP 가 대전에 실제로 들어가는가 ---------------------------------
+    # 전에는 Side 가 늘 만피에서 시작했다. 3턴만 지나도 양쪽 다 깎여
+    # 있는데, 그러면 "지금 이 상황" 이 아니라 "처음이었다면" 을 잰다.
+    kao, gar = P("아머까오"), P("한카리아스")
+    hits = []
+    for pct in (100, 30):
+        r = battle.run_once(dex, kao, gar, [dex.find_move("철벽")],
+                            [dex.find_move("화염방사")], random.Random(1),
+                            log=True, state={"my_hp": [pct]})
+        first = [x for x in r["log"] if "아머까오 에게" in x][0]
+        hits.append(int(first.split("HP ")[1].split("/")[0]))
+    check("내 남은 HP 가 대전에 들어간다 (%d -> %d)" % tuple(hits),
+          hits[1] < hits[0], hits)
+
+    turns = []
+    for pct in (100, 10):
+        r = battle.run_once(dex, kao, gar, [dex.find_move("바디프레스")],
+                            [dex.find_move("지진")], random.Random(1),
+                            state={"opp_hp": [pct]})
+        turns.append(r["turns"])
+    check("상대 남은 HP 도 들어간다 (%d턴 -> %d턴)" % tuple(turns),
+          turns[1] < turns[0], turns)
+
+    # ② live 가 그 값을 탐색까지 넘기는가 ------------------------------------
+    # ! 한 번 여기서 빠뜨렸다. 화면에는 '상대 55%' 라고 찍히는데
+    #   state() 가 opp_hp 를 안 넘겨서 계산은 만피로 하고 있었다.
+    party = [(P("아머까오"), ["바디프레스", "철벽", "날개쉬기", "브레이브버드"]),
+             (P("누리레느"), ["문포스", "냉동빔", "아쿠아제트", "하품"])]
+    f = live.Fight(dex, party)
+    f.opp = dex.find_pokemon("한카리아스")
+    f.opp_hp = 40.0
+    f.my_hp[0] = 70.0
+    f.my_active = 0
+    st = f.state()
+    check("live 가 내 HP 를 넘긴다", st.get("my_hp") == [70.0, 100.0], st)
+    check("live 가 상대 HP 도 넘긴다", st.get("opp_hp") == [40.0], st)
+    check("live 가 나와 있는 놈도 넘긴다", "my_active" in st, st)
+
+    # ③ 본 것이 쌓이는가 ----------------------------------------------------
+    f.seen_of().add(("기술", "지진"))
+    f.seen_of().add(("도구", "자뭉열매"))
+    ev = f.evidence()
+    check("본 기술이 증거로 넘어간다 (%s)" % (ev.seen_moves if ev else None),
+          ev is not None and "지진" in ev.seen_moves, ev)
+
+    # ④ 짧게 쳐도 찾는가 / 애매하면 되묻는가 ---------------------------------
+    got, note = live.find_poke(dex, "아머까")
+    check("앞글자로 찾는다 (아머까 -> %s)" % (got and got["name"]),
+          got is not None and got["name"] == "아머까오", note)
+    got2, note2 = live.find_poke(dex, "한카")
+    check("애매하지 않으면 기본 폼을 고른다 (한카 -> %s)"
+          % (got2 and got2["name"]),
+          got2 is not None and got2["name"] == "한카리아스", note2)
+    bad, why = live.find_poke(dex, "없는이름임")
+    check("없는 이름은 None 을 준다", bad is None, why)
+    kind, name = live.find_move_or_item(dex, "지진")
+    check("기술을 기술로 읽는다", (kind, name) == ("기술", "지진"), (kind, name))
+    kind2, name2 = live.find_move_or_item(dex, "자뭉열매")
+    check("도구를 도구로 읽는다", (kind2, name2) == ("도구", "자뭉열매"),
+          (kind2, name2))
+
+    # ⑤ 예산을 재는 판이 예산을 먹지 않는가 ---------------------------------
+    # ! 전에는 덥히는 판이 예산을 먹어서, 예산이 작으면 **한 판도 안
+    #   돌린 채** 끝났다. 그런데 점수는 0.0 으로 나와서 '측정해 보니
+    #   0점' 처럼 보였다.
+    got3 = search.best_action(dex, [b for b, _m in party],
+                              dex.find_pokemon("한카리아스"),
+                              my_moves=party[0][1], seconds=1.0,
+                              state={"my_hp": [70, 100], "opp_hp": [100]})
+    check("예산이 짧아도 후보마다 최소 한 판은 돈다",
+          all(r["n"] >= 1 for r in got3["rows"]),
+          [(r["name"], r["n"]) for r in got3["rows"]])
+    check("제대로 못 잰 후보를 보고서가 말한다",
+          "thin" in got3, list(got3.keys()))
+
+
 def test_battle_result(dex):
     """턴 루프가 '승패' 가 아니라 '끝났을 때의 상태' 를 내놓는가.
 
@@ -2627,6 +2715,7 @@ def main():
     test_more_status_moves(dex)
     test_cache_honesty(dex)
     test_search(dex)
+    test_live(dex)
     test_battle_hand_check(dex)
     test_status(dex)
     test_scout(dex)

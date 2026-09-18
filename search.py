@@ -54,8 +54,14 @@ import scout
 # 후보 하나에 최소 이만큼은 돌려야 숫자를 믿을 수 있다.
 # 30판이면 승률의 표준오차가 최대 9%p 다 (0.5 x sqrt(1/30)).
 MIN_ROLLOUTS = 30
-# 시간을 재기 전에 버리는 판수 (캐시를 덥힌다) / 재는 판수
-WARMUP = 3
+# 시간을 재기 전에 캐시를 덥힌다. **횟수를 고정하면 안 된다** —
+# 첫 판이 461ms, 더워진 뒤가 2.1ms 로 **220배** 차이가 났다. 3판만
+# 덥히고 재면 아직 차가운 값을 잡아서, 멀쩡한 판인데 "예산이 모자라다"
+# 며 얕은 모드로 떨어진다. 실제로 그래서 매 세션 첫 턴이 얕은 모드로
+# 돌았고, 점수가 전부 100.00 으로 나와 그럴듯해 보였다.
+WARMUP_MAX = 25          # 이만큼까지 덥힌다
+WARMUP_SECONDS = 2.0     # 또는 이 시간까지
+WARMUP_SETTLE = 3.0      # 제일 빠른 판의 이 배수 안에 들면 더워진 것으로 본다
 PROBE = 5
 # 한 바퀴 돌 때마다 판수를 이만큼 곱한다
 GROW = 2.0
@@ -66,6 +72,7 @@ SHALLOW_TURNS = 6
 
 
 def candidate_actions(dex, party, opp_build, my_moves=None):
+    # ! party.active 를 본다. 교체한 뒤에는 나와 있는 놈의 기술이어야 한다.
     """이번 턴에 둘 수 있는 수들. 기술 + 교체.
 
     my_moves 를 주면 **내가 실제로 들고 있는 기술**을 쓴다. 안 주면
@@ -129,12 +136,19 @@ def _position_value(b):
 
     mine = side_value(b.me_party)
     theirs = side_value(b.opp_party)
+    if theirs <= 0:          # 상대를 다 잡았다 — 이긴 것과 같게 센다
+        top = float(len(b.me_party.members))
+        return 0.70 + 0.30 * min(1.0, mine / top if top else 1.0)
+    if mine <= 0:
+        return 0.0
     total = mine + theirs
-    return (mine / total) if total else 0.5
+    # 안 끝난 판은 비긴 자리(0.35~0.50)에 놓는다. 끝까지 본 점수와
+    # 자리를 맞춰야 둘을 나란히 볼 수 있다.
+    return 0.35 + 0.15 * (mine / total)
 
 
 def rollout(dex, my_party, opp_poke, action, rng, evidence=None,
-            opp_build=None, turns=None, my_moves=None):
+            opp_build=None, turns=None, my_moves=None, state=None):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
@@ -155,11 +169,11 @@ def rollout(dex, my_party, opp_poke, action, rng, evidence=None,
 
     if turns is None:
         res = battle.run_once(dex, my_party, opp_build, _as_plan(action),
-                              opp_plan, rng, my_moves=my_moves)
+                              opp_plan, rng, my_moves=my_moves, state=state)
         return _score(res)
 
     # 끊어 보기 — run_once 를 못 쓰므로 직접 돈다
-    b = battle.Battle(dex, my_party, opp_build, rng=rng)
+    b = battle.Battle(dex, my_party, opp_build, rng=rng, **(state or {}))
     mine = battle.Policy(dex, my_party, opp_build, _as_plan(action),
                          moves=my_moves)
     theirs = battle.Policy(dex, opp_build, my_party, opp_plan)
@@ -167,15 +181,15 @@ def rollout(dex, my_party, opp_poke, action, rng, evidence=None,
         if b.over:
             break
         b.step(mine.act(b.me_party, i, b), theirs.act(b.opp_party, i, b))
-    if not b.opp_party.alive:
-        return 1.0
-    if not b.me_party.alive:
-        return 0.0
+    # ! 전에는 여기서 이기면 곧바로 1.0 을 돌려줬다. 그러면 바로 아래
+    #   _position_value 가 HP 로 갈라 주는 것을 건너뛰어서, 얕은 모드의
+    #   점수만 '이기면 무조건 만점' 이 된다. 끝까지 본 점수와 자리가
+    #   안 맞으면 둘을 나란히 볼 수 없다. 한 군데서만 재게 한다.
     return _position_value(b)
 
 
 def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
-                seconds=10.0, seed=1, opp_build=None):
+                seconds=10.0, seed=1, opp_build=None, state=None):
     """이번 턴의 수를 고른다.
 
     돌려주는 것 —
@@ -188,13 +202,14 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
       몇 판 보고 접었다" 가 남아야 나중에 지고 나서 되짚을 수 있다.
     """
     rng = random.Random(seed)
-    party = battle.Party(dex, my_party)
+    party = battle.Party(dex, my_party, (state or {}).get("my_hp"))
+    if (state or {}).get("my_active"):
+        party.active_idx = state["my_active"]
     builds = my_party if isinstance(my_party, (list, tuple)) else [my_party]
     actions, guessed = candidate_actions(dex, party, opp_poke, my_moves)
     # 계획이 끝난 뒤에도 이 기술들 안에서만 고르게 한다
     moves = [a[1] for a in actions if a[0] == "기술"]
 
-    t0 = time.time()
     # 한 판이 얼마나 걸리는지 재 본다. **예산을 짐작으로 나누지 않는다** —
     # 파티 크기와 기술에 따라 2ms 에서 20ms 까지 벌어진다.
     #
@@ -203,14 +218,33 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     #   110배로 잰 것이다. 그 값으로 예산을 나누니 멀쩡한 판인데도
     #   "모자라다" 며 얕은 모드로 떨어졌다. 조용히 답이 나빠지는 종류다.
     #   그래서 **덥히는 판을 먼저 버리고** 그 뒤 몇 판을 재서 평균한다.
-    for _ in range(WARMUP):
+    warm_t0 = time.time()
+    fastest = None
+    for i in range(WARMUP_MAX):
+        one = time.time()
         rollout(dex, builds, opp_poke, actions[0], rng, evidence,
-                opp_build, None, moves)
-    probe = time.time()
+                opp_build, None, moves, state)
+        took = time.time() - one
+        fastest = took if fastest is None else min(fastest, took)
+        if i >= 2 and took <= fastest * WARMUP_SETTLE:
+            break
+        if time.time() - warm_t0 > WARMUP_SECONDS:
+            break
+    # **평균이 아니라 제일 빠른 판으로 잰다.** 평균은 아직 덜 더워진
+    # 판에 끌려간다. 우리가 알고 싶은 것은 '앞으로 한 판에 얼마나
+    # 걸리느냐' 이므로 안정된 값이 맞다.
+    times = []
     for _ in range(PROBE):
+        one = time.time()
         rollout(dex, builds, opp_poke, actions[0], rng, evidence,
-                opp_build, None, moves)
-    per = max(1e-5, (time.time() - probe) / PROBE)
+                opp_build, None, moves, state)
+        times.append(time.time() - one)
+    per = max(1e-5, min(times))
+    # ! **예산 시계는 재고 나서 켠다.** 전에는 재기 전에 켰다. 그러면
+    #   덥히는 판 3 + 재는 판 5 = 8판이 예산을 먹어서, 예산이 작으면
+    #   **한 판도 안 돌린 채 끝났다.** 그런데도 점수는 0.0 으로 나와서
+    #   "측정해 보니 0점" 처럼 보였다. 조용히 틀어지는 종류다.
+    t0 = time.time()
 
     shallow = len(actions) * MIN_ROLLOUTS * per > seconds
     turns = SHALLOW_TURNS if shallow else None
@@ -220,6 +254,13 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     live = list(rows)
     batch = MIN_ROLLOUTS
     out_of_time = False
+
+    # **예산이 아무리 짧아도 후보마다 최소 한 판은 돌린다.** 한 판도 안
+    # 돌린 후보의 0점은 '나쁘다' 가 아니라 '모른다' 인데, 구별이 안 된다.
+    for row in rows:
+        row["sum"] += rollout(dex, builds, opp_poke, row["action"], rng,
+                              evidence, opp_build, turns, moves, state)
+        row["n"] += 1
     while live and not out_of_time:
         for row in live:
             for _ in range(batch):
@@ -228,7 +269,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
                     break
                 row["sum"] += rollout(dex, builds, opp_poke, row["action"],
                                       rng, evidence, opp_build, turns,
-                                      moves)
+                                      moves, state)
                 row["n"] += 1
             if out_of_time:
                 break
@@ -244,7 +285,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
                         break
                     row["sum"] += rollout(dex, builds, opp_poke,
                                           row["action"], rng, evidence,
-                                          opp_build, turns, moves)
+                                          opp_build, turns, moves, state)
                     row["n"] += 1
             break
         live.sort(key=lambda r: -(r["sum"] / max(1, r["n"])))
@@ -258,10 +299,13 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
         row["score"] = row["sum"] / row["n"] if row["n"] else 0.0
         row["name"] = action_name(dex, party, row["action"])
     rows.sort(key=lambda r: (-r["score"], r["dropped"]))
+    thin = [r["name"] for r in rows if r["n"] < MIN_ROLLOUTS]
     return {"rows": rows, "spent": time.time() - t0,
             "rollouts": sum(r["n"] for r in rows),
             "shallow": shallow, "guessed": guessed,
-            "perRollout": per}
+            "perRollout": per,
+            # 예산이 모자라 제대로 못 잰 후보들. 보고서가 이걸 말해야 한다.
+            "thin": thin}
 
 
 def action_name(dex, party, action):
@@ -274,6 +318,9 @@ def action_name(dex, party, action):
 # ---------------------------------------------------------------------------
 # 보고서
 # ---------------------------------------------------------------------------
+_MIN = MIN_ROLLOUTS
+
+
 def _err(n):
     """승률의 표본오차(대략). 이기냐 지냐라 최대 분산이 0.25 다."""
     return 0.5 / (max(1, n) ** 0.5)
@@ -327,6 +374,10 @@ def report(dex, my_party, opp_poke, got, evidence=None):
                         r["n"], " — 일찍 접어서 덜 믿을 것" if r["dropped"]
                         else ""))
         L.append("    --초 를 늘리면 판수가 늘어 오차가 줄어든다.")
+    if got.get("thin"):
+        L.append("  ! 예산이 모자라 %d판도 못 돌린 수가 있다: %s"
+                 % (_MIN, ", ".join(got["thin"][:4])))
+        L.append("    이 수들의 점수는 '나쁘다' 가 아니라 '아직 모른다' 다.")
     if got["guessed"]:
         L.append("  ! 내 기술을 **사용률 상위 4개로 짐작**했다. 실제 기술을")
         L.append("    주려면 --기술 지진,역린,칼춤,스텔스록 처럼 적는다.")

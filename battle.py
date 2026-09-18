@@ -447,11 +447,22 @@ class Side(object):
     끝났을 때 이 객체가 그대로 '다음 포켓몬 상대의 시작 상태' 가 된다.
     """
 
-    def __init__(self, dex, build):
+    def __init__(self, dex, build, hp_pct=None):
+        """hp_pct 를 주면 **그 비율에서 시작한다** (0~100).
+
+        ! 이게 없어서 실전 도구가 반쪽이었다. 대전은 늘 만피에서
+          시작하는 게 아니다. 3턴만 지나도 양쪽 다 깎여 있는데, 그걸
+          못 넣으면 "지금 이 상황" 이 아니라 "처음이었다면" 을 재게 된다.
+        """
         self.dex = dex
         self.base = build
         self.max_hp = build.stat("hp")
-        self.hp = self.max_hp
+        if hp_pct is None:
+            self.hp = self.max_hp
+        else:
+            pct = max(0.0, min(100.0, float(hp_pct)))
+            # 1 이상은 남긴다 — 0 으로 시작하면 이미 쓰러진 것이다
+            self.hp = max(1, int(round(self.max_hp * pct / 100.0)))
         self.ranks = dict(build.ranks)
         self.status = build.status
         self.item = build.item
@@ -605,11 +616,15 @@ class Party(object):
     1마리만 넣으면 4-B 와 똑같이 1대1 이 된다.
     """
 
-    def __init__(self, dex, builds):
+    def __init__(self, dex, builds, hp_pcts=None):
+        """hp_pcts 를 주면 각자 그 비율에서 시작한다. [100, 55, None] 처럼."""
         if not isinstance(builds, (list, tuple)):
             builds = [builds]
         self.dex = dex
-        self.members = [Side(dex, b) for b in builds]
+        hp_pcts = list(hp_pcts or [])
+        self.members = [Side(dex, b,
+                             hp_pcts[i] if i < len(hp_pcts) else None)
+                        for i, b in enumerate(builds)]
         self.active_idx = 0
         # 이 편이 '맞는' 압정. 상대가 깔아 둔 것이다.
         self.hazards = {}
@@ -727,11 +742,19 @@ class Battle(object):
     """
 
     def __init__(self, dex, me_build, opp_build, rng=None, log=False,
-                 matchup=None):
+                 matchup=None, my_hp=None, opp_hp=None, my_active=0,
+                 opp_hazards=None, my_hazards=None):
         self.dex = dex
         # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
-        self.me_party = Party(dex, me_build)
-        self.opp_party = Party(dex, opp_build)
+        self.me_party = Party(dex, me_build, my_hp)
+        self.opp_party = Party(dex, opp_build, opp_hp)
+        if my_active:
+            self.me_party.active_idx = my_active
+        # 이미 깔려 있는 압정도 받는다 (실전은 1턴부터 시작하지 않는다)
+        if my_hazards:
+            self.me_party.hazards = dict(my_hazards)
+        if opp_hazards:
+            self.opp_party.hazards = dict(opp_hazards)
         self.field = Field()
         self.rng = rng or random.Random()
         self.turn = 0
@@ -2065,13 +2088,13 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
-             opp_switch=True, matchup=None, my_moves=None):
+             opp_switch=True, matchup=None, my_moves=None, state=None):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다.
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
     """
     b = Battle(dex, me_build, opp_build, rng=rng, log=log,
-               matchup=matchup)
+               matchup=matchup, **(state or {}))
     # 내 쪽은 '이 계획이 좋은가' 를 재는 중이므로 계획을 그대로 밀고,
     # 계획이 끝난 뒤부터는 양쪽 다 빼는 것을 판단한다.
     mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves)
