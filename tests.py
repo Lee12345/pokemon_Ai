@@ -1832,6 +1832,92 @@ def test_combos(dex):
         except LookupError:
             pass
 
+def test_fetch_champs(dex):
+    """champs 수집기 — 네트워크 없이 파싱만 시험한다.
+
+    champs.pokedb.tokyo 는 클라우드 IP 를 막아서 여기서는 못 받는다.
+    집 회선에서 돌릴 파일이므로, **받아 온 뒤의 부분**만 검증해 둔다.
+    그래야 사용자가 돌렸을 때 형식이 어긋나는 일이 없다.
+    """
+    print("\n[34] champs 수집기 (오프라인 부분)")
+    import json
+    import os
+    import tempfile
+
+    import fetch_champs as fc
+
+    html = (u'<html><head><title>【S6最終3位】メガボーマンダ構築</title></head>'
+            u'<body>'
+            u'<div data-pokemon-name="ガブリアス" data-item="オボンのみ" '
+            u'data-ability="さめはだ" data-nature="いじっぱり" '
+            u'data-evs="H32 B22 D7 S5" '
+            u'data-moves="じしん,ドラゴンテール,ステルスロック,つるぎのまい"></div>'
+            u'<div data-pokemon-name="ボーマンダ" data-item="ボーマンダナイト" '
+            u'data-nature="いじっぱり" data-evs="A32 S32" '
+            u'data-moves="すてみタックル,りゅうのまい,じしん,はねやすめ"></div>'
+            u'<div data-pokemon-name="ミミッキュ" data-item="いのちのたま" '
+            u'data-nature="ようき" data-evs="A32 S32" '
+            u'data-moves="じゃれつく,シャドークロー,つるぎのまい,かげうち"></div>'
+            u'<time datetime="2026-09-12T10:00:00Z"></time></body></html>')
+    party = fc.parse_article(html, "https://champs.pokedb.tokyo/article/abc")
+
+    check("data-* 전략으로 읽는다", party["parsedBy"] == "data-* 속성",
+          party["parsedBy"])
+    check("여섯 마리 중 세 마리를 다 꺼냈다", len(party["members"]) == 3,
+          len(party["members"]))
+    check("**source 가 champs 다** (값어치 3배의 근거)",
+          party["source"] == "champs", party["source"])
+    check("제목에서 시즌과 순위를 읽는다",
+          (party["season"], party["rank"]) == (6, 3), party)
+    check("게시일을 읽는다",
+          party["publishedAt"] == "2026-09-12T10:00:00Z", party["publishedAt"])
+    m0 = party["members"][0]
+    check("노력치를 dict 로 꺼낸다",
+          m0["evs"] == {"H": 32, "B": 22, "D": 7, "S": 5}, m0["evs"])
+    check("노력치 합이 66", sum(m0["evs"].values()) == 66, m0["evs"])
+    check("기술 네 개를 꺼낸다", len(m0["moves"]) == 4, m0["moves"])
+
+    # 챔피언스는 한 칸 최대 32 다. 본편 표기(252)가 섞여 들어오면 안 된다.
+    check("본편 표기(252)는 노력치로 안 받는다",
+          fc._evs_from("H252 A252 S4") == {"S": 4},
+          fc._evs_from("H252 A252 S4"))
+
+    # 표 전략
+    html2 = (u'<title>【M-6 最終120位】テスト</title><table>'
+             u'<tr><th>ポケモン</th><th>努力値</th></tr>'
+             u'<tr><td>カバルドン</td><td>H32 B32</td></tr>'
+             u'<tr><td>メタグロス</td><td>A32 S26</td></tr>'
+             u'<tr><td>ニンフィア</td><td>H32 D32</td></tr></table>')
+    p2 = fc.parse_article(html2, "x")
+    check("표 전략도 돈다", p2["parsedBy"] == "표", p2["parsedBy"])
+    check("룰과 순위를 읽는다", (p2["rule"], p2["rank"]) == ("M-6", 120), p2)
+
+    # 못 읽는 기사는 조용히 빈 파티
+    p3 = fc.parse_article(u"<title>글</title><p>그냥 글입니다</p>", "y")
+    check("못 읽는 기사는 개체가 0", p3["members"] == [], p3["members"])
+    check("그래도 source 는 붙어 있다", p3["source"] == "champs")
+
+    # 꺼낸 것이 samples.py 로 그대로 들어가는가 (두 쪽이 붙는지)
+    fd, path = tempfile.mkstemp(suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump({"parties": [party]}, f, ensure_ascii=False)
+    try:
+        parties, bad = samples.load(dex, path)
+    finally:
+        os.unlink(path)
+    check("samples 가 그대로 읽는다",
+          len(parties) == 1 and len(bad) == 0,
+          bad.summary() if len(bad) else None)
+    got = parties[0]["members"][0]
+    check("일본어가 한국어로 이어진다",
+          got["poke"]["name"] == "한카리아스", got["poke"]["name"])
+    check("champs + 상위 50위라 값어치가 6.0",
+          abs(samples.party_weight(parties[0]) - 6.0) < 1e-9,
+          samples.party_weight(parties[0]))
+    check("같은 pokesol 기사보다 무겁다",
+          samples.party_weight(parties[0])
+          > samples.party_weight({"source": "pokesol", "rank": 3}))
+
 def main():
     dex = calc.Dex()
     print("데이터: 포켓몬 %d / 기술 %d / 특성 %d / 도구 %d"
@@ -1870,6 +1956,7 @@ def main():
     test_samples(dex)
     test_fetch_pokesol(dex)
     test_combos(dex)
+    test_fetch_champs(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

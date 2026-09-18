@@ -535,6 +535,29 @@ python sensitivity.py --형태
 
 ### champs 기사를 다른 데서 모아 올 때
 
+`fetch_champs.py` 를 **집 회선에서** 돌리면 된다.
+
+```
+python fetch_champs.py --구조 <기사주소>     # 먼저 이걸로 구조를 본다
+python fetch_champs.py --목록 200            # 기사 주소를 모은다
+python fetch_champs.py --받기                # 받아서 data/samples.json 에 넣는다
+python samples.py                            # 못 알아들은 이름을 다 찍어 준다
+python samples.py --맞추기
+```
+
+**HTML 구조를 못 봐서 파싱만 비어 있다.** 나머지는 다 돼 있다 — 주소 모으기,
+일본어→한국어 잇기, 중복 거르기, 요청 간격, 중간 저장, 게시일 채우기,
+`"source": "champs"` 붙이기, `samples.json` 형식 맞추기.
+
+`--구조` 를 돌리면 **무엇을 어떻게 파싱해야 하는지 찍어 준다** — data-* 속성,
+표, 페이지에 박힌 JSON, 본문에 보이는 포켓몬 이름, 그리고 첫 포켓몬 이름
+**주변 HTML 을 그대로**. 그걸 보고 `STRATEGIES` 에 전략 하나만 채우면 된다.
+
+흔한 두 형태(`data-*` 속성, 표)는 미리 넣어 뒀으니 그대로 될 수도 있다.
+받아 온 뒤의 부분은 **네트워크 없이 검증해 뒀다** (검증 [34]번).
+
+
+
 `champs.pokedb.tokyo` 는 **클라우드 IP를 통째로 막는다** (robots.txt 까지 403).
 그래서 이 저장소가 도는 환경에서는 못 읽는다. 집 회선에서 돌리는 Claude Code 로
 받아서 아래 형식으로 넣으면 된다. **`"source": "champs"` 를 꼭 넣을 것** —
