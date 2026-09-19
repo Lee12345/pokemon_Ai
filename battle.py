@@ -360,6 +360,22 @@ APPLIED_ITEM_KINDS = {
     "drain_hit", "flinch", "force_switch_foe", "self_switch",
     "extend", "seed",
 }
+
+# ★ **반만 붙은 것.** 위 집합에 들어 있어서 경고가 안 뜨는데,
+#   실제로는 효과의 일부만 돈다. **이게 제일 고약하다** — "안 붙었다" 는
+#   경고라도 뜨지만, 반만 붙은 것은 붙었다고 말하면서 틀린 답을 준다.
+#
+#   {종류: (도는 것, 안 도는 것)}
+PARTIAL_ITEM_KINDS = {
+    # 풍선: 압정을 안 밟는 것과 맞으면 터지는 것은 돈다.
+    # **그런데 땅 기술 무효가 없다** — `_grounded` 를 `_apply_hazards`
+    # 에서만 보고 데미지 계산에서는 안 본다.
+    # 타부자고(사용률 9위)가 풍선을 66.2% 로 든다. 재 보니
+    # 한카리아스(지진)가 타부자고를 **풍선이 있든 없든 100%** 로 이긴다.
+    # 풍선이 제대로 돌면 지진이 아예 안 통해야 한다.
+    # 배율이 아니라 **답이 통째로 뒤집히는** 종류다 (2026-09-20 확인).
+    "float": ("압정을 안 밟는다 · 맞으면 터진다", "땅 기술 무효"),
+}
 # 아직 못 붙인 것 — 모델에 그 개념 자체가 없다. 붙이면 위로 옮긴다.
 #   quick      : 우선도가 같을 때 끼어드는 것 (best.turn_order 를 고쳐야 한다)
 #   drain_boost: HP 흡수 기술의 회복이 아직 없다
@@ -815,6 +831,17 @@ class Battle(object):
                     continue
                 kinds = [e["kind"] for e in behave.get(it) or ()]
                 left = [k for k in kinds if k not in APPLIED_ITEM_KINDS]
+                # ★ **반만 붙은 것도 말한다.** 전에는 APPLIED 에 들어 있기만
+                #   하면 조용히 넘어갔다. 풍선이 그래서 경고 한 줄 없이
+                #   땅 기술을 그냥 맞고 있었다 — 도구가 미구현일 때보다
+                #   나쁘다. 붙었다고 말하면서 틀린 답을 주기 때문이다.
+                half = [k for k in kinds if k in PARTIAL_ITEM_KINDS]
+                for k in half:
+                    works, missing = PARTIAL_ITEM_KINDS[k]
+                    self._warn("%s %s 의 %s 는 **반만 들어간다** — %s 는 "
+                               "되지만 **%s 는 안 된다.** 이 승률은 그만큼 "
+                               "틀려 있다." % (who, side.name, it,
+                                            works, missing))
                 if kinds and not left:
                     continue
                 why = ("아직 구현 안 된 도구다" if not kinds

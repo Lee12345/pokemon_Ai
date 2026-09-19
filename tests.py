@@ -1217,6 +1217,24 @@ def test_live(dex):
     check("제대로 못 잰 후보를 보고서가 말한다",
           "thin" in got3, list(got3.keys()))
 
+    # ★ **반만 붙은 도구는 반드시 소리를 낸다** -----------------------------
+    # 풍선이 `APPLIED_ITEM_KINDS` 에 들어 있어서 경고 한 줄 없이
+    # 땅 기술을 그냥 맞고 있었다. 미구현보다 나쁘다 — 붙었다고
+    # 말하면서 틀린 답을 준다. 사용자가 되물어서 잡혔다 (2026-09-20).
+    tab = calc.popular_build(dex, dex.find_pokemon("타부자고"))[0]
+    check("타부자고의 사용률 1위 도구가 풍선이다 (%s)" % tab.item,
+          tab.item == "풍선", tab.item)
+    bal = battle.Battle(dex, P("한카리아스"), tab, rng=random.Random(1))
+    said = " ".join(bal.warnings)
+    check("반만 붙은 도구가 경고를 띄운다 (풍선)",
+          "반만 들어간다" in said and "풍선" in said, bal.warnings)
+    check("무엇이 안 되는지까지 말한다 (땅 기술 무효)",
+          "땅 기술 무효" in said, said)
+    check("PARTIAL 과 APPLIED 가 겹치는 것만 반만 붙은 것이다",
+          set(battle.PARTIAL_ITEM_KINDS) <= battle.APPLIED_ITEM_KINDS,
+          sorted(set(battle.PARTIAL_ITEM_KINDS)
+                 - battle.APPLIED_ITEM_KINDS))
+
     # ⑥ **상대 파티** — 창과 글자판이 같이 쓰는 규칙 -------------------------
     # ! 사용자가 되물어서 생긴 부분이다: "왜 내 파티는 6인이 아니며
     #   상대는 1인이지?" (2026-09-18). 챔피언스는 6마리를 데려가서
