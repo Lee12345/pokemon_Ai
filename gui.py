@@ -16,6 +16,25 @@
   기술    **그 포켓몬이 배울 수 있는 것만** (하마돈이면 51개)
   노력치  칸마다 0~32, 합계가 게임처럼 66/66 으로 보인다
 
+## 왜 내 자리가 6개고 상대 자리도 6개인가
+
+챔피언스는 **6마리를 데려가서 3마리를 낸다.** 그래서 —
+
+  내 파티     자리 6개 (팀 프리뷰에 올리는 그대로)
+  상대        자리 6개 (프리뷰에서 본 6마리, 대전 중에는 낸 3마리)
+
+전에는 **내 자리가 3개, 상대 자리가 1개**였다. 사용자가 되물어서
+잡혔다 (2026-09-18): *"왜 내 파티는 6인이 아니며 상대는 1인이지?"*
+둘 다 맞는 지적이었고, 상대가 1마리였던 쪽은 답을 조용히 틀리게
+만들고 있었다 — 상대 벤치가 계산에 아예 안 들어가서 '지금 이놈을
+잡는 수' 를 '판을 이기는 수' 로 답했다. 같은 자리에서 '누리레느 로
+교체' 가 상대 1마리일 때 94.6점(2등)이었는데 상대 3마리를 넣자
+30.5점(꼴찌)이 됐다.
+
+상대 칸에는 **노력치·성격을 안 묻는다.** 모르는 것이 맞고, 모르는
+것은 사용률에서 뽑는 것이 이 프로그램이 하는 일이다 (`scout.py`).
+칸을 만들어 두면 찍어서 채우게 되고, 그 찍은 값이 그대로 계산에 든다.
+
 ## 왜 `--점검` 이 있나
 
 **이 창은 리눅스에서 만들어졌는데 리눅스에서 볼 수가 없다.**
@@ -40,6 +59,7 @@ import best
 import calc
 import live
 import paths
+import pick
 import scout
 import search
 
@@ -60,6 +80,7 @@ FONT_S = ("Malgun Gothic", 9)
 FONT_B = ("Malgun Gothic", 11, "bold")
 
 STAT_ORDER = live.STAT_ORDER
+MAX_PARTY = live.MAX_PARTY     # 6마리를 데려간다
 
 
 def have_tk():
@@ -418,8 +439,82 @@ class Slot(object):
         self.redraw()
 
 
+class OppSlot(object):
+    """상대 한 자리. 이름 · 남은 HP · 나와 있나, 셋만 받는다.
+
+    ! 내 파티 자리처럼 노력치·성격 칸을 만들지 **않는다.** 상대 배분은
+      모르는 것이 맞고, 모르는 것은 사용률에서 뽑는 것이 이 프로그램이
+      하는 일이다. 칸이 있으면 찍어서 채우게 되고, 찍은 값이 그대로
+      계산에 들어간다 — 조용히 틀어지는 자리가 하나 더 생긴다.
+    """
+
+    def __init__(self, app, parent, index):
+        tk = app.tk
+        self.app = app
+        self.dex = app.dex
+        self.index = index
+        self.poke = None
+
+        self.box = tk.Frame(parent, bg=CARD)
+        self.box.pack(fill="x", pady=1)
+        tk.Label(self.box, text="%d." % (index + 1), bg=CARD, fg=DIM,
+                 font=FONT_S, width=2).pack(side="left")
+        self.name = Picker(self.box, tk, "", width=12,
+                           on_pick=self.on_poke, rows=5)
+        self.name.pack(side="left")
+        self.name.source([(p["name"], p)
+                          for p in live.pickable_pokemon(self.dex)])
+        tk.Label(self.box, text="HP", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left", padx=(6, 1))
+        self.hp = tk.StringVar(value="100")
+        # 0 이면 쓰러진 것으로 본다. 칸을 따로 만들지 않는다.
+        tk.Spinbox(self.box, from_=0, to=100, increment=5, width=4,
+                   textvariable=self.hp, bg=FIELD, fg=TEXT,
+                   insertbackground=TEXT, relief="flat",
+                   buttonbackground=LINE, font=FONT_S).pack(side="left")
+        tk.Radiobutton(self.box, text="나와 있음", variable=app.opp_active,
+                       value=index, bg=CARD, fg=TEXT, selectcolor=FIELD,
+                       activebackground=CARD, activeforeground=TEXT,
+                       font=FONT_S,
+                       command=app.draw_seen).pack(side="left", padx=(6, 0))
+        self.seen_label = tk.Label(self.box, text="", bg=CARD, fg=DIM,
+                                   font=FONT_S, anchor="w")
+        self.seen_label.pack(side="left", padx=(6, 0))
+
+    def on_poke(self, poke):
+        self.poke = poke
+        # '나와 있음' 이 **빈 자리에 놓여 있으면** 방금 고른 이 자리로
+        # 옮긴다. 안 그러면 3번부터 채운 사람은 아무 데도 안 가리킨
+        # 채로 물어보게 된다.
+        mark = self.app.opp_active.get()
+        if poke is not None and not (
+                0 <= mark < len(self.app.opp_slots)
+                and self.app.opp_slots[mark].poke):
+            self.app.opp_active.set(self.index)
+        self.app.draw_seen()
+
+    def hp_pct(self):
+        """남은 HP. **빈 칸은 만피로 본다.**
+
+        ! `float("" or 0)` 은 0 이다. 그대로 두면 칸을 비웠을 때
+          조용히 '쓰러졌다' 가 되어 그 상대가 계산에서 빠진다.
+          모를 때는 빠뜨리는 쪽보다 성한 쪽으로 보는 것이 안전하다.
+        """
+        text = (self.hp.get() or "").strip()
+        if not text:
+            return 100.0
+        try:
+            return max(0.0, min(100.0, float(text)))
+        except ValueError:
+            return 100.0
+
+    def draw_seen(self, moves):
+        self.seen_label.config(text=("본 것: " + ", ".join(moves))
+                               if moves else "")
+
+
 class App(object):
-    """창 하나. 왼쪽은 내 파티, 오른쪽은 이번 턴."""
+    """창 하나. 왼쪽은 내 파티 6자리, 오른쪽은 상대 6자리와 이번 턴."""
 
     def __init__(self, dex, headless=False):
         import tkinter as tk
@@ -429,6 +524,10 @@ class App(object):
         self.headless = headless
         self.busy = False
         self.slots = []
+        self.opp_slots = []
+        # 상대 이름 -> 본 기술 목록. **상대마다 따로 쌓는다** —
+        # 지진을 쓴 것은 그때 나와 있던 놈이지 상대 셋 전부가 아니다.
+        self.seen = {}
 
         self.root = tk.Tk()
         self.root.title("포켓몬 챔피언스 — 무엇을 둘까")
@@ -466,46 +565,78 @@ class App(object):
         bar.pack(side="left", fill="y")
         self.canvas = canvas
 
-        for i in range(3):
+        # **6자리로 연다.** 챔피언스는 6마리를 데려가서 3마리를 낸다.
+        for i in range(MAX_PARTY):
             self.slots.append(Slot(self, self.party_box, i))
         add = tk.Frame(self.party_box, bg=BG)
         add.pack(fill="x", pady=(0, 8))
-        tk.Button(add, text="자리 하나 더", command=self.add_slot, bg=LINE,
-                  fg=TEXT, relief="flat", font=FONT_S).pack(side="left")
         self.save_msg = tk.Label(add, text="", bg=BG, fg=GOOD, font=FONT_S)
         self.save_msg.pack(side="left", padx=(8, 0))
 
         # 오른쪽 — 이번 턴
         right = tk.Frame(body, bg=BG)
         right.pack(side="left", fill="both", expand=True, padx=(10, 0))
+        self._build_opp(right)
         self._build_turn(right)
 
     def add_slot(self):
-        if len(self.slots) >= 6:
+        """남은 자리 — 이제 처음부터 6자리를 열어 두므로 쓸 일이 없다.
+        옛 저장 파일을 읽을 때 자리가 모자라면 여기서 늘린다."""
+        if len(self.slots) >= MAX_PARTY:
             return
         self.slots.append(Slot(self, self.party_box, len(self.slots)))
+
+    def _build_opp(self, parent):
+        tk = self.tk
+        box = tk.Frame(parent, bg=CARD, highlightbackground=LINE,
+                       highlightthickness=1, padx=10, pady=8)
+        box.pack(fill="x")
+        tk.Label(box, text="상대 — 프리뷰에서 본 6마리, 대전 중에는 낸 3마리",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
+        tk.Label(box, text="HP 0 이면 쓰러진 것으로 봅니다. "
+                           "배분·성격은 안 묻습니다 (사용률에서 뽑습니다).",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
+        self.opp_active = tk.IntVar(value=0)
+        holder = tk.Frame(box, bg=CARD)
+        holder.pack(fill="x", pady=(4, 0))
+        for i in range(MAX_PARTY):
+            self.opp_slots.append(OppSlot(self, holder, i))
+
+        r = tk.Frame(box, bg=CARD)
+        r.pack(fill="x", pady=(6, 0))
+        tk.Label(r, text="상대에게서 본 기술", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left")
+        self.seen_pick = Picker(r, tk, "", width=13, on_pick=self.add_seen)
+        self.seen_pick.pack(side="left", padx=(6, 0))
+        self.seen_pick.source([(m["name"], m["name"]) for m in self.dex.moves])
+        tk.Button(r, text="본 것 지우기", command=self.clear_seen, bg=LINE,
+                  fg=TEXT, relief="flat", font=FONT_S).pack(side="left",
+                                                            padx=(6, 0))
+        tk.Label(r, text="← '나와 있음' 인 놈 것으로 들어갑니다",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(6, 0))
+
+        r2 = tk.Frame(box, bg=CARD)
+        r2.pack(fill="x", pady=(6, 0))
+        tk.Label(r2, text="선출에 쓸 시간(초)", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left")
+        self.pick_secs = tk.StringVar(value="45")
+        tk.Spinbox(r2, from_=10, to=300, increment=15, width=5,
+                   textvariable=self.pick_secs, bg=FIELD, fg=TEXT,
+                   insertbackground=TEXT, relief="flat",
+                   buttonbackground=LINE, font=FONT_S).pack(side="left",
+                                                            padx=4)
+        self.go_pick = tk.Button(r2, text="선출 — 어떤 3마리?",
+                                 command=self.ask_pick, bg=LINE, fg=TEXT,
+                                 relief="flat", font=FONT_B)
+        self.go_pick.pack(side="right")
 
     def _build_turn(self, parent):
         tk = self.tk
         box = tk.Frame(parent, bg=CARD, highlightbackground=LINE,
                        highlightthickness=1, padx=10, pady=8)
-        box.pack(fill="x")
+        box.pack(fill="x", pady=(8, 0))
         tk.Label(box, text="이번 턴", bg=CARD, fg=DIM,
                  font=FONT_S).pack(anchor="w")
-
-        r1 = tk.Frame(box, bg=CARD)
-        r1.pack(fill="x", pady=(4, 0))
-        self.opp = Picker(r1, tk, "상대", width=14)
-        self.opp.pack(side="left")
-        self.opp.source([(p["name"], p)
-                         for p in live.pickable_pokemon(self.dex)])
-        tk.Label(r1, text="상대 HP%", bg=CARD, fg=DIM,
-                 font=FONT_S).pack(side="left", padx=(10, 2))
-        self.opp_hp = tk.StringVar(value="100")
-        tk.Spinbox(r1, from_=1, to=100, increment=5, width=4,
-                   textvariable=self.opp_hp, bg=FIELD, fg=TEXT,
-                   insertbackground=TEXT, relief="flat",
-                   buttonbackground=LINE, font=FONT_S).pack(side="left")
 
         r2 = tk.Frame(box, bg=CARD)
         r2.pack(fill="x", pady=(6, 0))
@@ -523,21 +654,6 @@ class App(object):
                    textvariable=self.my_hp, bg=FIELD, fg=TEXT,
                    insertbackground=TEXT, relief="flat",
                    buttonbackground=LINE, font=FONT_S).pack(side="left")
-
-        r3 = tk.Frame(box, bg=CARD)
-        r3.pack(fill="x", pady=(6, 0))
-        tk.Label(r3, text="상대에게서 본 기술", bg=CARD, fg=DIM,
-                 font=FONT_S).pack(side="left")
-        self.seen = Picker(r3, tk, "", width=13, on_pick=self.add_seen)
-        self.seen.pack(side="left", padx=(6, 0))
-        self.seen.source([(m["name"], m["name"]) for m in self.dex.moves])
-        self.seen_list = []
-        self.seen_label = tk.Label(box, text="본 것: 없음", bg=CARD, fg=TEXT,
-                                   font=FONT_S, wraplength=380,
-                                   justify="left")
-        self.seen_label.pack(anchor="w", pady=(2, 0))
-        tk.Button(box, text="본 것 지우기", command=self.clear_seen, bg=LINE,
-                  fg=TEXT, relief="flat", font=FONT_S).pack(anchor="e")
 
         r4 = tk.Frame(box, bg=CARD)
         r4.pack(fill="x", pady=(6, 0))
@@ -566,19 +682,41 @@ class App(object):
         self.out.insert("end", text + "\n")
         self.out.see("end")
 
+    def active_opp(self):
+        """지금 '나와 있음' 인 상대 자리. 안 골랐으면 채워진 첫 자리."""
+        i = self.opp_active.get()
+        if 0 <= i < len(self.opp_slots) and self.opp_slots[i].poke:
+            return self.opp_slots[i]
+        for sl in self.opp_slots:
+            if sl.poke:
+                return sl
+        return None
+
     def add_seen(self, name):
-        if name and name not in self.seen_list:
-            self.seen_list.append(name)
-        self.seen.set("", None)
-        self._draw_seen()
+        """본 기술을 **나와 있는 놈 것으로** 넣는다."""
+        sl = self.active_opp()
+        if sl is None:
+            self.say("상대를 먼저 고르세요.", clear=True)
+        elif name:
+            got = self.seen.setdefault(sl.poke["name"], [])
+            if name not in got:
+                got.append(name)
+        self.seen_pick.set("", None)
+        self.draw_seen()
 
     def clear_seen(self):
-        self.seen_list = []
-        self._draw_seen()
+        sl = self.active_opp()
+        if sl is not None:
+            self.seen.pop(sl.poke["name"], None)
+        self.draw_seen()
 
-    def _draw_seen(self):
-        self.seen_label.config(
-            text="본 것: " + (", ".join(self.seen_list) or "없음"))
+    def draw_seen(self):
+        for sl in self.opp_slots:
+            sl.draw_seen(self.seen.get((sl.poke or {}).get("name")) or [])
+
+    def opp_party(self):
+        """칸이 채워진 상대 자리들. [(포켓몬, HP%)] — 쓰러진 놈도 들어 있다."""
+        return [(sl.poke, sl.hp_pct()) for sl in self.opp_slots if sl.poke]
 
     def party(self):
         """칸이 채워진 자리들만. [(빌드, [기술])]."""
@@ -619,11 +757,6 @@ class App(object):
         if not party:
             self.say("먼저 왼쪽에 파티를 채우세요.", clear=True)
             return
-        poke = self.opp.get()
-        if poke is None:
-            self.say("상대를 고르세요 (칸에 치면 후보가 뜹니다).", clear=True)
-            return
-
         def num(var, default):
             try:
                 return float(var.get())
@@ -633,33 +766,45 @@ class App(object):
         idx = int(max(1, min(len(party), num(self.active, 1)))) - 1
         my_hp = [100.0] * len(party)
         my_hp[idx] = max(1.0, min(100.0, num(self.my_hp, 100)))
-        state = {"my_hp": my_hp, "my_active": idx,
-                 "opp_hp": [max(1.0, min(100.0, num(self.opp_hp, 100)))]}
+
+        # 쓰러진 상대(HP 0)는 빼고 넘긴다. 빼면 번호가 밀리므로
+        # **나와 있는 놈의 새 번호를 다시 찾는다.** 여기서 어긋나면
+        # 상대가 엉뚱한 놈을 겨냥한 채 계산이 돈다.
+        # 규칙은 live.py 에 있고 거기서 시험한다 — 창은 값만 모아 준다.
+        rows = [(sl.poke, sl.hp_pct()) for sl in self.opp_slots]
+        opp_pokes, state, why = live.turn_state(
+            my_hp, idx, rows, self.opp_active.get())
+        if why:
+            self.say("%s — 상대를 고르세요 (HP 0 은 쓰러진 것으로 봅니다)."
+                     % why, clear=True)
+            return
         secs = max(1.0, num(self.secs, 10))
-        ev = (scout.Evidence(seen_moves=list(self.seen_list))
-              if self.seen_list else None)
+        ev = live.evidence_map(self.seen, opp_pokes)
+        oi = state["opp_active"]
 
         self.busy = True
         self.go.config(text="생각하는 중...", state="disabled")
-        self.say("%s 을(를) 상대로 %.0f초 생각합니다...%s"
-                 % (poke["name"], secs,
-                    ("  (본 것: %s)" % ", ".join(self.seen_list))
-                    if self.seen_list else ""), clear=True)
+        # 화면에 찍는 것도 **넘긴 값 그대로** 쓴다. 따로 다시 세면
+        # 화면과 계산이 갈라진다 — 이 저장소가 늘 고장 나는 방식이다.
+        said = ", ".join("%s %.0f%%" % (p["name"], hp)
+                         for p, hp in zip(opp_pokes, state["opp_hp"]))
+        self.say("상대 %s 를 놓고 %.0f초 생각합니다...\n(나와 있는 상대: %s)"
+                 % (said, secs, opp_pokes[oi]["name"]), clear=True)
 
-        args = (party, poke, ev, secs, state, idx)
+        args = (party, opp_pokes, ev, secs, state, idx)
         if self.headless:
             self._work(*args)
         else:
             threading.Thread(target=self._work, args=args,
                              daemon=True).start()
 
-    def _work(self, party, poke, ev, secs, state, idx):
+    def _work(self, party, opp_pokes, ev, secs, state, idx):
         try:
             got = search.best_action(
-                self.dex, [b for b, _m in party], poke,
+                self.dex, [b for b, _m in party], opp_pokes,
                 my_moves=party[idx][1] or None, evidence=ev,
                 seconds=secs, state=state)
-            text = self._format(got)
+            text = self._format(got, len(opp_pokes))
         except Exception:
             import traceback
             text = "문제가 생겼습니다:\n%s" % traceback.format_exc()
@@ -668,12 +813,60 @@ class App(object):
         else:
             self.root.after(0, lambda: self._show(text))
 
+    # -- 선출 -------------------------------------------------------------
+    def ask_pick(self):
+        """팀 프리뷰 — 내 6마리 중 어떤 3마리를 낼까."""
+        if self.busy:
+            return
+        party = self.party()
+        foes = self.opp_party()
+        if len(party) < pick.PICK:
+            self.say("내 파티를 %d마리 이상 채우세요 (지금 %d)."
+                     % (pick.PICK, len(party)), clear=True)
+            return
+        if len(foes) < pick.PICK:
+            self.say("상대를 %d마리 이상 적으세요 (지금 %d). 팀 프리뷰에서"
+                     " 본 6마리를 다 적으면 제일 정확합니다."
+                     % (pick.PICK, len(foes)), clear=True)
+            return
+        try:
+            secs = max(10.0, float(self.pick_secs.get()))
+        except (ValueError, AttributeError):
+            secs = 45.0
+        self.busy = True
+        self.go_pick.config(text="고르는 중...", state="disabled")
+        self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=True)
+        args = ([b for b, _m in party], [p for p, _hp in foes], secs)
+        if self.headless:
+            self._work_pick(*args)
+        else:
+            threading.Thread(target=self._work_pick, args=args,
+                             daemon=True).start()
+
+    def _work_pick(self, my_builds, foes, secs):
+        try:
+            opp_builds = [calc.popular_build(self.dex, p)[0] for p in foes]
+            got = pick.choose(self.dex, my_builds, opp_builds, seconds=secs)
+            text = pick.short_report(my_builds, opp_builds, got)
+        except Exception:
+            import traceback
+            text = "문제가 생겼습니다:\n%s" % traceback.format_exc()
+        if self.headless:
+            self._show_pick(text)
+        else:
+            self.root.after(0, lambda: self._show_pick(text))
+
+    def _show_pick(self, text):
+        self.say(text)
+        self.busy = False
+        self.go_pick.config(text="선출 — 어떤 3마리?", state="normal")
+
     def _show(self, text):
         self.say(text)
         self.busy = False
         self.go.config(text="무엇을 둘까?", state="normal")
 
-    def _format(self, got):
+    def _format(self, got, n_foes=1):
         rows = got["rows"]
         full = [r for r in rows if not r["dropped"]] or rows
         top = max(full, key=lambda r: r["score"])
@@ -701,6 +894,9 @@ class App(object):
             L.append("! 끝까지 못 보고 끊었습니다 — 초를 늘려 보세요")
         if got["guessed"]:
             L.append("! 내 기술을 사용률로 짐작했습니다")
+        if n_foes < 2:
+            L.append("! 상대를 한 마리만 넣었습니다. 벤치를 아는 만큼")
+            L.append("  적으면 답이 달라집니다 (한 수에서 64%p 움직였습니다)")
         return "\n".join(L)
 
     def run(self):
@@ -782,16 +978,94 @@ def check():
         print("파티가 두 마리로 안 잡힙니다: %d" % len(app.party()))
         return 1
 
-    app.opp.set("한카리아스", dex.find_pokemon("한카리아스"))
-    app.add_seen("지진")
-    app.secs.set("2")
-    app.ask()
-    text = app.out.get("1.0", "end")
-    if "=>" not in text:
-        print("추천이 안 나왔습니다:\n%s" % text)
+    # ⑤ 자리가 6개로 열리는가 (챔피언스는 6마리를 데려간다)
+    if len(app.slots) != 6 or len(app.opp_slots) != 6:
+        print("자리가 6개가 아닙니다: 내 %d / 상대 %d"
+              % (len(app.slots), len(app.opp_slots)))
         return 1
 
-    print("창 점검 끝 — 후보 고르기 · 능력치 · 노력치 규칙 · 추천까지 돌았습니다")
+    # ⑥ 상대를 세 마리 적고, **그 셋이 정말로 계산까지 가는지** 본다.
+    #    창에 찍히는 것과 계산이 쓰는 것이 다르면 조용히 틀어진다 —
+    #    이 저장소가 고장 나는 방식은 늘 그것 하나다 (CLAUDE.md §1).
+    for i, name in enumerate(["한카리아스", "타부자고", "킬가르도"]):
+        poke = dex.find_pokemon(name)
+        sl = app.opp_slots[i]
+        sl.name.set(poke["name"], poke)
+        sl.on_poke(poke)
+    app.opp_slots[1].hp.set("40")
+    app.opp_slots[2].hp.set("0")          # 쓰러진 놈은 빠져야 한다
+    app.opp_active.set(0)
+    app.add_seen("지진")
+    if app.seen.get("한카리아스") != ["지진"]:
+        print("본 기술이 나와 있는 놈 것으로 안 들어갑니다: %r" % app.seen)
+        return 1
+
+    seen_args = {}
+    real = search.best_action
+
+    def spy(dex_, my_party, opp_pokes, **kw):
+        seen_args["opp"] = [p["name"] for p in opp_pokes]
+        seen_args["state"] = kw.get("state")
+        seen_args["ev"] = kw.get("evidence")
+        return real(dex_, my_party, opp_pokes, **kw)
+
+    # ! 엿보기는 **두 번째 물음까지** 걸어 둔다. 한 번만 걸고 떼면
+    #   두 번째 검사가 첫 번째 값을 다시 보게 되어, 안 따라가도 따라간
+    #   것처럼(또는 그 반대로) 보인다. 실제로 그렇게 헛짚었다.
+    search.best_action = spy
+    try:
+        app.secs.set("2")
+        app.ask()
+        text = app.out.get("1.0", "end")
+        if "=>" not in text:
+            print("추천이 안 나왔습니다:\n%s" % text)
+            return 1
+        first = dict(seen_args)
+
+        # ⑦ 나와 있는 상대를 2번으로 바꾸면 번호가 따라가는가
+        app.opp_active.set(1)
+        app.ask()
+        moved = (seen_args.get("state") or {}).get("opp_active")
+    finally:
+        search.best_action = real
+    seen_args = first
+    if moved != 1:
+        print("'나와 있음' 을 바꿨는데 안 따라갑니다: %r" % (moved,))
+        return 1
+    if seen_args.get("opp") != ["한카리아스", "타부자고"]:
+        print("상대 파티가 계산까지 안 갔습니다: %r" % (seen_args.get("opp"),))
+        return 1
+    st = seen_args.get("state") or {}
+    if st.get("opp_hp") != [100.0, 40.0]:
+        print("상대 HP 가 계산까지 안 갔습니다: %r" % (st.get("opp_hp"),))
+        return 1
+    if st.get("opp_active") != 0:
+        print("나와 있는 상대 번호가 틀렸습니다: %r" % (st.get("opp_active"),))
+        return 1
+    ev = seen_args.get("ev") or {}
+    if sorted(ev) != ["한카리아스"]:
+        print("본 기술이 그놈에게만 안 붙었습니다: %r" % (sorted(ev),))
+        return 1
+
+    # ⑧ 선출 단추도 한 번 눌러 본다 (내 3마리 x 상대 3마리 = 1가지씩)
+    nuri = dex.find_pokemon("누리레느")
+    s3 = app.slots[2]
+    s3.name.set("누리레느", nuri)
+    s3.on_poke(nuri)
+    s3.nature.set(live.nature_label(dex, "조심"), "조심")
+    for i, name in enumerate(["문포스", "냉동빔", "아쿠아제트", "하품"]):
+        s3.move_pickers[i].set(name, name)
+    s3.redraw()
+    app.opp_slots[2].hp.set("100")      # 쓰러뜨려 뒀던 놈을 되살린다
+    app.pick_secs.set("10")
+    app.ask_pick()
+    out = app.out.get("1.0", "end")
+    if "최악 기준" not in out:
+        print("선출이 안 나왔습니다:\n%s" % out[-600:])
+        return 1
+
+    print("창 점검 끝 — 후보 고르기 · 능력치 · 노력치 규칙 · 6자리 ·"
+          " 상대 파티가 계산까지 가는지 · 추천 · 선출까지 돌았습니다")
     print("  " + text.strip().splitlines()[-1])
     app.root.destroy()
     return 0

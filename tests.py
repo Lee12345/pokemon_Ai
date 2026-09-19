@@ -937,6 +937,107 @@ def test_search(dex):
           any(r["dropped"] for r in got2["rows"]),
           [r["name"] for r in got2["rows"] if r["dropped"]])
 
+    # ⑥ **나와 있는 놈이 1번이 아닐 때 계획이 정말로 들어가는가** -----------
+    # ! 여기서 큰 것을 하나 잡았다 (2026-09-19). `Policy` 가 계획의
+    #   주인을 무조건 파티 1번으로 봤다. 그래서 내가 2번을 내보낸 채로
+    #   물으면 `act` 의 첫 줄에서 걸러져 **계획이 통째로 버려졌다.**
+    #   "이 수를 두면 어떻게 되나" 를 묻는데 그 수를 안 두고 답한 것이다.
+    #   철벽·브레이브버드·날개쉬기 세 계획이 같은 씨앗에서 결과까지
+    #   똑같이 나왔다 (이김 / 파티HP 81.04% / 6턴). 그런데 점수는
+    #   91.9~93.1 로 그럴듯하게 벌어져 있어서 눈으로는 절대 못 잡는다.
+    trio = [P("한카리아스"), P("아머까오"), P("누리레느")]
+    foe = P("하마돈")
+    kao_moves = [dex.find_move(x)
+                 for x in ("철벽", "바디프레스", "날개쉬기", "브레이브버드")]
+    outs = []
+    for mv in ("철벽", "브레이브버드", "날개쉬기"):
+        rng = random.Random(99)
+        r = battle.run_once(dex, trio, foe, [dex.find_move(mv)],
+                            [dex.find_move("지진")], rng,
+                            my_moves=kao_moves,
+                            state={"my_hp": [100.0] * 3, "my_active": 1})
+        outs.append((r["result"], round(r["myPartyHpPct"], 2), r["turns"]))
+    check("2번이 나와 있어도 계획이 실제로 들어간다 (계획마다 결과가 다르다)",
+          len(set(outs)) > 1, outs)
+
+    # 계획의 주인을 Battle 에게 물어서 정하는가 (손으로 [0] 이라고 적으면
+    # state 로 '2번이 나와 있다' 를 줬을 때 또 어긋난다)
+    b = battle.Battle(dex, trio, foe, rng=random.Random(1),
+                      my_hp=[100.0] * 3, my_active=1)
+    pol = battle.Policy(dex, trio, foe, [dex.find_move("철벽")],
+                        moves=kao_moves, lead=b.me_party.active.base)
+    check("계획의 주인이 '나와 있는 놈' 이다 (%s)" % pol.lead.name,
+          pol.lead is trio[1], pol.lead.name)
+    act = pol.act(b.me_party, 0, b)
+    check("1턴에 계획대로 둔다 (%s)"
+          % battle.action_name(act, trio),
+          getattr(act, "get", lambda k: None)("name") == "철벽",
+          battle.action_name(act, trio))
+
+    # 기술을 이름으로 줘도 받는가 (전에는 여기서 터졌다)
+    blew = None
+    try:
+        battle.run_once(dex, trio, foe, [dex.find_move("철벽")],
+                        [dex.find_move("지진")], random.Random(3),
+                        my_moves=["철벽", "바디프레스", "날개쉬기",
+                                  "브레이브버드"],
+                        state={"my_hp": [100.0] * 3, "my_active": 1})
+    except Exception as e:
+        blew = e
+    check("기술을 이름으로 줘도 안 터진다", blew is None, blew)
+
+    # ⑦ **상대도 파티다.** 상대 벤치가 정말로 계산에 드는가 ------------------
+    # ! 사용자가 되물어서 잡혔다: "왜 내 파티는 6인이 아니며 상대는
+    #   1인이지?" (2026-09-18). 상대를 한 마리만 넣으면 '이놈을 잡는 수'
+    #   를 '판을 이기는 수' 라고 답하게 된다. 재 보니 '누리레느 로 교체'
+    #   가 상대 1마리일 때 94.6점(2등)이었는데 상대 3마리를 넣자
+    #   30.5점(꼴찌)이 됐다. 64%p 차이다.
+    one = search.rollout(dex, trio, [dex.find_pokemon("하마돈")],
+                         ("기술", dex.find_move("지진")), random.Random(7),
+                         opp_build=[P("하마돈")])
+    three = search.rollout(
+        dex, trio, [dex.find_pokemon(n)
+                    for n in ("하마돈", "타부자고", "킬가르도")],
+        ("기술", dex.find_move("지진")), random.Random(7),
+        opp_build=[P("하마돈"), P("타부자고"), P("킬가르도")])
+    check("상대 벤치를 넣으면 판이 달라진다 (1마리 %.2f / 3마리 %.2f)"
+          % (one, three), one != three, (one, three))
+
+    b3 = battle.Battle(dex, trio, [P("하마돈"), P("타부자고")],
+                       rng=random.Random(1), opp_hp=[100.0, 40.0],
+                       opp_active=1)
+    check("상대가 파티로 들어간다 (%d마리)" % len(b3.opp_party.members),
+          len(b3.opp_party.members) == 2, len(b3.opp_party.members))
+    check("상대의 '나와 있는 놈' 도 받는다 (%s)" % b3.opp.name,
+          b3.opp.base is not b3.opp_party.members[0].base, b3.opp.name)
+    check("상대 벤치의 HP 도 그대로 들어간다",
+          abs(b3.opp_party.members[1].hp
+              / float(b3.opp_party.members[1].max_hp) - 0.40) < 0.02,
+          b3.opp_party.members[1].hp)
+
+    # 본 것이 **그놈에게만** 붙는가 -----------------------------------------
+    ev_one = scout.Evidence(seen_moves=["지진"])
+    foes = [dex.find_pokemon(n) for n in ("하마돈", "누리레느")]
+    check("관찰을 하나만 주면 나와 있는 놈에게만 붙는다",
+          search._evidence_for(ev_one, 0, foes[0]) is ev_one
+          and search._evidence_for(ev_one, 1, foes[1]) is None)
+    ev_map = {"누리레느": ev_one}
+    check("{이름: 관찰} 로 주면 그 이름에만 붙는다",
+          search._evidence_for(ev_map, 0, foes[0]) is None
+          and search._evidence_for(ev_map, 1, foes[1]) is ev_one)
+
+    # 상대가 한 마리뿐이면 보고서가 그렇다고 말하는가
+    got4 = search.best_action(dex, trio, [dex.find_pokemon("하마돈")],
+                              my_moves=kao_moves, seconds=2.0,
+                              state={"my_hp": [100.0] * 3, "my_active": 1,
+                                     "opp_hp": [100.0]})
+    text4 = search.report(dex, trio, [dex.find_pokemon("하마돈")], got4,
+                          state={"my_active": 1})
+    check("상대를 한 마리만 넣으면 보고서가 경고한다",
+          "한 마리만" in text4, text4)
+    check("보고서가 '나와 있는 놈' 을 맨 위에 쓴다 (%s)" % trio[1].name,
+          trio[1].name in text4.splitlines()[3], text4.splitlines()[3])
+
 
 def test_live(dex):
     """실전 도구 — **넣은 값이 계산까지 닿는가.**
@@ -1069,7 +1170,7 @@ def test_live(dex):
     party = [(P("아머까오"), ["바디프레스", "철벽", "날개쉬기", "브레이브버드"], []),
              (P("누리레느"), ["문포스", "냉동빔", "아쿠아제트", "하품"], [])]
     f = live.Fight(dex, party)
-    f.opp = dex.find_pokemon("한카리아스")
+    f.opp_add(dex.find_pokemon("한카리아스"))
     f.opp_hp = 40.0
     f.my_hp[0] = 70.0
     f.my_active = 0
@@ -1082,8 +1183,9 @@ def test_live(dex):
     f.seen_of().add(("기술", "지진"))
     f.seen_of().add(("도구", "자뭉열매"))
     ev = f.evidence()
-    check("본 기술이 증거로 넘어간다 (%s)" % (ev.seen_moves if ev else None),
-          ev is not None and "지진" in ev.seen_moves, ev)
+    one = ev.get("한카리아스") if ev else None
+    check("본 기술이 증거로 넘어간다 (%s)" % (one.seen_moves if one else None),
+          one is not None and "지진" in one.seen_moves, ev)
 
     # ④ 짧게 쳐도 찾는가 / 애매하면 되묻는가 ---------------------------------
     got, note = live.find_poke(dex, "아머까")
@@ -1114,6 +1216,67 @@ def test_live(dex):
           [(r["name"], r["n"]) for r in got3["rows"]])
     check("제대로 못 잰 후보를 보고서가 말한다",
           "thin" in got3, list(got3.keys()))
+
+    # ⑥ **상대 파티** — 창과 글자판이 같이 쓰는 규칙 -------------------------
+    # ! 사용자가 되물어서 생긴 부분이다: "왜 내 파티는 6인이 아니며
+    #   상대는 1인이지?" (2026-09-18). 챔피언스는 6마리를 데려가서
+    #   3마리를 낸다. 상대도 마찬가지다.
+    #
+    # ! 이 계산은 **창 안에 두면 안 된다.** 이 컨테이너에는 tkinter 도
+    #   화면도 없어서 창은 여기서 한 줄도 못 돌린다. 그래서 창이 값만
+    #   모아 주고 규칙은 live.py 에 두고 여기서 시험한다.
+    ha, ta, kil = (dex.find_pokemon("하마돈"), dex.find_pokemon("타부자고"),
+                   dex.find_pokemon("킬가르도"))
+    rows = [(ha, 100.0), (ta, 40.0), (kil, 0.0)]
+    pokes, st, why = live.turn_state([100.0, 60.0], 1, rows, 1)
+    check("쓰러진 상대(HP 0)는 계산에서 빠진다 (%s)"
+          % ", ".join(p["name"] for p in pokes),
+          [p["name"] for p in pokes] == ["하마돈", "타부자고"], pokes)
+    check("상대 HP 가 그대로 따라간다", st["opp_hp"] == [100.0, 40.0],
+          st["opp_hp"])
+    check("나와 있는 상대 번호가 맞다 (타부자고 = 1)",
+          st["opp_active"] == 1, st["opp_active"])
+    # ★ **번호가 밀리는 자리.** 1번이 쓰러져 있으면 3번이 나와 있어도
+    #   넘기는 목록에서는 1번이 된다. 이걸 안 맞추면 상대가 엉뚱한 놈인
+    #   채로 계산이 돌고, 승률은 멀쩡하게 나온다.
+    rows2 = [(ha, 0.0), (ta, 100.0), (kil, 55.0)]
+    pokes2, st2, _ = live.turn_state([100.0], 0, rows2, 2)
+    check("앞이 쓰러져 밀려도 나와 있는 놈을 제대로 가리킨다 (%s)"
+          % pokes2[st2["opp_active"]]["name"],
+          pokes2[st2["opp_active"]]["name"] == "킬가르도",
+          (st2["opp_active"], [p["name"] for p in pokes2]))
+    check("다 쓰러지면 왜 안 되는지 말해 준다",
+          live.turn_state([100.0], 0, [(ha, 0.0)], 0)[2] is not None)
+
+    ev = live.evidence_map({"하마돈": ["지진"], "누리레느": ["문라이트"]},
+                           pokes)
+    check("본 기술이 그놈에게만 붙는다 (%s)" % sorted(ev),
+          sorted(ev) == ["하마돈"], sorted(ev))
+    check("붙은 기술이 실제로 들어 있다",
+          "지진" in ev["하마돈"].seen_moves, ev["하마돈"].seen_moves)
+
+    # Fight 도 같은 규칙을 쓰는가 (규칙이 두 군데 있으면 갈라진다)
+    f = live.Fight(dex, party)
+    f.opp_add(ha)
+    f.opp_add(ta)
+    check("상대가 쌓인다 (%d마리)" % len(f.opp_party),
+          len(f.opp_party) == 2, len(f.opp_party))
+    check("이미 본 놈을 다시 치면 안 늘고 그놈이 나온 것이 된다",
+          f.opp_add(ha) and len(f.opp_party) == 2 and f.opp_active == 0,
+          (len(f.opp_party), f.opp_active))
+    f.seen_of().add(("기술", "지진"))
+    live.apply_token(f, "x")                 # 나와 있는 놈이 쓰러졌다
+    check("쓰러뜨리면 계산에서 빠진다 (%s)"
+          % ", ".join(p["name"] for p in f.opp_pokes()),
+          [p["name"] for p in f.opp_pokes()] == ["타부자고"], f.opp_pokes())
+    check("쓰러진 놈의 관찰도 같이 빠진다",
+          f.evidence() is None, f.evidence())
+    check("상대가 최대 %d마리를 넘지 않는다" % live.MAX_PARTY,
+          "꽉" in [live.apply_token(f, n["name"]) for n in
+                   [dex.find_pokemon(x) for x in
+                    ("누리레느", "갑주무사", "루카리오", "드닐레이브",
+                     "브리두라스")]][-1],
+          len(f.opp_party))
 
 
 def test_windows_safe(dex):
@@ -1174,13 +1337,32 @@ def test_windows_safe(dex):
     check("찍는 쪽(stdout·stderr)도 맞춘다",
           "sys.stdout" in body and "sys.stderr" in body)
 
-    # 창 UI — **여기서는 띄울 수가 없다** (컨테이너에 tkinter 도 화면도
-    # 없다). 그래서 띄우지 않고 확인할 수 있는 것만 본다. 실제로
-    # 만들어지는지는 윈도우 빌드의 `gui.py --점검` 이 본다.
+    # 창 UI — **여기서는 진짜로 띄울 수가 없다** (컨테이너에 tkinter 도
+    # 화면도 없다). 그래서 두 겹으로 본다:
+    #   ① 여기: `faketk/` 의 가짜 tkinter 를 끼워서 **창을 통째로 돌린다**
+    #   ② 윈도우 빌드: 진짜 tkinter 로 `gui.py --점검`
+    # ①이 없던 동안 창 코드는 문법 말고는 한 줄도 안 돌아간 채로
+    # 윈도우에 갔고, 그래서 네 번 터졌다.
     import gui
     import live
     check("창 코드가 문법적으로 멀쩡하다 (import 된다)",
           hasattr(gui, "App") and hasattr(gui, "check"))
+
+    # ★ 가짜 tkinter 로 창을 끝까지 돌린다 ---------------------------------
+    import subprocess
+    fake = os.path.join(root, "faketk")
+    check("가짜 tkinter 가 저장소에 있다", os.path.isdir(fake), fake)
+    env = dict(os.environ)
+    env["PYTHONPATH"] = fake + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONIOENCODING"] = "utf-8"
+    r = subprocess.run([sys.executable, os.path.join(root, "gui.py"), "--점검"],
+                       cwd=root, env=env, capture_output=True)
+    said = (r.stdout or b"").decode("utf-8", "replace")
+    check("창을 가짜 tkinter 로 끝까지 돌린다 (칸 채우기 -> 추천 -> 선출)",
+          r.returncode == 0 and "창 점검 끝" in said,
+          (said + (r.stderr or b"").decode("utf-8", "replace"))[-700:])
+    check("그 점검이 상대 파티가 계산까지 가는지까지 본다",
+          "상대 파티가 계산까지" in said, said[-300:])
     ok, why = gui.have_tk()
     check("tkinter 가 있나 없나를 말해 준다 (여기: %s)"
           % ("있음" if ok else "없음"), isinstance(ok, bool))
@@ -1728,9 +1910,17 @@ def test_selection(dex):
     op4 = [calc.popular_build(dex, dex.find_pokemon(n))[0] for n in foes]
 
     table = selection.pairwise(dex, my4, op4, trials=6)
+    pairs = {k: v for k, v in table.items() if k != "_named"}
     check("1대1 상성표가 %d쌍 다 찬다" % (len(my4) * len(op4)),
-          len(table) == len(my4) * len(op4), len(table))
-    check("승률은 0~1 사이", all(0.0 <= v <= 1.0 for v in table.values()))
+          len(pairs) == len(my4) * len(op4), len(pairs))
+    check("승률은 0~1 사이", all(0.0 <= v <= 1.0 for v in pairs.values()))
+    # ! 이름표를 같이 들고 다녀야 한다. 없으면 조합마다 `evaluate` 안에서
+    #   3x3 상성표를 새로 재는데, 그게 조합당 225판이라 400조합을 훑는
+    #   선출에서 예산이 4배로 터진다 (45초로 잡은 것이 199초 나왔다).
+    check("조합에 물려줄 이름표도 같이 들고 다닌다",
+          isinstance(table.get("_named"), dict)
+          and (my4[0].name, op4[0].name) in table["_named"],
+          list(table.get("_named", {}))[:2])
 
     matrix, my_trios, opp_trios = selection.selection_matrix(
         dex, my4, op4, table, trials=4)
@@ -1747,6 +1937,36 @@ def test_selection(dex):
     txt = selection.report(my4, op4, table, rows, my_trios, opp_trios,
                            matrix, 4)
     check("보고서가 나온다", "어떤 3마리를 낼까" in txt)
+
+    # ★ **판수를 쌓는다.** 같은 칸을 두 번 돌리면 판수가 더해져야지
+    #    덮어써지면 안 된다. 덮어써도 숫자는 멀쩡해 보인다.
+    acc = {}
+    selection.selection_matrix(dex, my4, op4, table, trials=3, acc=acc)
+    selection.selection_matrix(dex, my4, op4, table, trials=3, acc=acc,
+                               seed=77)
+    check("같은 칸을 두 번 돌리면 판수가 쌓인다 (%d판)"
+          % list(acc.values())[0][1],
+          all(v[1] == 6 for v in acc.values()),
+          sorted(set(v[1] for v in acc.values())))
+
+    # ★ **예산을 지키는가.** 여기가 틀리면 팀 프리뷰 제한시간을 넘겨서
+    #    쓸모가 없어진다. 한 번 크게 틀렸다 — 45초로 잡은 것이 199초
+    #    걸렸다. 조합마다 드는 고정비를 안 세고 한 점으로만 쟀던 탓이다.
+    import time
+    t0 = time.time()
+    got = selection.choose(dex, my4, op4, seconds=12.0, seed=3)
+    took = time.time() - t0
+    check("예산 12초 안에 끝난다 (%.1f초)" % took, took <= 12.0 * 1.35, took)
+    check("예산을 그냥 흘려보내지도 않는다 (%.1f초)" % took, took >= 12.0 * 0.5,
+          took)
+    check("조합을 하나도 빠뜨리지 않았다 (%d가지)" % got["combos"],
+          got.get("missing", 0) == 0, got.get("missing"))
+    check("조합당 판수를 적어 준다 (%d판)" % got["trials"],
+          got["trials"] >= selection.MIN_TRIALS, got["trials"])
+    short = selection.short_report(my4, op4, got)
+    check("짧은 보고서가 나온다", "선출" in short and "최악 기준" in short)
+    check("짧은 보고서가 오차를 같이 말한다", "±" in short, short)
+    check("상대 배분을 사용률로 봤다는 것을 밝힌다", "사용률" in short, short)
 
 
 def test_opponent_switching(dex):

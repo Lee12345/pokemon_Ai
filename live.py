@@ -48,6 +48,7 @@ import time
 import battle
 import best
 import calc
+import pick
 import scout
 import search
 
@@ -435,16 +436,29 @@ def raw_input_(prompt):
 # ---------------------------------------------------------------------------
 # 지금 판의 상태
 # ---------------------------------------------------------------------------
+MAX_PARTY = 6      # 챔피언스는 6마리를 데려가서
+PICK = 3           # 3마리를 낸다
+
+
 class Fight(object):
-    """한 판 동안 들고 다니는 것. **본 것은 쌓인다.**"""
+    """한 판 동안 들고 다니는 것. **본 것은 쌓인다.**
+
+    ! **상대도 파티다.** 전에는 여기에 상대를 한 마리만 담았다
+      (`self.opp`). 그러면 상대 벤치가 계산에 아예 안 들어가서,
+      '지금 이놈을 잡는 수' 를 '판을 이기는 수' 라고 답하게 된다.
+      재 보니 같은 자리에서 '누리레느 로 교체' 가 상대 1마리일 때
+      94.6점(2등)이었는데 상대 3마리를 넣자 30.5점(꼴찌)이 됐다.
+      64%p 차이다. 사용자가 되물어서 잡혔다 (2026-09-18).
+    """
 
     def __init__(self, dex, party):
         self.dex = dex
         self.party = party                  # [(빌드, [기술])]
         self.my_active = 0
         self.my_hp = [100.0] * len(party)
-        self.opp = None                     # 지금 나와 있는 상대 (포켓몬)
-        self.opp_hp = 100.0
+        # 상대가 낸 것들. [{"poke": 포켓몬, "hp": 비율}] — 앞이 나와 있는 놈
+        self.opp_party = []
+        self.opp_active = 0
         self.seen = {}                      # 상대 이름 -> 본 기술/도구 집합
         self.seconds = DEFAULT_SECONDS
         self.turn = 0
@@ -453,6 +467,64 @@ class Fight(object):
     def note(self, text):
         self.lines.append(text)
 
+    # -- 상대 파티 --------------------------------------------------------
+    @property
+    def opp(self):
+        """지금 나와 있는 상대. 없으면 None."""
+        if not self.opp_party:
+            return None
+        i = min(self.opp_active, len(self.opp_party) - 1)
+        return self.opp_party[i]["poke"]
+
+    @property
+    def opp_hp(self):
+        if not self.opp_party:
+            return 100.0
+        return self.opp_party[min(self.opp_active,
+                                  len(self.opp_party) - 1)]["hp"]
+
+    @opp_hp.setter
+    def opp_hp(self, value):
+        if self.opp_party:
+            i = min(self.opp_active, len(self.opp_party) - 1)
+            self.opp_party[i]["hp"] = value
+
+    def opp_index(self, poke):
+        for i, row in enumerate(self.opp_party):
+            if row["poke"]["name"] == poke["name"]:
+                return i
+        return None
+
+    def opp_add(self, poke):
+        """상대가 이놈을 냈다. 이미 있으면 그놈이 나온 것으로 본다.
+
+        돌려주는 글은 사람이 읽을 알림이다.
+        """
+        i = self.opp_index(poke)
+        if i is None:
+            if len(self.opp_party) >= MAX_PARTY:
+                return "! 상대 자리가 %d 로 꽉 찼습니다" % MAX_PARTY
+            self.opp_party.append({"poke": poke, "hp": 100.0})
+            i = len(self.opp_party) - 1
+            self.opp_active = i
+            return "상대: %s 가 나왔다 (상대 %d마리째)" % (poke["name"],
+                                                  len(self.opp_party))
+        self.opp_active = i
+        return "상대: %s 가 나왔다 (이미 본 놈)" % poke["name"]
+
+    def opp_drop(self, poke):
+        i = self.opp_index(poke)
+        if i is None:
+            return "! %s 는 상대 파티에 없습니다" % poke["name"]
+        self.opp_party.pop(i)
+        self.opp_active = min(self.opp_active, max(0, len(self.opp_party) - 1))
+        return "%s 를 상대 파티에서 뺐다" % poke["name"]
+
+    def opp_alive(self):
+        """아직 살아 있는 상대. [(원래번호, 줄)]."""
+        return [(i, r) for i, r in enumerate(self.opp_party) if r["hp"] > 0]
+
+    # -- 탐색에 넘길 것들 --------------------------------------------------
     def seen_of(self, poke=None):
         key = (poke or self.opp or {}).get("name")
         return self.seen.setdefault(key, set())
@@ -463,6 +535,14 @@ class Fight(object):
     def moves(self):
         return self.party[self.my_active][1] or None
 
+    def opp_pokes(self):
+        """탐색에 넘길 상대 파티. **나와 있는 놈이 맨 앞은 아니다** —
+        자리는 그대로 두고 `opp_active` 로 누가 나와 있는지 알린다."""
+        rows = [(r["poke"], r["hp"]) for r in self.opp_party]
+        pokes, _st, _why = turn_state(self.my_hp, self.my_active, rows,
+                                      self.opp_active)
+        return pokes or []
+
     def state(self):
         """탐색에 넘길 '지금 판의 상태'.
 
@@ -471,27 +551,43 @@ class Fight(object):
           같은 종류다 — 눈에 보이는 것과 실제로 쓰이는 것이 다르면
           조용히 틀어진다. 넣는 값은 반드시 여기까지 와야 한다.
         """
-        return {"my_hp": list(self.my_hp), "my_active": self.my_active,
-                "opp_hp": [self.opp_hp]}
+        rows = [(r["poke"], r["hp"]) for r in self.opp_party]
+        _pokes, st, why = turn_state(self.my_hp, self.my_active, rows,
+                                     self.opp_active)
+        if st is None:
+            return {"my_hp": list(self.my_hp), "my_active": self.my_active}
+        return st
 
-    def evidence(self):
-        got = self.seen_of()
+    def evidence_of(self, poke):
+        got = self.seen.get(poke["name"]) or set()
         if not got:
             return None
         mv = [x for kind, x in got if kind == "기술"]
         it = [x for kind, x in got if kind == "도구"]
         ev = scout.Evidence(seen_moves=mv)
-        # Evidence 가 도구를 안 받으면 기술만 준다. 있으면 같이 준다.
         if it and hasattr(ev, "item"):
             ev.item = it[0]
         return ev
 
+    def evidence(self):
+        """{상대 이름: 관찰}. 넘길 상대 것만."""
+        seen = {}
+        for name, got in self.seen.items():
+            mv = [x for kind, x in got if kind == "기술"]
+            if mv:
+                seen[name] = mv
+        return evidence_map(seen, self.opp_pokes())
+
     def summary(self):
         me = self.party[self.my_active][0]
         got = sorted(x for _k, x in self.seen_of())
-        return ("나 %s %.0f%%   |   상대 %s %.0f%%%s"
+        bench = ", ".join(
+            "%s %.0f%%" % (r["poke"]["name"], r["hp"])
+            for i, r in enumerate(self.opp_party) if i != self.opp_active)
+        return ("나 %s %.0f%%   |   상대 %s %.0f%%%s%s"
                 % (me.name, self.my_hp[self.my_active],
                    self.opp["name"] if self.opp else "?", self.opp_hp,
+                   ("   상대 벤치: " + bench) if bench else "",
                    ("   본 것: " + ", ".join(got)) if got else ""))
 
 
@@ -528,32 +624,139 @@ def apply_token(fight, tok):
             return "상대 HP %s%%" % tok[1:]
         except ValueError:
             pass
+    if tok.startswith("-"):                  # 상대 파티에서 뺀다
+        poke, note = find_poke(dex, tok[1:])
+        if poke is None:
+            return "! %s" % (note or "못 찾았습니다")
+        return fight.opp_drop(poke)
+    if tok in ("x", "X", "쓰러짐", "ㅌ"):     # 나와 있는 상대가 쓰러졌다
+        if fight.opp is None:
+            return "! 상대를 먼저 적어 주세요"
+        gone = fight.opp["name"]
+        fight.opp_hp = 0.0
+        left = fight.opp_alive()
+        if left:
+            fight.opp_active = left[0][0]
+            return "%s 쓰러짐 — 남은 상대 %d마리" % (gone, len(left))
+        return "%s 쓰러짐 — 상대를 다 잡았다" % gone
     if tok.startswith("초"):
         try:
             fight.seconds = max(1.0, float(tok[1:]))
             return "생각할 시간 %.0f초" % fight.seconds
         except ValueError:
             pass
-    poke, note = find_poke(dex, tok)         # 상대가 이놈이다
+    poke, note = find_poke(dex, tok)         # 상대가 이놈을 냈다
     if poke is not None:
-        fresh = fight.opp is None or poke["name"] != fight.opp["name"]
-        fight.opp = poke
-        if fresh:
-            fight.opp_hp = 100.0
-        return note or ("상대: %s" % poke["name"])
+        said = fight.opp_add(poke)
+        return ("%s  (%s)" % (said, note)) if note else said
     return "! '%s' 을 못 알아들었습니다 (? 로 도움말)" % tok
 
 
 HELP = u"""
-  하마돈             상대가 이놈이다 (앞글자만 쳐도 된다)
-  +지진 +자뭉열매     상대에게서 본 기술·도구. **쌓인다**
+  하마돈             상대가 이놈을 냈다 (앞글자만 쳐도 된다)
+                    **상대는 최대 6마리까지 쌓인다.** 이미 본 놈을
+                    다시 치면 '그놈이 나왔다' 가 된다
+  x                 지금 나와 있는 상대가 쓰러졌다
+  -하마돈            잘못 적었을 때 상대 파티에서 뺀다
+  +지진 +자뭉열매     상대에게서 본 기술·도구. **나와 있는 놈 것으로** 쌓인다
   나70 적40          남은 HP 비율
   >아머까오           내가 이놈으로 바꿨다
   초20               이번 턴만 더 오래 생각한다 (보유시간을 쓸 때)
+  선출 하마돈,타부자고,...  팀 프리뷰 — 내 6마리 중 어떤 3마리를 낼까
   .                 그냥 다시 물어본다
   새판                기록을 닫고 새 판을 시작한다
   q                 나가기
 """
+
+
+# ---------------------------------------------------------------------------
+# 지금 판의 상태 만들기 — **창과 글자판이 같이 쓴다**
+# ---------------------------------------------------------------------------
+#
+# ! 이 계산을 창(gui.py) 안에 두면 **여기(리눅스)에서 시험할 수가 없다.**
+#   tkinter 가 없어서 창은 윈도우에서만 돌아간다. 고르는 규칙을 여기로
+#   내려 둔 것과 같은 이유다 — 창은 보여 주고 받아 적기만 하고,
+#   틀리면 조용히 틀어질 계산은 전부 여기서 시험한다.
+
+
+def turn_state(my_hp, my_active, opp_rows, opp_active):
+    """탐색에 넘길 상대 목록과 state 를 만든다.
+
+    opp_rows     [(포켓몬, HP%)] — 자리 순서 그대로. 쓰러진 놈도 들어 있다.
+    opp_active   그 자리들 중 나와 있는 놈의 번호
+
+    돌려주는 것 (상대 목록, state, 안 되면 왜).
+
+    ! **쓰러진 놈을 빼면 번호가 밀린다.** 3번이 나와 있는데 1번이
+      쓰러져 있으면, 넘길 목록에서는 2번이 된다. 이걸 안 맞추면
+      상대가 엉뚱한 놈인 채로 계산이 돌고, 승률은 멀쩡하게 나온다.
+    """
+    alive = [(i, poke, hp) for i, (poke, hp) in enumerate(opp_rows)
+             if poke is not None and hp > 0]
+    if not alive:
+        return None, None, "상대가 한 마리도 살아 있지 않습니다"
+    oi = 0
+    for new_i, (old_i, _p, _hp) in enumerate(alive):
+        if old_i == opp_active:
+            oi = new_i
+            break
+    return ([p for _i, p, _hp in alive],
+            {"my_hp": list(my_hp), "my_active": my_active,
+             "opp_hp": [hp for _i, _p, hp in alive], "opp_active": oi},
+            None)
+
+
+def evidence_map(seen, opp_pokes):
+    """{이름: 본 기술들} 을 {이름: Evidence} 로. 넘길 상대 것만 남긴다.
+
+    ! 하나로 뭉쳐서 넘기지 않는다. '지진을 봤다' 는 그때 나와 있던
+      놈이 지진을 쓴다는 뜻이지 상대 셋 전부가 아니다.
+    """
+    out = {}
+    for poke in opp_pokes:
+        got = (seen or {}).get(poke["name"])
+        if got:
+            out[poke["name"]] = scout.Evidence(seen_moves=list(got))
+    return out or None
+
+
+# ---------------------------------------------------------------------------
+# 팀 프리뷰 — 6마리 중 3마리
+# ---------------------------------------------------------------------------
+SELECT_SECONDS = 60.0     # 팀 프리뷰에 쓸 기본 예산. 실제 제한은 90초쯤이다.
+
+
+def choose_three(dex, party, text, fight=None, seconds=SELECT_SECONDS,
+                 say=None):
+    """'선출 하마돈,타부자고,...' 를 받아 어떤 3마리를 낼지 고른다.
+
+    상대 이름을 안 주면 판에서 이미 본 상대들을 쓴다.
+    """
+    say = say or (lambda t: None)
+    my6 = [row[0] for row in party]
+    names = [x.strip() for x in text.replace(" ", ",").split(",") if x.strip()]
+    if names:
+        opp6 = []
+        for n in names:
+            poke, note = find_poke(dex, n)
+            if poke is None:
+                return "! '%s' %s" % (n, note or "를 못 찾았습니다")
+            opp6.append(poke)
+    elif fight is not None and fight.opp_party:
+        opp6 = [r["poke"] for r in fight.opp_party]
+    else:
+        return ("상대 6마리를 같이 적어 주세요.\n"
+                "  예)  선출 하마돈,타부자고,킬가르도,갑주무사,루카리오,따라큐")
+    if len(my6) < pick.PICK:
+        return "! 내 파티가 %d마리뿐입니다 (%d마리 이상 필요)" % (len(my6),
+                                                        pick.PICK)
+    if len(opp6) < pick.PICK:
+        return "! 상대가 %d마리뿐입니다 (%d마리 이상 필요)" % (len(opp6),
+                                                      pick.PICK)
+
+    opp_builds = [calc.popular_build(dex, p)[0] for p in opp6]
+    got = pick.choose(dex, my6, opp_builds, seconds=seconds, say=say)
+    return pick.short_report(my6, opp_builds, got)
 
 
 # ---------------------------------------------------------------------------
@@ -565,7 +768,7 @@ def advise(fight):
         return "상대를 먼저 적어 주세요 (예: 하마돈)"
     t0 = time.time()
     got = search.best_action(
-        fight.dex, fight.builds(), fight.opp,
+        fight.dex, fight.builds(), fight.opp_pokes(),
         my_moves=fight.moves(), evidence=fight.evidence(),
         seconds=fight.seconds, state=fight.state(),
         seed=fight.turn + 1)
@@ -595,6 +798,9 @@ def advise(fight):
         L.append("   ! 끝까지 못 보고 끊었다 — 초20 처럼 늘려 보세요")
     if got["guessed"]:
         L.append("   ! 내 기술을 사용률로 짐작했다 (파티 파일에 적으세요)")
+    if len(fight.opp_pokes()) < 2:
+        L.append("   ! 상대를 한 마리만 넣었다. 벤치를 아는 만큼 적으면")
+        L.append("     답이 달라진다 (재 보니 한 수에서 64%p 움직였다)")
     L.append("   (%.1f초)" % (time.time() - t0))
 
     fight.note("[%d턴] %s" % (fight.turn, fight.summary()))
@@ -659,7 +865,8 @@ def main():
     print("\n준비 중입니다 (처음 한 번만 걸립니다)...")
     t0 = time.time()
     try:
-        search.best_action(dex, [row[0] for row in party], party[0][0].poke,
+        search.best_action(dex, [row[0] for row in party],
+                           [party[0][0].poke],
                            my_moves=party[0][1] or None, seconds=1.0)
     except Exception as e:
         print("  ! 준비 중에 문제가 있었습니다: %s" % e)
@@ -674,6 +881,10 @@ def main():
         except (EOFError, KeyboardInterrupt):
             break
         if not line:
+            continue
+        if line.startswith("선출"):
+            print("\n" + choose_three(dex, party, line[2:].strip(), fight,
+                                      say=lambda t: print("  " + t)))
             continue
         stop = False
         for tok in line.split():

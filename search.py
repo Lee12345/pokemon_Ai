@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """7단계 — 여러 턴을 내다보고 이번 턴의 수를 고른다.
 
-    python search.py 한카리아스,아머까오,누리레느 하마돈
+    python search.py 한카리아스,아머까오,누리레느 하마돈,브리두라스,갑주무사
     python search.py 한카리아스,아머까오 하마돈 --초 20 --봤다 지진,자뭉열매
 
 ## 4-B 와 무엇이 다른가
@@ -32,9 +32,21 @@
 
 ## 상대는 어떻게 두나
 
+**상대도 파티다.** 챔피언스는 6마리에서 3마리를 내는 룰이라 상대도
+보통 셋이다. 전에는 여기에 **한 마리만** 넣을 수 있었다. 그러면
+"이 한 마리를 이기는 수" 를 고르게 되는데, 실제로 이겨야 하는 것은
+**판**이다. 상대에게 벤치가 있으면 "지금 이놈을 잡는 것" 과
+"판을 이기는 것" 이 자주 다른 답을 낸다.
+
 상대 몸은 매 판 사용률대로 새로 뽑는다 (4-C, `scout.sample_opponent`).
-본 기술·본 도구가 있으면 그만큼 좁혀진다. 상대의 수는 그때그때
-제일 아픈 수를 고르고, 불리하면 스스로 뺀다 — `battle.Policy` 가 한다.
+파티면 **각자 따로** 뽑는다. 본 기술·본 도구가 있으면 그만큼 좁혀진다.
+상대의 수는 그때그때 제일 아픈 수를 고르고, 불리하면 스스로 뺀다 —
+`battle.Policy` 가 한다.
+
+**본 것은 그놈에게만 붙인다.** '지진을 봤다' 는 그때 나와 있던 놈이
+지진을 쓴다는 뜻이지, 벤치의 누리레느도 지진을 든다는 뜻이 아니다.
+그래서 `evidence` 를 하나만 주면 **맨 앞(나와 있는 놈)** 에만 붙고,
+여럿에게 붙이려면 목록이나 {이름: 관찰} 로 준다.
 
 **상대를 '제일 잘 두는 상대' 로 보지 않는다.** 그건 최악을 가정하는
 것이고, 그러면 모든 수가 나빠 보여서 아무것도 못 고른다. 대신 실제로
@@ -72,7 +84,7 @@ CUT = 0.5
 SHALLOW_TURNS = 6
 
 
-def candidate_actions(dex, party, opp_build, my_moves=None):
+def candidate_actions(dex, party, my_moves=None):
     # ! party.active 를 본다. 교체한 뒤에는 나와 있는 놈의 기술이어야 한다.
     """이번 턴에 둘 수 있는 수들. 기술 + 교체.
 
@@ -148,36 +160,77 @@ def _position_value(b):
     return 0.35 + 0.15 * (mine / total)
 
 
-def rollout(dex, my_party, opp_poke, action, rng, evidence=None,
+def _as_list(x):
+    return list(x) if isinstance(x, (list, tuple)) else [x]
+
+
+def _evidence_for(evidence, index, poke):
+    """상대 파티에서 i번째 놈에게 붙는 관찰.
+
+    ! **하나 줬다고 전부에 붙이면 안 된다.** 그러면 상대 세 마리가
+      전부 지진을 들고 나오는데, 승률은 멀쩡한 숫자로 나온다.
+    """
+    if evidence is None:
+        return None
+    if isinstance(evidence, dict):
+        return evidence.get(poke["name"])
+    if isinstance(evidence, (list, tuple)):
+        return evidence[index] if index < len(evidence) else None
+    return evidence if index == 0 else None
+
+
+def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None):
+    """상대가 낸 파티를 한 판치 뽑는다. ([빌드], [[기술]]).
+
+    opp_build 를 주면 뽑지 않고 그것을 쓴다 (몸을 아는 시험용).
+    """
+    if opp_build is not None:
+        builds = _as_list(opp_build)
+        return builds, [[m for m, _ in battle.realistic_moveset(dex, b.poke)]
+                        for b in builds]
+    speed_of = lambda b: best.effective_speed(dex, b)[0]
+    builds, movesets = [], []
+    for i, poke in enumerate(_as_list(opp_pokes)):
+        b, mv = scout.sample_opponent(
+            dex, poke, rng, _evidence_for(evidence, i, poke), speed_of)
+        builds.append(b)
+        movesets.append(mv)
+    return builds, movesets
+
+
+def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
             opp_build=None, turns=None, my_moves=None, state=None):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
     """
-    if opp_build is None:
-        speed_of = lambda b: best.effective_speed(dex, b)[0]
-        opp_build, opp_moves = scout.sample_opponent(
-            dex, opp_poke, rng, evidence, speed_of)
-    else:
-        opp_moves = [m for m, _ in battle.realistic_moveset(
-            dex, opp_build.poke)]
-
-    rows = best.rate_moves(dex, opp_build, my_party[0],
+    opp_builds, opp_sets = sample_opp_party(
+        dex, opp_pokes, rng, evidence, opp_build)
+    st = state or {}
+    # 상대의 첫 수는 **지금 나와 있는 놈끼리** 재야 한다.
+    # ! 전에는 양쪽 다 [0] 으로 굳어 있었다. 2번을 내보낸 채로 물으면
+    #   상대가 1번을 겨냥한 기술을 골랐다 — 조용히 틀어지는 자리다.
+    ai = min(st.get("my_active", 0), len(my_party) - 1)
+    oi = min(st.get("opp_active", 0), len(opp_builds) - 1)
+    opp_moves = opp_sets[oi]
+    rows = best.rate_moves(dex, opp_builds[oi], my_party[ai],
                            [(m, None) for m in opp_moves])
     threat = best.best_threat(rows)
     opp_plan = [threat["move"]] if threat else [
         opp_moves[0] if opp_moves else dex.find_move("막치기")]
+    opp = opp_builds if len(opp_builds) > 1 else opp_builds[0]
 
     if turns is None:
-        res = battle.run_once(dex, my_party, opp_build, _as_plan(action),
+        res = battle.run_once(dex, my_party, opp, _as_plan(action),
                               opp_plan, rng, my_moves=my_moves, state=state)
         return _score(res)
 
     # 끊어 보기 — run_once 를 못 쓰므로 직접 돈다
-    b = battle.Battle(dex, my_party, opp_build, rng=rng, **(state or {}))
-    mine = battle.Policy(dex, my_party, opp_build, _as_plan(action),
-                         moves=my_moves)
-    theirs = battle.Policy(dex, opp_build, my_party, opp_plan)
+    b = battle.Battle(dex, my_party, opp, rng=rng, **st)
+    mine = battle.Policy(dex, my_party, opp, _as_plan(action),
+                         moves=my_moves, lead=b.me_party.active.base)
+    theirs = battle.Policy(dex, opp, my_party, opp_plan,
+                           lead=b.opp_party.active.base)
     for i in range(turns):
         if b.over:
             break
@@ -189,9 +242,12 @@ def rollout(dex, my_party, opp_poke, action, rng, evidence=None,
     return _position_value(b)
 
 
-def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
+def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                 seconds=10.0, seed=1, opp_build=None, state=None):
     """이번 턴의 수를 고른다.
+
+    opp_pokes 는 **한 마리든 파티든** 받는다. 파티를 주면 상대의
+    벤치까지 넣고 판을 끝까지 돌린다.
 
     돌려주는 것 —
       rows     : [{action, name, score, n, dropped}] 점수 내림차순
@@ -206,8 +262,9 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     party = battle.Party(dex, my_party, (state or {}).get("my_hp"))
     if (state or {}).get("my_active"):
         party.active_idx = state["my_active"]
-    builds = my_party if isinstance(my_party, (list, tuple)) else [my_party]
-    actions, guessed = candidate_actions(dex, party, opp_poke, my_moves)
+    builds = _as_list(my_party)
+    opp_pokes = _as_list(opp_pokes)
+    actions, guessed = candidate_actions(dex, party, my_moves)
     # 계획이 끝난 뒤에도 이 기술들 안에서만 고르게 한다
     moves = [a[1] for a in actions if a[0] == "기술"]
 
@@ -223,7 +280,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     fastest = None
     for i in range(WARMUP_MAX):
         one = time.time()
-        rollout(dex, builds, opp_poke, actions[0], rng, evidence,
+        rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
                 opp_build, None, moves, state)
         took = time.time() - one
         fastest = took if fastest is None else min(fastest, took)
@@ -237,7 +294,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     times = []
     for _ in range(PROBE):
         one = time.time()
-        rollout(dex, builds, opp_poke, actions[0], rng, evidence,
+        rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
                 opp_build, None, moves, state)
         times.append(time.time() - one)
     per = max(1e-5, min(times))
@@ -259,7 +316,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
     # **예산이 아무리 짧아도 후보마다 최소 한 판은 돌린다.** 한 판도 안
     # 돌린 후보의 0점은 '나쁘다' 가 아니라 '모른다' 인데, 구별이 안 된다.
     for row in rows:
-        row["sum"] += rollout(dex, builds, opp_poke, row["action"], rng,
+        row["sum"] += rollout(dex, builds, opp_pokes, row["action"], rng,
                               evidence, opp_build, turns, moves, state)
         row["n"] += 1
     while live and not out_of_time:
@@ -268,7 +325,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
                 if time.time() - t0 >= seconds:
                     out_of_time = True
                     break
-                row["sum"] += rollout(dex, builds, opp_poke, row["action"],
+                row["sum"] += rollout(dex, builds, opp_pokes, row["action"],
                                       rng, evidence, opp_build, turns,
                                       moves, state)
                 row["n"] += 1
@@ -284,7 +341,7 @@ def best_action(dex, my_party, opp_poke, my_moves=None, evidence=None,
                 for row in live:
                     if time.time() - t0 >= seconds:
                         break
-                    row["sum"] += rollout(dex, builds, opp_poke,
+                    row["sum"] += rollout(dex, builds, opp_pokes,
                                           row["action"], rng, evidence,
                                           opp_build, turns, moves, state)
                     row["n"] += 1
@@ -328,20 +385,33 @@ def _err(n):
 
 
 
-def report(dex, my_party, opp_poke, got, evidence=None):
+def report(dex, my_party, opp_pokes, got, evidence=None, state=None):
     L = []
     line = "=" * 78
-    builds = my_party if isinstance(my_party, (list, tuple)) else [my_party]
+    builds = _as_list(my_party)
+    foes = _as_list(opp_pokes)
+    st = state or {}
+    ai = min(st.get("my_active", 0), len(builds) - 1)
+    oi = min(st.get("opp_active", 0), len(foes) - 1)
     L.append(line)
     L.append("  7단계  이번 턴에 무엇을 둘까")
     L.append(line)
-    L.append("  나   " + builds[0].describe())
-    if len(builds) > 1:
-        L.append("       벤치 " + ", ".join(b.name for b in builds[1:]))
+    L.append("  나   " + builds[ai].describe())
+    rest = [b.name for i, b in enumerate(builds) if i != ai]
+    if rest:
+        L.append("       벤치 " + ", ".join(rest))
     L.append("  상대 %s — 몸과 기술은 매 판 사용률대로 새로 뽑는다"
-             % opp_poke["name"])
-    if evidence and getattr(evidence, "seen_moves", None):
-        L.append("       본 것: %s" % ", ".join(evidence.seen_moves))
+             % foes[oi]["name"])
+    foe_rest = [p["name"] for i, p in enumerate(foes) if i != oi]
+    if foe_rest:
+        L.append("       벤치 " + ", ".join(foe_rest))
+    else:
+        L.append("       ! 상대를 한 마리만 넣었다. 상대에게 벤치가 있으면")
+        L.append("         '이놈을 잡는 수' 와 '판을 이기는 수' 가 달라진다.")
+    for i, poke in enumerate(foes):
+        ev = _evidence_for(evidence, i, poke)
+        if ev is not None and not ev.empty:
+            L.append("       본 것 (%s): %s" % (poke["name"], ev.describe()))
     L.append("")
     L.append("  %s%d판 · %.1f초 (한 판 %.1fms)"
              % ("**몇 턴에서 끊고 판세로 셈** · " if got["shallow"] else
@@ -415,10 +485,11 @@ def main():
     try:
         mine = [calc.popular_build(dex, dex.find_pokemon(n))[0]
                 for n in rest[0].split(",") if n.strip()]
-        opp = dex.find_pokemon(rest[1])
+        opp = [dex.find_pokemon(n) for n in rest[1].split(",") if n.strip()]
     except LookupError as e:
         print("! %s" % e)
         return
+    # --봤다 는 **나와 있는 놈** 것이다. 벤치에까지 붙이지 않는다.
     ev = scout.Evidence(seen_moves=seen) if seen else None
     got = best_action(dex, mine, opp, my_moves=moves, evidence=ev,
                       seconds=seconds)

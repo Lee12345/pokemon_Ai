@@ -35,6 +35,8 @@
 import itertools
 import random
 import sys
+import time
+
 import paths
 
 import battle
@@ -57,9 +59,13 @@ def pairwise(dex, my6, opp6, trials=40, seed=1):
     (거기서 캐시까지 해 주므로 뒤에서 교체 판단에 다시 쓸 때 공짜다.)
     """
     named = battle.matchup_table(dex, my6, opp6, trials=trials, seed=seed)
-    return {(i, j): named[(mine.name, theirs.name)]
-            for i, mine in enumerate(my6)
-            for j, theirs in enumerate(opp6)}
+    by_idx = {(i, j): named[(mine.name, theirs.name)]
+              for i, mine in enumerate(my6)
+              for j, theirs in enumerate(opp6)}
+    # ! 이름표도 같이 돌려준다. 이게 없으면 조합마다 `evaluate` 안에서
+    #   3x3 표를 새로 재고, 그게 조합당 225판이라 예산이 4배로 터진다.
+    by_idx["_named"] = named
+    return by_idx
 
 
 def _lead_for(trio_idx, foe_trio_idx, table, flip=False):
@@ -86,48 +92,237 @@ def _ordered(party, trio_idx, lead):
 # ---------------------------------------------------------------------------
 # 400 조합 전부 돌리기
 # ---------------------------------------------------------------------------
-def selection_matrix(dex, my6, opp6, table, trials=20, seed=5, verbose=False):
-    """내 20가지 x 상대 20가지의 승률. 실제로 3대3 을 돌려서 잰다."""
+def _one_combo(dex, my6, opp6, table, a, b, trials, seed, named):
+    """조합 하나를 돌린다. 이긴 판수를 돌려준다."""
+    my_lead = _lead_for(a, b, table)
+    op_lead = _lead_for(b, a, table, flip=True)
+    mine = _ordered(my6, a, my_lead)
+    theirs = _ordered(opp6, b, op_lead)
+    opp_plan, _, _ = battle.opponent_plan(dex, theirs, mine)
+    plans, _ = battle.build_plans(dex, mine, theirs)
+    plan = plans[0] if plans else [dex.find_move("막치기")]
+    r = battle.evaluate(dex, mine, theirs, plan, opp_plan,
+                        trials=trials, seed=seed, matchup=named)
+    return r["winRate"] * trials
+
+
+def selection_matrix(dex, my6, opp6, table, trials=20, seed=5, verbose=False,
+                     acc=None, deadline=None, say=None):
+    """내 20가지 x 상대 20가지의 승률. 실제로 3대3 을 돌려서 잰다.
+
+    acc 를 주면 **판수를 쌓는다** ({(a,b): [이긴판수, 전체판수]}).
+    예산이 남으면 같은 조합을 더 돌려서 오차를 줄이는 데 쓴다.
+    deadline 이 지나면 그 자리에서 멈춘다 — 칸마다 판수가 달라질
+    뿐이라 승률 자체는 안 치우친다.
+    """
+    named = table.get("_named")
     my_trios = list(itertools.combinations(range(len(my6)), PICK))
     opp_trios = list(itertools.combinations(range(len(opp6)), PICK))
-    out = {}
+    acc = acc if acc is not None else {}
     total = len(my_trios) * len(opp_trios)
     done = 0
+    stopped = False
     for a in my_trios:
         for b in opp_trios:
-            my_lead = _lead_for(a, b, table)
-            op_lead = _lead_for(b, a, table, flip=True)
-            mine = _ordered(my6, a, my_lead)
-            theirs = _ordered(opp6, b, op_lead)
-            opp_plan, _, _ = battle.opponent_plan(dex, theirs, mine)
-            plans, _ = battle.build_plans(dex, mine, theirs)
-            plan = plans[0] if plans else [dex.find_move("막치기")]
-            r = battle.evaluate(dex, mine, theirs, plan, opp_plan,
-                                trials=trials, seed=seed + done)
-            out[(a, b)] = r["winRate"]
+            if deadline is not None and time.time() > deadline:
+                stopped = True
+                break
+            cell = acc.setdefault((a, b), [0.0, 0])
+            cell[0] += _one_combo(dex, my6, opp6, table, a, b, trials,
+                                  seed + done, named)
+            cell[1] += trials
             done += 1
             if verbose and done % 40 == 0:
                 sys.stderr.write("\r  %d / %d 조합" % (done, total))
                 sys.stderr.flush()
+        if stopped:
+            break
     if verbose:
         sys.stderr.write("\r" + " " * 30 + "\r")
+    out = {k: (v[0] / v[1] if v[1] else 0.0) for k, v in acc.items()}
     return out, my_trios, opp_trios
 
 
-def rank_selections(matrix, my_trios, opp_trios):
-    """내 20가지를 최악 기준·평균 기준으로 줄 세운다."""
+def rank_selections(matrix, my_trios, opp_trios, only=None):
+    """내 20가지를 최악 기준·평균 기준으로 줄 세운다.
+
+    only 를 주면 그 칸들만 본다 (예산이 모자라 다 못 돌렸을 때).
+    """
     rows = []
     for a in my_trios:
-        vals = [matrix[(a, b)] for b in opp_trios]
-        worst_at = min(opp_trios, key=lambda b: matrix[(a, b)])
+        foes = [b for b in opp_trios
+                if only is None or (a, b) in only]
+        if not foes:
+            continue
+        vals = [matrix[(a, b)] for b in foes]
+        worst_at = min(foes, key=lambda b: matrix[(a, b)])
         rows.append({
             "trio": a,
             "worst": min(vals),            # 상대가 제일 잘 고를 때
             "mean": sum(vals) / float(len(vals)),
             "best": max(vals),
             "worstAgainst": worst_at,      # 무엇을 내면 제일 곤란한가
+            "nFoes": len(foes),            # 상대 몇 가지를 보고 낸 값인가
         })
     return rows
+
+
+# ---------------------------------------------------------------------------
+# 예산 안에서 고르기 — 창·글자판이 쓰는 문
+# ---------------------------------------------------------------------------
+# 한 조합을 이만큼은 돌려야 숫자를 믿는다 (승률 오차 최대 ±16%p).
+MIN_TRIALS = 10
+
+
+def _combo_cost(dex, my6, opp6, table, seed=1):
+    """조합 하나에 드는 비용을 **두 점으로 재서** 갈라놓는다.
+
+    (고정비, 한 판당 비용). 조합마다 `opponent_plan` · `build_plans` 를
+    한 번씩 부르는데 그게 판수와 상관없이 드는 값이라, 한 점만 재면
+    예산이 크게 어긋난다.
+
+    ! **첫 판으로 재지 않는다.** 처음 한 번은 캐시를 덥히느라 실제의
+      수백 배가 나온다. 7단계에서 똑같은 것으로 크게 틀렸다.
+    """
+    a = list(range(PICK))
+    b = list(range(PICK))
+    named = table.get("_named")
+    # 덥히기 — 버린다
+    for i in range(3):
+        _one_combo(dex, my6, opp6, table, a, b, 1, seed + 900 + i, named)
+
+    def at(trials, tag):
+        fastest = None
+        for i in range(3):
+            t0 = time.time()
+            _one_combo(dex, my6, opp6, table, a, b, trials,
+                       seed + tag * 100 + i, named)
+            took = time.time() - t0
+            fastest = took if fastest is None else min(fastest, took)
+        return fastest
+
+    lo, hi = 1, 9
+    t_lo, t_hi = at(lo, 1), at(hi, 2)
+    per = max(1e-6, (t_hi - t_lo) / float(hi - lo))
+    fixed = max(0.0, t_lo - per * lo)
+    return fixed, per
+
+
+def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
+    """예산(초) 안에서 선출을 고른다.
+
+    400 조합을 **전부** 훑는 것은 그대로 두고, 남는 시간으로 판수를
+    쌓는다. 판수를 적어 돌려주므로 오차를 같이 말할 수 있다.
+
+    돌려주는 것 —
+      rows / myTrios / oppTrios / matrix / table
+      trials     : 조합당 판수 (제일 적게 돌린 칸 기준)
+      pairTrials : 1대1 상성표에 쓴 판수
+      spent      : 실제로 쓴 초
+      tight      : 최소 판수조차 다 못 돌렸으면 True
+    """
+    my6, opp6 = list(my6), list(opp6)
+    n_combos = (len(list(itertools.combinations(range(len(my6)), PICK)))
+                * len(list(itertools.combinations(range(len(opp6)), PICK))))
+    n_pairs = len(my6) * len(opp6)
+
+    t0 = time.time()
+    end = t0 + seconds
+    # 상성표를 먼저 챙긴다. 교체 판단이 여기서 나오므로 이게 부실하면
+    # 400조합이 다 부실해진다. 그리고 조합마다 물려줘서 다시 안 잰다.
+    pair_trials = 25
+    if say:
+        say("1대1 상성표 재는 중 (%d쌍 x %d판)" % (n_pairs, pair_trials))
+    table = pairwise(dex, my6, opp6, trials=pair_trials, seed=seed)
+
+    fixed, per = _combo_cost(dex, my6, opp6, table, seed)
+    left = max(0.0, end - time.time())
+    # 한 바퀴(모든 조합 1판) 에 드는 시간
+    lap = n_combos * (fixed + per)
+    first = max(MIN_TRIALS, int((left * 0.6 - n_combos * fixed)
+                                / max(1e-9, n_combos * per)))
+    if say:
+        say("조합 %d가지 · 고정비 %.1fms + 판당 %.1fms → 첫 바퀴 %d판"
+            % (n_combos, fixed * 1000, per * 1000, first))
+
+    acc = {}
+    matrix, my_trios, opp_trios = selection_matrix(
+        dex, my6, opp6, table, trials=first, seed=seed + 4, acc=acc,
+        deadline=end)
+    # 남는 예산으로 판수를 더 쌓는다. 한 바퀴가 통째로 들어갈 만할 때만.
+    passes = 1
+    while True:
+        left = end - time.time()
+        add = int((left - n_combos * fixed) / max(1e-9, n_combos * per))
+        if add < MIN_TRIALS or left < lap:
+            break
+        matrix, my_trios, opp_trios = selection_matrix(
+            dex, my6, opp6, table, trials=add, seed=seed + 40 * passes,
+            acc=acc, deadline=end)
+        passes += 1
+        if say:
+            say("남는 시간으로 %d판 더 쌓았다" % add)
+
+    done = [v[1] for v in acc.values()]
+    trials = min(done) if done else 0
+    # 한 바퀴를 다 못 돌았으면 칸이 비어 있다 — 그건 숨기면 안 된다.
+    missing = n_combos - len(acc)
+    rows = rank_selections(matrix, my_trios, opp_trios,
+                           only=set(acc.keys()))
+    return {"rows": rows, "myTrios": my_trios, "oppTrios": opp_trios,
+            "matrix": matrix, "table": table, "trials": trials,
+            "pairTrials": pair_trials, "spent": time.time() - t0,
+            "tight": trials < MIN_TRIALS or missing > 0,
+            "missing": missing, "combos": n_combos,
+            "fixed": fixed, "perBattle": per}
+
+
+def short_report(my6, opp6, got):
+    """창·글자판에 뿌릴 짧은 보고서. 폰에서도 읽히게 좁게."""
+    rows = sorted(got["rows"], key=lambda x: -x["worst"])
+    err = trio_error(got["trials"]) * 100
+    L = ["  [선출] 내 %d마리 중 %d마리 — %d가지 조합을 %d판 이상씩 돌렸다"
+         % (len(my6), PICK, got["combos"] - got.get("missing", 0),
+            got["trials"]),
+         "  " + "-" * 52,
+         "   %-30s %7s %7s" % ("3마리", "최악", "평균")]
+    for r in rows[:5]:
+        L.append("   %-30s %6.0f%% %6.0f%%"
+                 % (_names(my6, r["trio"]), r["worst"] * 100,
+                    r["mean"] * 100))
+    L.append("  " + "-" * 52)
+    by_worst = max(got["rows"], key=lambda x: x["worst"])
+    by_mean = max(got["rows"], key=lambda x: x["mean"])
+    L.append("   최악 기준 => %s   (최악 %.0f%% ±%.0f%%p)"
+             % (_names(my6, by_worst["trio"]), by_worst["worst"] * 100, err))
+    L.append("   평균 기준 => %s   (평균 %.0f%% ±%.0f%%p)"
+             % (_names(my6, by_mean["trio"]), by_mean["mean"] * 100, err))
+    if by_worst["trio"] == by_mean["trio"]:
+        L.append("   둘이 같다. 고민할 것 없다.")
+    else:
+        L.append("   둘이 다르다. 크게 지지 않으려면 위, 상대가 특별히")
+        L.append("   잘 고르지 않는다고 보면 아래.")
+    L.append("   제일 곤란한 상대 선출: %s"
+             % _names(opp6, by_worst["worstAgainst"]))
+    if got.get("missing"):
+        L.append("   ! 시간이 모자라 %d가지 조합 중 %d가지를 못 돌렸다."
+                 % (got["combos"], got["missing"]))
+        L.append("     안 돌린 것이 더 나빴을 수 있다. 초를 늘리세요.")
+    elif got["tight"]:
+        L.append("   ! 시간이 모자라 조합당 %d판만 돌렸다 (오차 ±%.0f%%p)."
+                 % (got["trials"], err))
+        L.append("     이 정도 차이는 우연일 수 있다. 초를 늘리세요.")
+    L.append("   ! 최악 기준과 평균 기준의 차이가 오차(±%.0f%%p)보다"
+             % err)
+    L.append("     작으면 둘 중 어느 쪽도 확실하지 않다.")
+    L.append("   ! 상대 배분·기술은 사용률 1위로 봤다 (아직 분포를 안 썼다).")
+    L.append("   (%.0f초)" % got["spent"])
+    return "\n".join(L)
+
+
+def trio_error(trials):
+    """조합당 판수에서 오는 승률 오차(대략). 이기냐 지냐라 분산이 최대 0.25."""
+    return 0.5 / (max(1, trials) ** 0.5)
 
 
 # ---------------------------------------------------------------------------

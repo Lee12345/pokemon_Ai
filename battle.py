@@ -744,13 +744,16 @@ class Battle(object):
 
     def __init__(self, dex, me_build, opp_build, rng=None, log=False,
                  matchup=None, my_hp=None, opp_hp=None, my_active=0,
-                 opp_hazards=None, my_hazards=None):
+                 opp_hazards=None, my_hazards=None, opp_active=0):
         self.dex = dex
         # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
         self.me_party = Party(dex, me_build, my_hp)
         self.opp_party = Party(dex, opp_build, opp_hp)
         if my_active:
             self.me_party.active_idx = my_active
+        # 상대도 1번이 나와 있으란 법이 없다. 실전은 1턴부터 시작하지 않는다.
+        if opp_active:
+            self.opp_party.active_idx = opp_active
         # 이미 깔려 있는 압정도 받는다 (실전은 1턴부터 시작하지 않는다)
         if my_hazards:
             self.me_party.hazards = dict(my_hazards)
@@ -1967,7 +1970,7 @@ class Policy(object):
     """
 
     def __init__(self, dex, party, foe_build, plan, allow_switch=True,
-                 moves=None):
+                 moves=None, lead=None):
         """moves 를 주면 **계획이 끝난 뒤에도 그 기술들만 쓴다.**
 
         ! 이게 없어서 7단계가 조용히 거짓말을 했다. 계획(plan)은 첫 턴
@@ -1976,13 +1979,30 @@ class Policy(object):
           땅 무효)를 상대하는 판이 96.7% 승률로 나왔다 — 2턴째부터
           화염방사를 쓰고 있었던 것이다.
           숫자가 그럴듯해서 눈으로는 절대 못 잡는 종류다.
+
+        lead 는 **계획이 누구 것이냐** 다. 안 주면 파티의 1번으로 본다.
+
+        ! 여기서도 똑같이 조용히 틀어졌다. 실전은 1번이 나와 있는
+          상태에서만 시작하지 않는데, lead 를 1번으로 굳혀 놓으니
+          2번을 내보낸 채로 물으면 `act` 의 첫 줄
+          (`party.active.base is self.lead`) 이 False 가 되어
+          **계획을 통째로 건너뛰었다.** 그러면 "이 수를 두면
+          어떻게 되나" 를 묻는데 그 수를 아예 안 두고 답한 것이다.
+          재 보니 철벽·브레이브버드·날개쉬기 세 계획이 같은 씨앗에서
+          결과까지 완전히 똑같이 나왔다 (이김 / 파티HP 81.04% / 6턴).
+          점수는 91.9~93.1 로 그럴듯하게 벌어져 있어서 눈으로는 못 잡는다.
         """
         self.dex = dex
         self.plan = plan
         # moves 를 주면 **계획이 끝난 뒤에는 첫 수를 반복하지 않고**
         # 그 기술들 중 제일 나은 것을 매번 고른다 (7단계가 쓰는 방식).
-        self.moves = list(moves) if moves else None
-        self.lead = party[0] if isinstance(party, (list, tuple)) else party
+        # 이름으로 줘도 받는다 — 안 그러면 `_best_move` 안에서 터진다.
+        self.moves = ([m if isinstance(m, dict) else dex.find_move(m)
+                       for m in moves] if moves else None)
+        if lead is not None:
+            self.lead = lead
+        else:
+            self.lead = party[0] if isinstance(party, (list, tuple)) else party
         self._fallback = {}
         self._foe = _first(foe_build)
         # 계획이 끝난 뒤에는 스스로 뺄지도 판단한다.
@@ -2098,9 +2118,12 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
                matchup=matchup, **(state or {}))
     # 내 쪽은 '이 계획이 좋은가' 를 재는 중이므로 계획을 그대로 밀고,
     # 계획이 끝난 뒤부터는 양쪽 다 빼는 것을 판단한다.
-    mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves)
+    # ! lead 를 **Battle 에게 물어서** 넘긴다. 손으로 me_build[0] 이라고
+    #   적으면 state 로 '2번이 나와 있다' 를 줬을 때 조용히 어긋난다.
+    mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves,
+                  lead=b.me_party.active.base)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
-                    allow_switch=opp_switch)
+                    allow_switch=opp_switch, lead=b.opp_party.active.base)
     for i in range(MAX_TURNS):
         if b.over:
             break
@@ -2127,19 +2150,29 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
 
 
 def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
-             seed=7, my_party=None):
+             seed=7, my_party=None, matchup=None):
     """같은 계획을 여러 번 돌려 승률과 '평균적으로 어떤 상태로 끝나는지' 를 낸다.
 
     난수(데미지 16단계 · 명중 · 급소 · 마비)가 있으므로 한 판만 봐서는 안 된다.
+
+    matchup 을 주면 1대1 상성표를 **다시 재지 않는다.**
+
+    ! 이걸 안 주면 여기서 매번 표를 새로 잰다. 표 하나가 3x3 x 25판
+      = 225판이라, 400조합을 훑는 6단계(선출)에서는 **조합당 225판이
+      덤으로** 붙었다. 실제 평가가 조합당 29판이었으니 덤이 본전의
+      8배였던 것이다. 45초로 잡은 예산이 199초가 나왔다.
+      표는 이름으로 캐시되는데 3마리 조합마다 이름쌍이 달라서
+      400개가 전부 따로 만들어졌다. 6x6 표를 이미 재 놓고도 그랬다.
     """
     rng = random.Random(seed)
-    table = matchup_table(dex, me_build, opp_build)
     wins = 0
     turns = hp = 0.0
     lost = party_hp = 0.0
     ranks = {}
     counts = {}
     warnings = []
+    table = matchup if matchup is not None else matchup_table(
+        dex, me_build, opp_build)
     for _ in range(trials):
         r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng,
                      matchup=table)
