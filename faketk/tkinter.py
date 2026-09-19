@@ -75,6 +75,8 @@ class _W(object):
     def after(self, ms, fn=None, *a):
         if fn is not None:
             fn(*a)
+    def winfo_viewable(self): return True
+    def winfo_ismapped(self): return True
     def winfo_rootx(self): return 0
     def winfo_rooty(self): return 0
     def winfo_height(self): return 20
@@ -136,8 +138,20 @@ class Text(_W):
 
 
 class Toplevel(_W):
-    def withdraw(self): pass
-    def deiconify(self): pass
+    """! **보이나 안 보이나를 실제로 들고 있어야 한다.**
+    처음엔 withdraw/deiconify 를 빈 함수로 뒀는데, 그러면
+    `winfo_viewable()` 이 없거나 늘 같은 값이라 "닫혀 있으면 먼저 연다"
+    같은 코드를 시험할 수가 없다. 가짜가 너무 가짜면 안 잡힌다."""
+
+    def __init__(self, master=None, **kw):
+        _W.__init__(self, master, **kw)
+        self._shown = False
+
+    def withdraw(self): self._shown = False
+    def deiconify(self): self._shown = True
+    def winfo_viewable(self): return self._shown
+    def winfo_ismapped(self): return self._shown
+    def state(self, *a): return "normal" if self._shown else "withdrawn"
     def overrideredirect(self, *a): pass
     def geometry(self, *a): pass
     def lift(self): pass

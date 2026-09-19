@@ -132,6 +132,11 @@ class Picker(object):
         self.list.pack(fill="both", expand=True)
 
         self.var.trace_add("write", lambda *_a: self.refresh())
+        # ! **눌렀을 때도 열려야 한다.** 전에는 글자를 쳐야만 열려서,
+        #   이름을 모르는 칸(특성·성격·도구)은 아예 고를 수가 없었다.
+        #   하마돈 특성이 '모래날림/모래의힘' 인 걸 모르면 칸을 눌러도
+        #   아무 일도 안 일어났다. 사용자가 되물어서 잡혔다 (2026-09-19).
+        self.entry.bind("<Button-1>", lambda _e: self.refresh(force=True))
         self.entry.bind("<Down>", self._down)
         self.entry.bind("<Return>", self._enter)
         self.entry.bind("<Escape>", lambda _e: self.hide())
@@ -168,19 +173,27 @@ class Picker(object):
         else:
             self.mark.config(text="")
 
-    def refresh(self):
+    def refresh(self, force=False):
+        """후보를 다시 그린다.
+
+        force 면 **빈 칸이어도 전부 보여 준다** — 칸을 눌렀을 때다.
+        이름을 모르는 칸은 이게 없으면 고를 방법이 없다.
+        """
         typed = self.var.get().strip()
         # 정확히 같은 글이면 그걸로 고른 것으로 본다
         exact = [v for t, v in self.items if t == typed]
         self.value = exact[0] if exact else None
         self._mark()
-        if not typed or exact:
+        if not force and (not typed or exact):
             self.hide()
             return
-        hits = [(t, v) for t, v in self.items
-                if t.startswith(typed)] + [(t, v) for t, v in self.items
-                                           if typed in t and
-                                           not t.startswith(typed)]
+        if not typed:
+            hits = list(self.items)
+        else:
+            hits = [(t, v) for t, v in self.items
+                    if t.startswith(typed)] + [(t, v) for t, v in self.items
+                                               if typed in t and
+                                               not t.startswith(typed)]
         self.list.delete(0, "end")
         for t, _v in hits[:40]:
             self.list.insert("end", t)
@@ -205,6 +218,10 @@ class Picker(object):
             pass
 
     def _down(self, _e):
+        # 닫혀 있으면 **먼저 연다.** 전에는 닫혀 있을 때 아래키가
+        # 아무 일도 안 했다 — 칸을 눌러도 안 열리니 열 방법이 없었다.
+        if not self.pop.winfo_viewable():
+            self.refresh(force=True)
         if self.pop.winfo_viewable():
             self.list.focus_set()
             self.list.selection_clear(0, "end")
@@ -216,7 +233,10 @@ class Picker(object):
         hits = getattr(self, "_hits", [])
         if sel and hits:
             text, value = hits[sel[0]]
-        elif hits:
+        elif hits and self.var.get().strip():
+            # 친 글자가 있을 때만 1등을 골라 준다.
+            # ! 빈 칸에서 엔터를 쳤다고 목록 맨 위를 골라 버리면,
+            #   고를 생각이 없었는데 231마리 중 첫 놈이 들어간다.
             text, value = hits[0]
         else:
             return "break"
@@ -977,6 +997,36 @@ def check():
     if len(app.party()) != 2:
         print("파티가 두 마리로 안 잡힙니다: %d" % len(app.party()))
         return 1
+
+    # ★ **칸을 눌렀을 때 후보가 뜨는가.**
+    #    안 뜨면 이름을 모르는 칸(특성·성격·도구)은 고를 방법이 아예 없다.
+    #    하마돈 특성이 '모래날림/모래의힘' 인 걸 모르면 칸을 눌러도
+    #    아무 일도 안 일어났다. 사용자가 되물어서 잡혔다 (2026-09-19).
+    for label, pk in (("특성", slot.ability), ("성격", slot.nature),
+                      ("도구", slot.item), ("기술", slot.move_pickers[0]),
+                      ("포켓몬", slot.name)):
+        pk.set("", None)
+        pk.refresh(force=True)
+        if not pk.list.size():
+            print("%s 칸을 눌러도 후보가 안 뜹니다" % label)
+            return 1
+        # 아래키로도 열려야 한다 (닫혀 있으면 먼저 열고 고른다)
+        pk.hide()
+        pk._down(None)
+        if not pk.pop.winfo_viewable():
+            print("%s 칸에서 아래키를 눌러도 안 열립니다" % label)
+            return 1
+        pk.hide()
+    # 빈 칸에서 엔터를 쳤다고 멋대로 1등을 고르면 안 된다
+    slot.ability.set("", None)
+    slot.ability._hits = []
+    slot.ability.list.delete(0, "end")
+    slot.ability._enter()
+    if slot.ability.get() is not None:
+        print("빈 칸에서 엔터를 쳤는데 멋대로 골랐습니다: %r"
+              % slot.ability.get())
+        return 1
+    slot.ability.set("모래날림", "모래날림")
 
     # ⑤ 자리가 6개로 열리는가 (챔피언스는 6마리를 데려간다)
     if len(app.slots) != 6 or len(app.opp_slots) != 6:
