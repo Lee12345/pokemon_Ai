@@ -163,6 +163,11 @@ def rank_selections(matrix, my_trios, opp_trios, only=None):
             "best": max(vals),
             "worstAgainst": worst_at,      # 무엇을 내면 제일 곤란한가
             "nFoes": len(foes),            # 상대 몇 가지를 보고 낸 값인가
+            # **선봉도 답의 일부다.** 전에는 보고서가 "3마리" 까지만 말하고
+            # 누구를 먼저 낼지는 안 알려줬다. 실전에서는 그걸 정해야
+            # 다음 화면으로 넘어간다. 사용자가 되물어서 넣었다 (2026-09-19).
+            "lead": None,                  # 아래 attach_leads 가 채운다
+            "leadWorst": None,
         })
     return rows
 
@@ -269,6 +274,7 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
     missing = n_combos - len(acc)
     rows = rank_selections(matrix, my_trios, opp_trios,
                            only=set(acc.keys()))
+    attach_leads(rows, table, opp6)
     return {"rows": rows, "myTrios": my_trios, "oppTrios": opp_trios,
             "matrix": matrix, "table": table, "trials": trials,
             "pairTrials": pair_trials, "spent": time.time() - t0,
@@ -277,33 +283,93 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
             "fixed": fixed, "perBattle": per}
 
 
-def short_report(my6, opp6, got):
-    """창·글자판에 뿌릴 짧은 보고서. 폰에서도 읽히게 좁게."""
+def attach_leads(rows, table, opp6):
+    """조합마다 **선봉**을 정해서 붙인다.
+
+    lead       상대 6마리 전체를 상대로 평균 승률이 제일 높은 놈 (무난한 답)
+    leadWorst  제일 곤란한 상대 선출을 상대로 제일 나은 놈 (최악 기준의 답)
+
+    ! **이건 정한 규칙이지 끝까지 돌려 본 것이 아니다.** 선봉을 바꿔
+      가며 400조합을 다시 돌리면 8배가 든다. 보고서가 그렇게 밝힌다.
+    """
+    all_foes = list(range(len(opp6)))
+    for r in rows:
+        r["lead"] = _lead_for(r["trio"], all_foes, table)
+        r["leadWorst"] = _lead_for(r["trio"], r["worstAgainst"], table)
+    return rows
+
+
+def real_names(dex, party, trio, lead):
+    """**실제로 싸우는 몸의 이름**을 선봉부터 순서대로.
+
+    ! 메가진화는 한 게임에 한 번뿐이라, 메가스톤을 둘 이상 들고 나가도
+      메가가 되는 것은 **먼저 나오는 놈** 하나다. 그런데 보고서가
+      `calc.popular_build` 이 만든 이름을 그대로 찍으면 '메가보만다' 라고
+      적어 놓고 실제로는 '보만다' 로 싸운다. **화면과 계산이 갈라지는
+      자리다** — 이 저장소가 늘 고장나는 방식이다.
+      그래서 `battle._one_mega_only` 를 똑같이 태워서 이름을 받는다.
+    """
+    order = [lead] + [i for i in trio if i != lead]
+    fixed, _note = battle._one_mega_only(dex, [party[i] for i in order])
+    return [b.name for b in fixed]
+
+
+def _trio_line(dex, party, r, key="lead"):
+    """'선봉 A → B · C' 처럼. 선봉을 맨 앞에 놓고 화살표로 가른다."""
+    lead = r.get(key)
+    if lead is None:
+        return _names(party, r["trio"])
+    got = real_names(dex, party, r["trio"], lead)
+    return "%s → %s" % (got[0], " · ".join(got[1:]))
+
+
+def short_report(dex, my6, opp6, got):
+    """창·글자판에 뿌릴 짧은 보고서. 폰에서도 읽히게 좁게.
+
+    **답을 한 줄로 못 박는다.** 3마리와 **선봉**까지. 전에는 3마리까지만
+    말해서 "그래서 누굴 먼저 내라는 거지?" 가 남았다.
+    """
     rows = sorted(got["rows"], key=lambda x: -x["worst"])
     err = trio_error(got["trials"]) * 100
-    L = ["  [선출] 내 %d마리 중 %d마리 — %d가지 조합을 %d판 이상씩 돌렸다"
-         % (len(my6), PICK, got["combos"] - got.get("missing", 0),
-            got["trials"]),
-         "  " + "-" * 52,
-         "   %-30s %7s %7s" % ("3마리", "최악", "평균")]
-    for r in rows[:5]:
-        L.append("   %-30s %6.0f%% %6.0f%%"
-                 % (_names(my6, r["trio"]), r["worst"] * 100,
-                    r["mean"] * 100))
-    L.append("  " + "-" * 52)
     by_worst = max(got["rows"], key=lambda x: x["worst"])
     by_mean = max(got["rows"], key=lambda x: x["mean"])
-    L.append("   최악 기준 => %s   (최악 %.0f%% ±%.0f%%p)"
-             % (_names(my6, by_worst["trio"]), by_worst["worst"] * 100, err))
-    L.append("   평균 기준 => %s   (평균 %.0f%% ±%.0f%%p)"
-             % (_names(my6, by_mean["trio"]), by_mean["mean"] * 100, err))
-    if by_worst["trio"] == by_mean["trio"]:
-        L.append("   둘이 같다. 고민할 것 없다.")
+
+    L = []
+    L.append("  " + "=" * 52)
+    L.append("  [선출]  이 3마리를 이 순서로 내세요")
+    L.append("  " + "=" * 52)
+    L.append("")
+    best = real_names(dex, my6, by_worst["trio"], by_worst["leadWorst"])
+    L.append("    ▶ 선봉   %s" % best[0])
+    L.append("      벤치   %s" % " · ".join(best[1:]))
+    L.append("")
+    L.append("      최악 기준 승률 %.0f%% ±%.0f%%p   (평균 기준 %.0f%%)"
+             % (by_worst["worst"] * 100, err, by_worst["mean"] * 100))
+    if by_worst["trio"] != by_mean["trio"]:
+        L.append("")
+        L.append("    ! 평균 기준으로는 다른 답이 나온다:")
+        alt = real_names(dex, my6, by_mean["trio"], by_mean["lead"])
+        L.append("      ▶ 선봉 %s / 벤치 %s   (평균 %.0f%%)"
+                 % (alt[0], " · ".join(alt[1:]), by_mean["mean"] * 100))
+        L.append("      크게 지지 않으려면 위, 상대가 특별히 잘 고르지")
+        L.append("      않는다고 보면 아래.")
     else:
-        L.append("   둘이 다르다. 크게 지지 않으려면 위, 상대가 특별히")
-        L.append("   잘 고르지 않는다고 보면 아래.")
+        L.append("      (최악 기준과 평균 기준이 같다. 고민할 것 없다.)")
+
+    L.append("")
+    L.append("  " + "-" * 52)
+    L.append("   %-32s %7s %7s" % ("다른 후보 (선봉 → 벤치)", "최악", "평균"))
+    for r in rows[:5]:
+        L.append("   %-32s %6.0f%% %6.0f%%"
+                 % (_trio_line(dex, my6, r, "leadWorst"), r["worst"] * 100,
+                    r["mean"] * 100))
+    L.append("  " + "-" * 52)
     L.append("   제일 곤란한 상대 선출: %s"
              % _names(opp6, by_worst["worstAgainst"]))
+    L.append("   %d가지 조합을 %d판 이상씩 돌렸다 (%.0f초)"
+             % (got["combos"] - got.get("missing", 0), got["trials"],
+                got["spent"]))
+
     if got.get("missing"):
         L.append("   ! 시간이 모자라 %d가지 조합 중 %d가지를 못 돌렸다."
                  % (got["combos"], got["missing"]))
@@ -312,11 +378,16 @@ def short_report(my6, opp6, got):
         L.append("   ! 시간이 모자라 조합당 %d판만 돌렸다 (오차 ±%.0f%%p)."
                  % (got["trials"], err))
         L.append("     이 정도 차이는 우연일 수 있다. 초를 늘리세요.")
-    L.append("   ! 최악 기준과 평균 기준의 차이가 오차(±%.0f%%p)보다"
-             % err)
-    L.append("     작으면 둘 중 어느 쪽도 확실하지 않다.")
+    if abs(by_worst["worst"] - by_mean["worst"]) * 100 < err:
+        L.append("   ! 1등과 2등 차이가 오차(±%.0f%%p)보다 작다 —" % err)
+        L.append("     어느 쪽도 확실하지 않다.")
+    L.append("   ! **선봉은 정한 규칙으로 골랐다** (상대에게 평균 승률이")
+    L.append("     제일 높은 놈). 3마리처럼 끝까지 돌려 본 것이 아니다.")
     L.append("   ! 상대 배분·기술은 사용률 1위로 봤다 (아직 분포를 안 썼다).")
-    L.append("   (%.0f초)" % got["spent"])
+    if any("메가" in b.name for b in my6):
+        L.append("   ! 메가는 **한 게임에 하나뿐**이라 선봉만 메가가 된다.")
+        L.append("     위 이름은 실제로 싸우는 몸으로 적었다.")
+    L.append("  " + "=" * 52)
     return "\n".join(L)
 
 

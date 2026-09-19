@@ -756,7 +756,7 @@ def choose_three(dex, party, text, fight=None, seconds=SELECT_SECONDS,
 
     opp_builds = [calc.popular_build(dex, p)[0] for p in opp6]
     got = pick.choose(dex, my6, opp_builds, seconds=seconds, say=say)
-    return pick.short_report(my6, opp_builds, got)
+    return pick.short_report(dex, my6, opp_builds, got)
 
 
 # ---------------------------------------------------------------------------

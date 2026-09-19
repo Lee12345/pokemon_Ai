@@ -509,6 +509,20 @@ for _n in range(-6, 7):
     RANK_TABLE[_n] = (2 + _n) / 2.0 if _n >= 0 else 2.0 / (2 - _n)
 
 
+def base_form(dex, poke):
+    """메가 폼을 원래(기본) 폼으로 되돌린다. 메가가 아니면 그대로.
+
+    **메가진화는 한 게임에 한 번뿐이라** 파티에 메가스톤이 둘 이상 있어도
+    실제로 메가가 되는 것은 하나다. 나머지는 스톤만 든 기본 폼으로 싸운다.
+    그걸 되돌릴 때 쓴다 (`battle.Party` 가 부른다).
+    """
+    if not poke.get("isMega"):
+        return poke
+    same = [q for q in dex.pokemon
+            if q["dexNo"] == poke["dexNo"] and not q.get("isMega")]
+    return same[0] if same else poke
+
+
 class Build(object):
     """실제로 싸우는 한 마리. 포켓몬 + 노력치 + 성격 + 상태."""
 

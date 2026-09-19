@@ -492,17 +492,52 @@ class OppSlot(object):
                    textvariable=self.hp, bg=FIELD, fg=TEXT,
                    insertbackground=TEXT, relief="flat",
                    buttonbackground=LINE, font=FONT_S).pack(side="left")
+        # **밝혀졌나.** 프리뷰에서 본 6마리와, 실제로 낸 것이 확인된 놈은
+        # 다른 것이다. 상대 선출은 모르지만 **밝혀진 만큼은 알고 있고**,
+        # 그게 눈에 보여야 한다 (사용자 요청, 2026-09-19).
+        self.brought = tk.BooleanVar(value=False)
+        tk.Checkbutton(self.box, text="냈다", variable=self.brought,
+                       bg=CARD, fg=TEXT, selectcolor=FIELD,
+                       activebackground=CARD, activeforeground=TEXT,
+                       font=FONT_S, command=self.redraw_state
+                       ).pack(side="left", padx=(6, 0))
         tk.Radiobutton(self.box, text="나와 있음", variable=app.opp_active,
                        value=index, bg=CARD, fg=TEXT, selectcolor=FIELD,
                        activebackground=CARD, activeforeground=TEXT,
                        font=FONT_S,
-                       command=app.draw_seen).pack(side="left", padx=(6, 0))
+                       command=self.on_active).pack(side="left", padx=(6, 0))
+        # 한눈에 보이는 표시 — ● 밝혀짐 / ○ 아직 모름
+        self.state_label = tk.Label(self.box, text="", bg=CARD, fg=DIM,
+                                    font=FONT_S, width=8, anchor="w")
+        self.state_label.pack(side="left", padx=(6, 0))
         self.seen_label = tk.Label(self.box, text="", bg=CARD, fg=DIM,
                                    font=FONT_S, anchor="w")
         self.seen_label.pack(side="left", padx=(6, 0))
 
+    def on_active(self):
+        """'나와 있음' 으로 고르면 **그놈은 당연히 낸 것이다.**
+        따로 체크하게 만들면 잊어버리고, 그러면 계산에서 빠진다."""
+        if self.poke is not None:
+            self.brought.set(True)
+        self.app.draw_seen()
+        self.app.redraw_opp_states()
+
+    def revealed(self):
+        """밝혀진 놈인가 (낸 것이 확인됐나)."""
+        return bool(self.poke) and bool(self.brought.get())
+
+    def redraw_state(self):
+        if self.poke is None:
+            self.state_label.config(text="", fg=DIM)
+        elif self.brought.get():
+            self.state_label.config(text="● 밝혀짐", fg=GOOD)
+        else:
+            self.state_label.config(text="○ 모름", fg=DIM)
+        self.app.redraw_opp_states()
+
     def on_poke(self, poke):
         self.poke = poke
+        self.redraw_state()
         # '나와 있음' 이 **빈 자리에 놓여 있으면** 방금 고른 이 자리로
         # 옮긴다. 안 그러면 3번부터 채운 사람은 아무 데도 안 가리킨
         # 채로 물어보게 된다.
@@ -613,10 +648,16 @@ class App(object):
         box.pack(fill="x")
         tk.Label(box, text="상대 — 프리뷰에서 본 6마리, 대전 중에는 낸 3마리",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
+        tk.Label(box, text="「냈다」 를 켜면 ● 밝혀짐 — 이번 턴 계산에 들어갑니다. "
+                           "안 켠 것은 프리뷰에서 본 것뿐입니다.",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
         tk.Label(box, text="HP 0 이면 쓰러진 것으로 봅니다. "
                            "배분·성격은 안 묻습니다 (사용률에서 뽑습니다).",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
         self.opp_active = tk.IntVar(value=0)
+        self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
+                                  font=FONT_S, anchor="w")
+        self.opp_state.pack(anchor="w")
         holder = tk.Frame(box, bg=CARD)
         holder.pack(fill="x", pady=(4, 0))
         for i in range(MAX_PARTY):
@@ -734,6 +775,19 @@ class App(object):
         for sl in self.opp_slots:
             sl.draw_seen(self.seen.get((sl.poke or {}).get("name")) or [])
 
+    def redraw_opp_states(self):
+        """상대 쪽 한 줄 요약. '6마리 중 2마리 밝혀짐' 처럼."""
+        filled = [sl for sl in self.opp_slots if sl.poke]
+        shown = [sl for sl in filled if sl.revealed()]
+        if not filled:
+            self.opp_state.config(text="상대를 아직 안 적었습니다.", fg=DIM)
+            return
+        self.opp_state.config(
+            text="프리뷰 %d마리 적음 · 그중 %d마리가 밝혀짐 (%s)"
+                 % (len(filled), len(shown),
+                    ", ".join(sl.poke["name"] for sl in shown) or "아직 없음"),
+            fg=(GOOD if shown else DIM))
+
     def opp_party(self):
         """칸이 채워진 상대 자리들. [(포켓몬, HP%)] — 쓰러진 놈도 들어 있다."""
         return [(sl.poke, sl.hp_pct()) for sl in self.opp_slots if sl.poke]
@@ -790,8 +844,14 @@ class App(object):
         # 쓰러진 상대(HP 0)는 빼고 넘긴다. 빼면 번호가 밀리므로
         # **나와 있는 놈의 새 번호를 다시 찾는다.** 여기서 어긋나면
         # 상대가 엉뚱한 놈을 겨냥한 채 계산이 돈다.
-        # 규칙은 live.py 에 있고 거기서 시험한다 — 창은 값만 모아 준다.
-        rows = [(sl.poke, sl.hp_pct()) for sl in self.opp_slots]
+        # ★ **이번 턴은 '밝혀진 놈' 으로만 센다.** 프리뷰에서 본 6마리를
+        #    전부 넣으면 상대가 6마리를 낸 판을 재게 된다 — 실제로는
+        #    3마리만 나온다. 하나도 안 켰으면 적은 것 전부로 본다.
+        shown = [sl for sl in self.opp_slots if sl.revealed()]
+        use = shown if shown else [sl for sl in self.opp_slots if sl.poke]
+        self.guessed_opp = not shown
+        rows = [(sl.poke if sl in use else None, sl.hp_pct())
+                for sl in self.opp_slots]
         opp_pokes, state, why = live.turn_state(
             my_hp, idx, rows, self.opp_active.get())
         if why:
@@ -824,7 +884,8 @@ class App(object):
                 self.dex, [b for b, _m in party], opp_pokes,
                 my_moves=party[idx][1] or None, evidence=ev,
                 seconds=secs, state=state)
-            text = self._format(got, len(opp_pokes))
+            text = self._format(got, len(opp_pokes),
+                                guessed_opp=self.guessed_opp)
         except Exception:
             import traceback
             text = "문제가 생겼습니다:\n%s" % traceback.format_exc()
@@ -867,7 +928,7 @@ class App(object):
         try:
             opp_builds = [calc.popular_build(self.dex, p)[0] for p in foes]
             got = pick.choose(self.dex, my_builds, opp_builds, seconds=secs)
-            text = pick.short_report(my_builds, opp_builds, got)
+            text = pick.short_report(self.dex, my_builds, opp_builds, got)
         except Exception:
             import traceback
             text = "문제가 생겼습니다:\n%s" % traceback.format_exc()
@@ -886,7 +947,7 @@ class App(object):
         self.busy = False
         self.go.config(text="무엇을 둘까?", state="normal")
 
-    def _format(self, got, n_foes=1):
+    def _format(self, got, n_foes=1, guessed_opp=False):
         rows = got["rows"]
         full = [r for r in rows if not r["dropped"]] or rows
         top = max(full, key=lambda r: r["score"])
@@ -917,6 +978,9 @@ class App(object):
         if n_foes < 2:
             L.append("! 상대를 한 마리만 넣었습니다. 벤치를 아는 만큼")
             L.append("  적으면 답이 달라집니다 (한 수에서 64%p 움직였습니다)")
+        if guessed_opp:
+            L.append("! 「냈다」 를 하나도 안 켜서 **적은 것 전부**를 상대로")
+            L.append("  봤습니다. 실제로 나온 놈만 켜면 더 정확합니다")
         return "\n".join(L)
 
     def run(self):
@@ -1044,7 +1108,27 @@ def check():
         sl.on_poke(poke)
     app.opp_slots[1].hp.set("40")
     app.opp_slots[2].hp.set("0")          # 쓰러진 놈은 빠져야 한다
+    # ★ 밝혀진 놈만 이번 턴 계산에 들어가야 한다
+    if app.opp_slots[0].revealed():
+        print("아무것도 안 켰는데 밝혀진 것으로 돼 있습니다")
+        return 1
+    app.opp_slots[0].brought.set(True)
+    app.opp_slots[0].redraw_state()
+    app.opp_slots[1].brought.set(True)
+    app.opp_slots[1].redraw_state()
+    if app.opp_slots[0].state_label.cget("text") != "● 밝혀짐":
+        print("밝혀진 표시가 안 뜹니다: %r"
+              % app.opp_slots[0].state_label.cget("text"))
+        return 1
+    if app.opp_slots[2].state_label.cget("text") != "○ 모름":
+        print("안 밝혀진 표시가 틀립니다: %r"
+              % app.opp_slots[2].state_label.cget("text"))
+        return 1
+    if "2마리가 밝혀짐" not in app.opp_state.cget("text"):
+        print("상대 요약이 틀립니다: %r" % app.opp_state.cget("text"))
+        return 1
     app.opp_active.set(0)
+    app.opp_slots[0].on_active()
     app.add_seen("지진")
     if app.seen.get("한카리아스") != ["지진"]:
         print("본 기술이 나와 있는 놈 것으로 안 들어갑니다: %r" % app.seen)
@@ -1076,9 +1160,23 @@ def check():
         app.opp_active.set(1)
         app.ask()
         moved = (seen_args.get("state") or {}).get("opp_active")
+
+        # ★ 안 밝혀진 놈은 이번 턴 계산에서 빠져야 한다
+        kil2 = dex.find_pokemon("킬가르도")
+        app.opp_slots[3].name.set(kil2["name"], kil2)
+        app.opp_slots[3].on_poke(kil2)     # 켜지 않았다 = 프리뷰에서만 봄
+        app.opp_slots[3].brought.set(False)
+        app.opp_slots[3].redraw_state()
+        app.opp_active.set(0)
+        app.opp_slots[0].on_active()
+        app.ask()
+        hidden_in = "킬가르도" in (seen_args.get("opp") or [])
+        seen_args = first
     finally:
         search.best_action = real
-    seen_args = first
+    if hidden_in:
+        print("안 밝혀진 놈이 계산에 들어갔습니다")
+        return 1
     if moved != 1:
         print("'나와 있음' 을 바꿨는데 안 따라갑니다: %r" % (moved,))
         return 1
@@ -1095,6 +1193,9 @@ def check():
     ev = seen_args.get("ev") or {}
     if sorted(ev) != ["한카리아스"]:
         print("본 기술이 그놈에게만 안 붙었습니다: %r" % (sorted(ev),))
+        return 1
+    if "실제로 나온 놈만" in text:
+        print("밝혀진 놈을 켰는데도 추측했다고 합니다:\n%s" % text[-300:])
         return 1
 
     # ⑧ 선출 단추도 한 번 눌러 본다 (내 3마리 x 상대 3마리 = 1가지씩)

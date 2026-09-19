@@ -1749,15 +1749,57 @@ def test_switching(dex):
     check("교체하면 나와 있는 놈이 바뀐다", bt.me.name == "고릴타", bt.me.name)
 
     # --- 스텔스록은 바위 상성을 탄다 ---
-    bt = battle.Battle(dex, [B("메가보만다"), B("한카리아스")], B("하마돈"),
+    # ! 전에는 [메가보만다, 한카리아스] 로 했는데 **둘 다 메가스톤을 든다.**
+    #   메가는 한 게임에 하나뿐이라 뒤쪽이 기본 폼(드래곤/땅)으로 되돌아가
+    #   바위가 0.5배가 되고 1/16 이 된다. 검사 자체가 틀린 파티를 쓰고
+    #   있었던 것이다. **검사를 느슨하게 하지 않고 파티를 합법으로 바꾼다** —
+    #   재고 싶은 것은 '압정이 상성을 타는가' 지 메가 규칙이 아니다.
+    bt = battle.Battle(dex, [B("고릴타"), B("한카리아스")], B("하마돈"),
                        rng=random.Random(1), log=True)
     bt.me_party.hazards["스텔스록"] = 1
     bt.switch_in(bt.me_party, 1)
     chomp = bt.me_party.members[1]
+    check("2번이 메가로 남아 있다 (%s)" % chomp.name,
+          chomp.base.poke.get("isMega"), chomp.name)
     # 메가한카리아스Z 는 순수 드래곤 -> 바위는 보통(x1) -> 1/8
     check("스텔스록 데미지가 상성을 탄다",
           chomp.max_hp - chomp.hp == max(1, int(chomp.max_hp * 1.0 / 8)),
           chomp.max_hp - chomp.hp)
+
+    # --- ★ 메가진화는 한 게임에 한 번뿐이다 ---
+    # 사용자가 알려 준 규칙 (2026-09-19). 이걸 안 지키고 있었다 —
+    # popular_build 이 만들 때 폼을 바꿔서 파티에 스톤이 셋이면 셋 다
+    # 메가로 싸웠다. 경고도 없었다. 재 보니 메가 3마리 34.2% /
+    # 메가 1마리 0.0% 로 **아예 다른 판**이었다.
+    tri = [B("메가보만다"), B("한카리아스"), B("갑주무사")]
+    check("셋 다 메가스톤을 든다 (검사 전제)",
+          all(b.poke.get("isMega") for b in tri), [b.name for b in tri])
+    bt3 = battle.Battle(dex, tri, B("하마돈"), rng=random.Random(1))
+    got_mega = [m.name for m in bt3.me_party.members
+                if m.base.poke.get("isMega")]
+    check("실제로 메가가 되는 것은 하나뿐이다 (%s)" % ", ".join(got_mega),
+          len(got_mega) == 1, got_mega)
+    check("메가가 되는 것은 **먼저 나오는 놈**이다",
+          bt3.me_party.members[0].base.poke.get("isMega"),
+          bt3.me_party.members[0].name)
+    check("되돌아간 놈은 스톤을 그대로 들고 있다",
+          bt3.me_party.members[1].item is not None,
+          bt3.me_party.members[1].item)
+    check("되돌렸으면 승률 옆에 말해 준다",
+          any("한 게임에 한 번" in w for w in bt3.warnings), bt3.warnings)
+    # 상대 쪽도 똑같이 걸려야 한다 (사용률로 뽑으면 메가가 여럿 나온다)
+    bt4 = battle.Battle(dex, B("하마돈"), tri, rng=random.Random(1))
+    opp_mega = [m.name for m in bt4.opp_party.members
+                if m.base.poke.get("isMega")]
+    check("상대 파티에도 똑같이 걸린다 (%s)" % ", ".join(opp_mega),
+          len(opp_mega) == 1, opp_mega)
+    # 하나뿐이면 아무것도 안 건드린다
+    one = [B("메가보만다"), B("고릴타")]
+    bt5 = battle.Battle(dex, one, B("하마돈"), rng=random.Random(1))
+    check("메가가 하나면 그대로 둔다",
+          bt5.me_party.members[0].base.poke.get("isMega")
+          and not any("한 게임에 한 번" in w for w in bt5.warnings),
+          [m.name for m in bt5.me_party.members])
 
     # --- 압정은 떠 있으면 안 밟지만 스텔스록은 밟는다 ---
     bt = battle.Battle(dex, [B("하마돈"), B("메가보만다")], B("하마돈"),
@@ -2034,7 +2076,7 @@ def test_selection(dex):
           got.get("missing", 0) == 0, got.get("missing"))
     check("조합당 판수를 적어 준다 (%d판)" % got["trials"],
           got["trials"] >= selection.MIN_TRIALS, got["trials"])
-    short = selection.short_report(my4, op4, got)
+    short = selection.short_report(dex, my4, op4, got)
     check("짧은 보고서가 나온다", "선출" in short and "최악 기준" in short)
     check("짧은 보고서가 오차를 같이 말한다", "±" in short, short)
     check("상대 배분을 사용률로 봤다는 것을 밝힌다", "사용률" in short, short)

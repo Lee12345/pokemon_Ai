@@ -626,6 +626,50 @@ class Side(object):
         }
 
 
+# **메가진화는 한 게임에 한 번뿐이다** (사용자가 알려 준 규칙, 2026-09-19).
+#
+# ! 이걸 안 지키고 있었다. `calc.popular_build` 이 "1위 도구가 메가스톤이면
+#   메가로 본다" 고 **만들 때** 폼을 바꿔 버려서, 파티에 메가스톤 든 놈이
+#   셋이면 **셋 다 메가로** 싸웠다. 경고도 없었다.
+#   재 보니 메가보만다·한카리아스·갑주무사 vs 하마돈·브리두라스·누리레느
+#   에서 **메가 3마리 34.2% / 메가 1마리 0.0%** 였다. 아예 다른 판이다.
+#   더 나쁜 것은 **선출 추천이 낼 수 없는 조합을 내놨다는 것이다** —
+#   "메가한카리아스Z · 아머까오 · 메가갑주무사" 는 메가가 둘이라 못 낸다.
+#
+# 누가 메가가 되나 — **먼저 나오는 놈**이다. 실제로도 보통 그렇게 둔다.
+# 이건 **정한 규칙이지 잰 것이 아니다.** 그래서 대전이 경고에 적는다.
+MEGA_PER_GAME = 1
+
+
+def _one_mega_only(dex, builds):
+    """한 편에서 메가는 하나만. 나머지는 스톤만 든 기본 폼으로 되돌린다.
+
+    돌려주는 것 (고친 빌드 목록, 사람이 읽을 알림 또는 None).
+    """
+    if not isinstance(builds, (list, tuple)):
+        builds = [builds]
+    megas = [i for i, b in enumerate(builds) if b.poke.get("isMega")]
+    if len(megas) <= MEGA_PER_GAME:
+        return list(builds), None
+    keep = megas[0]                     # 먼저 나오는 놈이 메가가 된다
+    out, reverted = [], []
+    for i, b in enumerate(builds):
+        if i in megas and i != keep:
+            base = calc.base_form(dex, b.poke)
+            reverted.append((b.name, base["name"]))
+            out.append(calc.Build(
+                dex, base, sp=b.sp, nature=b.nature, ranks=b.ranks,
+                item=b.item, ability=None, status=b.status,
+                hp_ratio=b.hp_ratio))
+        else:
+            out.append(b)
+    note = ("메가진화는 한 게임에 한 번뿐이라 **%s 만 메가**가 된다. "
+            "%s 는 스톤만 든 기본 폼으로 싸운다."
+            % (builds[keep].name,
+               ", ".join("%s→%s" % (a, c) for a, c in reverted)))
+    return out, note
+
+
 class Party(object):
     """한 쪽이 데리고 나온 포켓몬들. 지금 나와 있는 것과 벤치.
 
@@ -639,6 +683,7 @@ class Party(object):
             builds = [builds]
         self.dex = dex
         hp_pcts = list(hp_pcts or [])
+        builds, self.mega_note = _one_mega_only(dex, builds)
         self.members = [Side(dex, b,
                              hp_pcts[i] if i < len(hp_pcts) else None)
                         for i, b in enumerate(builds)]
@@ -781,6 +826,9 @@ class Battle(object):
         self.log = [] if log else None
         self.warnings = []
         self._immune_abilities = status_immune_abilities(dex)
+        for party, who in ((self.me_party, "나"), (self.opp_party, "상대")):
+            if party.mega_note:
+                self._warn("%s: %s" % (who, party.mega_note))
         self._warn_dead_items()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
