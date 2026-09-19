@@ -1224,16 +1224,69 @@ def test_live(dex):
     tab = calc.popular_build(dex, dex.find_pokemon("타부자고"))[0]
     check("타부자고의 사용률 1위 도구가 풍선이다 (%s)" % tab.item,
           tab.item == "풍선", tab.item)
-    bal = battle.Battle(dex, P("한카리아스"), tab, rng=random.Random(1))
-    said = " ".join(bal.warnings)
-    check("반만 붙은 도구가 경고를 띄운다 (풍선)",
-          "반만 들어간다" in said and "풍선" in said, bal.warnings)
-    check("무엇이 안 되는지까지 말한다 (땅 기술 무효)",
-          "땅 기술 무효" in said, said)
-    check("PARTIAL 과 APPLIED 가 겹치는 것만 반만 붙은 것이다",
+    check("풍선을 설명문에서 알아본다 (찍어 넣지 않는다)",
+          "풍선" in calc.floating_items(dex), calc.floating_items(dex))
+
+    gar = P("한카리아스")
+    b_on = battle.Battle(dex, gar, tab, rng=random.Random(2))
+    h = b_on.opp.hp
+    b_on.step(dex.find_move("지진"), dex.find_move("맹독"))
+    blocked = h - b_on.opp.hp
+    check("풍선을 들면 땅 기술이 아예 안 들어간다 (%d 데미지)" % blocked,
+          blocked == 0, blocked)
+
+    # 터뜨린 뒤에는 통해야 한다 — 무효가 영구히 남으면 그것도 틀린 것이다
+    h = b_on.opp.hp
+    b_on.step(dex.find_move("화염방사"), dex.find_move("맹독"))
+    popped = h - b_on.opp.hp
+    check("다른 기술로 때리면 풍선이 터진다 (%d 데미지)" % popped,
+          popped > 0 and b_on.opp.item_used, (popped, b_on.opp.item_used))
+    h = b_on.opp.hp
+    b_on.step(dex.find_move("지진"), dex.find_move("맹독"))
+    after = h - b_on.opp.hp
+    check("터진 뒤에는 땅 기술이 통한다 (%d 데미지)" % after, after > 0, after)
+
+    # 승률이 실제로 뒤집히는가 — 이게 이 결함의 크기다
+    def _tab_win(item):
+        op = calc.popular_build(dex, dex.find_pokemon("타부자고"))[0]
+        op.item = item
+        rng = random.Random(5)
+        w = 0
+        for _ in range(60):
+            r = battle.run_once(dex, gar, op, [dex.find_move("지진")],
+                                [dex.find_move("리프스톰")], rng)
+            w += (r["result"] == "이김")
+        return w * 100.0 / 60
+    w_on, w_off = _tab_win("풍선"), _tab_win(None)
+    check("풍선 하나로 답이 뒤집힌다 (풍선 %.0f%% / 없음 %.0f%%)"
+          % (w_on, w_off), w_on < 20 and w_off > 80, (w_on, w_off))
+
+    # 스텔스록은 풍선을 뚫는다 (설명문에 압정뿌리기·독압정·끈적끈적네트만 적혀 있다)
+    b_h = battle.Battle(dex, [P("한카리아스"), tab], P("하마돈"),
+                        rng=random.Random(1))
+    b_h.me_party.hazards["스텔스록"] = 1
+    b_h.me_party.hazards["압정뿌리기"] = 1
+    h0 = b_h.me_party.members[1].hp
+    b_h.switch_in(b_h.me_party, 1)
+    took = h0 - b_h.me_party.members[1].hp
+    check("풍선은 압정은 막아도 스텔스록은 못 막는다 (%d 깎임)" % took,
+          took > 0, took)
+
+    # 반만 붙은 것을 말해 주는 장치 자체는 살아 있어야 한다 (지금은 비어 있다)
+    check("PARTIAL 은 APPLIED 안에 있는 것만 담는다",
           set(battle.PARTIAL_ITEM_KINDS) <= battle.APPLIED_ITEM_KINDS,
           sorted(set(battle.PARTIAL_ITEM_KINDS)
                  - battle.APPLIED_ITEM_KINDS))
+    saved = dict(battle.PARTIAL_ITEM_KINDS)
+    try:
+        battle.PARTIAL_ITEM_KINDS["float"] = ("도는 것", "안 도는 것")
+        said = " ".join(battle.Battle(dex, gar, tab,
+                                      rng=random.Random(1)).warnings)
+        check("반만 붙은 것이 생기면 승률 옆에 말해 준다",
+              "반만 들어간다" in said and "안 도는 것" in said, said)
+    finally:
+        battle.PARTIAL_ITEM_KINDS.clear()
+        battle.PARTIAL_ITEM_KINDS.update(saved)
 
     # ⑥ **상대 파티** — 창과 글자판이 같이 쓰는 규칙 -------------------------
     # ! 사용자가 되물어서 생긴 부분이다: "왜 내 파티는 6인이 아니며

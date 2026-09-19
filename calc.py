@@ -224,6 +224,32 @@ DEFENDER_IMMUNE = {
     "건조피부":   ["물"],
     "초식":       ["풀"],
 }
+# 도구 때문에 아예 안 맞는 경우. **설명문에서 읽는다** — 새 도구가 나와도 따라온다.
+#
+# ! 이게 없어서 **풍선이 반만 돌았다** (2026-09-20에 고침).
+#   `battle._grounded()` 가 압정 계산에서만 쓰이고 데미지 계산에는
+#   안 닿아서, 풍선을 든 타부자고가 지진을 그대로 맞고 있었다.
+#   타부자고는 사용률 9위이고 그중 66.2% 가 풍선이다. 재 보니
+#   한카리아스(지진) vs 타부자고가 **풍선이 있든 없든 100%** 였다.
+#   배율이 조금 틀리는 것이 아니라 **답이 통째로 뒤집히는** 종류였고,
+#   `float` 이 `APPLIED_ITEM_KINDS` 에 있어서 경고조차 안 떴다.
+_FLOAT_DESC = "땅 위에 있지 않게"
+
+
+def floating_items(dex):
+    """땅 기술이 안 통하게 만드는 도구 이름들. dex 하나당 한 번만 읽는다.
+
+    ! `id(dex)` 를 열쇠로 쓰지 않는다 — 파이썬은 객체가 사라지면 그 id 를
+      다시 내주므로 새 Dex 가 옛 Dex 의 표를 물려받는다. dex 에 직접 붙인다.
+    """
+    got = getattr(dex, "_floating_items", None)
+    if got is None:
+        got = set(it["name"] for it in dex.items
+                  if _FLOAT_DESC in (it.get("description") or ""))
+        dex._floating_items = got
+    return got
+
+
 # 기술 분류째로 안 맞는 특성
 DEFENDER_IMMUNE_TAG = {
     "방음": "소리",
@@ -632,6 +658,12 @@ def calc_damage(dex, attacker, defender, move, critical=False,
     if tag_immune and tag_immune in (move.get("tags") or []):
         return {"error": "%s 의 특성 '%s' 때문에 %s 기술은 통하지 않습니다." % (
             defender.name, defender.ability, tag_immune)}
+
+    # 도구로 떠 있는 경우 (풍선). 터지면 `Side.as_build` 가 item 을 None 으로
+    # 넘기므로 여기까지 안 온다.
+    if move_type == "땅" and defender.item in floating_items(dex):
+        return {"error": "%s 이(가) %s 으로 떠 있어 땅 타입 기술은 통하지 "
+                         "않습니다." % (defender.name, defender.item)}
 
     eff = dex.effectiveness(move_type, defender.types)
     if eff == 0:
