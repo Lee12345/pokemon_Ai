@@ -302,7 +302,11 @@ class Slot(object):
         for key, ko in STAT_ORDER:
             r = tk.Frame(mid, bg=CARD)
             r.pack(fill="x")
-            tk.Label(r, text=ko, width=6, anchor="w", bg=CARD, fg=DIM,
+            # 폭은 '0' 글자 기준이라 한글 네 글자(특수공격)가 6칸에 안
+            # 들어갔다 — 화면에서 「특수공ㅈ」 로 잘려 보였다 (2026-09-21,
+            # 윈도우에서 창을 처음 실제로 띄워서 잡음). --점검 의
+            # clipped_labels 가 이걸 다시 잡는다.
+            tk.Label(r, text=ko, width=8, anchor="w", bg=CARD, fg=DIM,
                      font=FONT_S).pack(side="left")
             val = tk.Label(r, text="-", width=6, anchor="e", bg=CARD,
                            fg=TEXT, font=FONT_S)
@@ -987,6 +991,43 @@ class App(object):
         self.root.mainloop()
 
 
+def clipped_labels(root):
+    """글자가 칸보다 넓어서 잘리는 이름표를 찾는다. [(글자, 필요 px, 있는 px)].
+
+    폭을 글자 수로 못 박은 칸(width=N)만 본다 — tkinter 의 폭은 '0' 한 글자
+    기준이라 한글처럼 넓은 글자는 조용히 잘린다. 터지지 않고 화면에서만
+    틀어지는 종류라, **진짜 tkinter 일 때만** 잴 수 있다.
+    가짜 tkinter 에서는 None 을 돌려준다 (못 쟀다는 뜻 — 통과가 아니다).
+    """
+    try:
+        import tkinter.font as tkfont
+        root.update_idletasks()
+    except Exception:
+        return None
+    out = []
+    stack = [root]
+    while stack:
+        w = stack.pop()
+        try:
+            stack.extend(w.winfo_children())
+            if w.winfo_class() != "Label":
+                continue
+            width = int(w.cget("width") or 0)
+            text = w.cget("text")
+        except Exception:
+            return None
+        if width <= 0 or not text:
+            continue
+        f = tkfont.Font(root=root, font=w.cget("font"))
+        need = max(f.measure(line) for line in str(text).splitlines() or [""])
+        pad = 2 * (int(float(w.cget("padx"))) + int(float(w.cget("bd")))
+                   + int(float(w.cget("highlightthickness"))))
+        have = w.winfo_reqwidth() - pad
+        if need > have:
+            out.append((text, need, have))
+    return out
+
+
 def check():
     """창을 안 띄우고 **칸을 실제로 채워 보며** 확인한다.
 
@@ -1215,8 +1256,19 @@ def check():
         print("선출이 안 나왔습니다:\n%s" % out[-600:])
         return 1
 
+    # ★ 글자가 칸에 들어가는가 — 진짜 창에서만 잴 수 있다.
+    #   「특수공격」 이 「특수공ㅈ」 로 잘려 있었는데 가짜 tkinter 점검은
+    #   통과했다. 생김새는 가짜로는 안 보인다.
+    clipped = clipped_labels(app.root)
+    if clipped is None:
+        print("  (글자 잘림은 못 쟀다 — 가짜 tkinter 라서. 윈도우 빌드에서 잰다)")
+    elif clipped:
+        print("글자가 칸보다 넓어서 잘립니다: %s"
+              % ", ".join("%s(%d>%dpx)" % c for c in clipped[:8]))
+        return 1
+
     print("창 점검 끝 — 후보 고르기 · 능력치 · 노력치 규칙 · 6자리 ·"
-          " 상대 파티가 계산까지 가는지 · 추천 · 선출까지 돌았습니다")
+          " 상대 파티가 계산까지 가는지 · 추천 · 선출 · 글자 잘림까지 돌았습니다")
     print("  " + text.strip().splitlines()[-1])
     app.root.destroy()
     return 0

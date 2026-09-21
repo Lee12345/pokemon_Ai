@@ -748,7 +748,9 @@ def fetch_all(urls, cards=None):
         print("  개체 %d마리 — 기술 있음 %d (%.0f%%), 배분 있음 %d (%.0f%%)"
               % (len(mem), mv, mv * 100.0 / len(mem), ev, ev * 100.0 / len(mem)))
         if ev * 2 < len(mem):
-            print("  ! 배분이 없는 개체가 많다. 구축기사는 배분을 이미지로 올린다.")
+            print("  ! 배분이 없는 개체가 많다. 본문을 못 읽었거나 본문에 안 적힌 것이다.")
+            print("    ('본문은 이미지라서 없다' 가 아니다 — 그렇게 단정했다가 틀렸다.")
+            print("     파서를 먼저 의심할 것. docs/이어받기.md §5 ★)")
             print("    samples.py 는 배분 없는 개체를 --맞추기 에서 빼고")
             print("    --쌍(기술 조합) 에만 쓴다. 조용히 무투자로 세지 않는다.")
     if empty and not added:

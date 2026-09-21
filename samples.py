@@ -288,7 +288,7 @@ def load(dex, path=None, bad=None):
             out.append({"source": party.get("source"),
                         "season": party.get("season"),
                         "when": when,
-                        "rule": party.get("rule"),
+                        "rule": norm_rule(party.get("rule")),
                         "rank": party.get("rank"),
                         "publishedAt": party.get("publishedAt"),
                         "title": party.get("title"),
@@ -385,11 +385,30 @@ CURRENT_RULE = "M-6"        # 사용자가 알려 준 값 (2026-09-18)
 MIN_RULE_ARTICLES = 3       # 이만큼은 있어야 '그 룰 기사가 있다' 고 본다
 
 
+# 룰 표기가 두 가지로 섞여 있다 — 시즌 이름(M-6)과 레귤레이션 이름(M-C).
+# champs 검색창에 「シーズンM-6 (M-C)」 로 적혀 있듯 **M-C 는 곧 M-6** 이다.
+# 그런데 그대로 비교해서, 지금 룰 표본을 9편으로 셌다. 실제로는 22편
+# (M-6 9 + M-C 13) 이었다 (2026-09-21, 집 컴퓨터에서 champs 를 보고 잡음).
+#
+# M-B(=M-3~M-5) · M-A(=M-1~M-2) 는 시즌 하나로 못 박을 수 없어서 안 바꾼다.
+# 그 기사가 셋 중 어느 시즌 것인지 모르는데 하나로 정하면 그게 또 조용한 거짓말이다.
+# ! M-7 이 나오고 레귤레이션이 M-C 그대로면 이 표를 다시 봐야 한다.
+RULE_ALIAS = {"M-C": "M-6"}
+
+
+def norm_rule(rule):
+    """룰 표기를 하나로 맞춘다. 비교는 반드시 이걸 거친다."""
+    if not rule:
+        return rule
+    r = str(rule).strip().upper().replace("－", "-").replace(" ", "")
+    return RULE_ALIAS.get(r, r)
+
+
 def rule_counts(parties):
     """룰 표기별 기사 수. {"M-5": 250, ...}"""
     out = {}
     for p in parties:
-        r = p.get("rule")
+        r = norm_rule(p.get("rule"))
         if r:
             out[r] = out.get(r, 0) + 1
     return out
@@ -397,7 +416,8 @@ def rule_counts(parties):
 
 def by_rule(parties, rule):
     """그 룰의 기사만. 룰 표기가 없는 기사는 뺀다 — 모르는 것은 섞지 않는다."""
-    return [p for p in parties if p.get("rule") == rule]
+    rule = norm_rule(rule)
+    return [p for p in parties if norm_rule(p.get("rule")) == rule]
 
 
 def previous_rule(parties, rule=None):
@@ -664,7 +684,7 @@ def rosters(parties, since=None, rule=None, min_size=4, max_size=8):
     for p in parties:
         if since and (p.get("publishedAt") or "")[:7] < since:
             continue
-        if rule and p.get("rule") != rule:
+        if rule and norm_rule(p.get("rule")) != norm_rule(rule):
             continue
         names = sorted(set(m["poke"]["name"] for m in p["members"]
                            if m.get("poke")))
@@ -779,7 +799,8 @@ def report(dex, parties, bad):
             L.append("  ! 기술도 배분도 없는 개체 %d마리는 **아래 수치에서 뺐다.**"
                      % none)
             L.append("    이름과 도구밖에 없어서 셀 것이 없다. champs 카드만으로")
-            L.append("    만들어진 개체다 — 기사 본문은 배분을 이미지로 올린다.")
+            L.append("    만들어진 개체다 — 카드에는 기술·배분이 없고, 본문은 못 읽었거나")
+            L.append("    본문에 안 적혀 있었다. (본문이 이미지라서가 아니다 — 이어받기 §5 ★)")
             L.append("    그냥 두면 형태가 무투자('-') 로 잡혀 아래 '형태(표본)'")
             L.append("    칸과 combos 의 갈래 세기가 같이 틀어진다.")
         rest = sum(1 for m in allm if m["moves"] and not m.get("has_evs"))

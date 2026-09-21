@@ -23,10 +23,12 @@ import samples
 import sensitivity
 
 FAIL = []
+PASSED = [0]     # 개수를 문서에 손으로 적지 않는다 — 환경마다 달라진다 (아래 참고)
 
 
 def check(name, cond, detail=""):
     if cond:
+        PASSED[0] += 1
         print("  [통과] %s" % name)
     else:
         print("  [실패] %s  %s" % (name, detail))
@@ -3038,6 +3040,26 @@ def test_combos(dex):
     check("보고서가 어느 룰끼리 비교하는지 밝힌다",
           samples.CURRENT_RULE in rep and "룰 표기" in rep)
 
+    # -- 룰 표기 두 가지(시즌 M-6 / 레귤레이션 M-C)를 하나로 센다 ---------
+    # 따로 세서 지금 룰 표본을 9편으로 봤다. 실제로는 22편이었다 (2026-09-21).
+    # champs 검색창: 「シーズンM-6 (M-C)」.
+    check("M-C 는 M-6 으로 센다", samples.norm_rule("M-C") == "M-6",
+          samples.norm_rule("M-C"))
+    check("표기가 흔들려도 같다 (' m-c ', 전각 대시)",
+          samples.norm_rule(" m-c ") == "M-6"
+          and samples.norm_rule("M－C") == "M-6")
+    check("M-B 는 시즌을 못 박을 수 없어서 그대로 둔다",
+          samples.norm_rule("M-B") == "M-B")
+    fake = [{"rule": "M-6"}, {"rule": "M-C"}, {"rule": "M-5"}, {"rule": None}]
+    check("by_rule('M-6') 이 M-C 표기 기사도 잡는다",
+          len(samples.by_rule(fake, "M-6")) == 2)
+    check("rule_counts 에 M-C 가 따로 남지 않는다",
+          samples.rule_counts(fake) == {"M-6": 2, "M-5": 1},
+          samples.rule_counts(fake))
+    loaded_rules = set(p.get("rule") for p in combos.loaded(dex))
+    check("불러온 표본에 M-C 표기가 남아 있지 않다", "M-C" not in loaded_rules,
+          sorted(r for r in loaded_rules if r))
+
     # -- 두 마진이 다 지켜지는가 (제일 중요) -------------------------------
     worst = 0.0
     names = []
@@ -3369,7 +3391,12 @@ def main():
     if FAIL:
         print("실패 %d건: %s" % (len(FAIL), ", ".join(FAIL)))
         sys.exit(1)
-    print("전부 통과")
+    # 검사 개수는 **환경마다 다르다.** tkinter 가 없는 곳(클라우드)에서만 도는
+    # 검사가 있어서, 같은 코드인데 클라우드 553 / 윈도우 552 로 갈렸다
+    # (2026-09-21). 문서의 손으로 적은 숫자와 안 맞으면 먼저 이걸 본다.
+    import gui
+    print("전부 통과 — %d개 (tkinter %s)"
+          % (PASSED[0], "있음" if gui.have_tk()[0] else "없음"))
 
 
 if __name__ == "__main__":
