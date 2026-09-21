@@ -1332,6 +1332,40 @@ def test_live(dex):
     check("다 쓰러지면 왜 안 되는지 말해 준다",
           live.turn_state([100.0], 0, [(ha, 0.0)], 0)[2] is not None)
 
+    # -- 내 쪽: 낸 놈만, 각자의 HP 로 (live.my_turn_state) ----------------
+    # 전엔 창이 채운 6자리를 전부 HP 100% 로 넘겼다 (2026-09-21).
+    # 같은 대면이 6마리 약 80점 / 실제 3마리 약 40점 / 벤치 HP20% 면 0점.
+    B = lambda n: calc.Build(dex, dex.find_pokemon(n))
+    six = ["한카리아스", "아머까오", "하마돈", "누리레느", "고릴타", "브리두라스"]
+    rows = [(B(n), ["지진"], 100.0, i in (1, 3, 4)) for i, n in enumerate(six)]
+    m = live.my_turn_state(rows, 3)
+    check("내 쪽은 '냈다' 켠 셋만 넘긴다 (%s)"
+          % [b.poke["name"] for b, _ in m["party"]],
+          [b.poke["name"] for b, _ in m["party"]]
+          == ["아머까오", "누리레느", "고릴타"] and not m["why"], m)
+    check("나와 있는 놈의 번호를 셋 안에서 다시 찾는다 (%s)" % m["my_active"],
+          m["my_active"] == 1)
+    rows[1] = (rows[1][0], rows[1][1], 0.0, True)    # 아머까오 쓰러짐
+    rows[4] = (rows[4][0], rows[4][1], 35.0, True)   # 고릴타 35%
+    m2 = live.my_turn_state(rows, 3)
+    check("쓰러진 내 포켓몬은 빠지고 번호가 따라간다",
+          [b.poke["name"] for b, _ in m2["party"]] == ["누리레느", "고릴타"]
+          and m2["my_active"] == 0, m2)
+    check("벤치 HP 가 그대로 간다 (%s)" % m2["my_hp"],
+          m2["my_hp"] == [100.0, 35.0])
+    check("쓰러진 놈을 '나와 있음' 으로 고르면 계산을 거부한다",
+          live.my_turn_state(rows, 1)["why"] is not None)
+    check("'냈다' 가 아닌 놈을 '나와 있음' 으로 고르면 거부한다",
+          "냈다" in (live.my_turn_state(rows, 0)["why"] or ""))
+    four = [(B(n), [], 100.0, True) for n in six[:4]]
+    check("'냈다' 가 넷이면 거부한다 (한 판에 셋)",
+          "셋" in (live.my_turn_state(four, 0)["why"] or "")
+          or "3마리" in (live.my_turn_state(four, 0)["why"] or ""))
+    none = [(B(n), [], 100.0, False) for n in six]
+    m3 = live.my_turn_state(none, 2)
+    check("하나도 안 켜면 전부로 보되 '짐작했다' 고 표시한다",
+          m3["guessed"] and len(m3["party"]) == 6 and not m3["why"], m3)
+
     ev = live.evidence_map({"하마돈": ["지진"], "누리레느": ["문라이트"]},
                            pokes)
     check("본 기술이 그놈에게만 붙는다 (%s)" % sorted(ev),
@@ -3241,6 +3275,87 @@ def test_fetch_champs(dex):
           samples.party_weight(parties[0])
           > samples.party_weight({"source": "pokesol", "rank": 3}))
 
+def test_party_file(dex):
+    """내 파티 파일 — 적은 것이 그대로 돌아오는가, 조용히 사라지지 않는가.
+
+    2026-09-21 창 점검에 "못 알아들은 말: 무투자, 페어리스킨" 이 떠서 셋이
+    한꺼번에 나왔다.
+      ① 노력치를 비우면 '무투자' 라고 저장하는데 읽는 쪽이 몰랐다.
+      ② 특성 칸을 비우면 **메가 특성**이 보통 폼에 붙었다 (50종).
+      ③ 한 줄만 못 읽어도 **파티 전체를 버렸다.** 창에서는 안 보였고,
+         칸 하나를 고치면 자동 저장이 빈 파티로 덮어썼다.
+    """
+    import io
+    import os
+    import tempfile
+    import live
+    print("\n[46] 내 파티 파일")
+
+    # ② 특성을 비워도 그 폼이 가질 수 있는 특성만 붙는다 — 전 종
+    wrong = []
+    for p in dex.pokemon:
+        if p.get("isMega"):
+            continue
+        for item in (None, "먹다남은음식"):
+            b, _f = live.build_one(dex, p, {}, None, None, item)
+            if b.ability not in [a["name"] for a in b.poke["abilities"]]:
+                wrong.append((p["name"], item, b.ability))
+    check("특성을 비워도 자기 폼의 특성만 붙는다 (틀린 것 %d건)" % len(wrong),
+          not wrong, wrong[:5])
+    ga, _f = live.build_one(dex, dex.find_pokemon("가디안"), {}, None, None,
+                            "버치열매")
+    check("가디안 + 버치열매 -> 트레이스 (사용률 1위, 페어리스킨 아님)",
+          ga.ability == "트레이스", ga.ability)
+    gz, _f = live.build_one(dex, dex.find_pokemon("한카리아스"), {}, None,
+                            None, "먹다남은음식")
+    check("한카리아스 + 먹다남은음식 에 부유가 안 붙는다 (%s)" % gz.ability,
+          gz.ability != "부유", gz.ability)
+    gm, _f = live.build_one(dex, dex.find_pokemon("가디안"), {}, None, None,
+                            "가디안나이트")
+    check("메가스톤이면 여전히 메가 폼 + 메가 특성",
+          gm.poke.get("isMega") and gm.ability == "페어리스킨",
+          (gm.name, gm.ability))
+
+    # ① 저장 -> 읽기 가 한 바퀴 돈다 (노력치 비움 포함)
+    tmp = os.path.join(tempfile.mkdtemp(), "party.txt")
+    b1, _f = live.build_one(dex, dex.find_pokemon("가디안"), {},
+                            dex.find_nature("조심"), "트레이스", "버치열매")
+    b2, _f = live.build_one(dex, dex.find_pokemon("하마돈"),
+                            {"hp": 32, "defense": 22},
+                            dex.find_nature("무사태평"), "모래날림", "자뭉열매")
+    live.save_party_file([(b1, [], []), (b2, ["지진", "하품"], [])], tmp)
+    notes = []
+    back = live.load_party(dex, tmp, notes=notes) or []
+    check("노력치를 비운 포켓몬도 다시 읽힌다 ('무투자')",
+          len(back) == 2 and not notes, (len(back), notes))
+    if len(back) == 2:
+        check("읽은 값이 저장한 값과 같다 (특성·성격·도구·노력치·기술)",
+              back[0][0].ability == "트레이스"
+              and (back[0][0].nature or {}).get("name") == "조심"
+              and back[0][0].item == "버치열매"
+              and not any(back[0][0].sp.values())
+              and back[1][0].sp.get("hp") == 32
+              and back[1][1] == ["지진", "하품"],
+              [(b.name, b.ability, b.item, b.sp) for b, _m, _x in back])
+
+    # ③ 한 줄에 못 읽는 말이 있어도 파티가 통째로 사라지지 않는다
+    with io.open(tmp, "w", encoding="utf-8") as f:
+        f.write(u"# 이름 기술 | 성격 노력치 특성 도구\n")
+        f.write(u"가디안  | 조심 무투자 페어리스킨 버치열매\n")
+        f.write(u"하마돈 지진 | 무사태평 H32 모래날림 자뭉열매\n")
+        f.write(u"없는포켓몬 지진\n")
+    notes = []
+    back = live.load_party(dex, tmp, notes=notes) or []
+    check("못 읽는 말이 있어도 나머지는 살린다 (%d마리)" % len(back),
+          [b.poke["name"] for b, _m, _x in back] == ["가디안", "하마돈"],
+          [b.poke["name"] for b, _m, _x in back])
+    check("무엇을 뺐는지 알려 준다 (%d건)" % len(notes),
+          any("페어리스킨" in n for n in notes)
+          and any("없는포켓몬" in n for n in notes), notes)
+    check("직접 치는 줄은 여전히 엄격하다 (오타를 바로 알림)",
+          live.read_line(dex, "가디안 | 페어리스킨")[3] is not None)
+
+
 def test_rosters(dex):
     """동반 출현 — champs 카드(명단만 있는 것)가 처음 값을 하는 자리."""
     print("\n[35] 동반 출현")
@@ -3386,6 +3501,7 @@ def main():
     test_combos(dex)
     test_fetch_champs(dex)
     test_rosters(dex)
+    test_party_file(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

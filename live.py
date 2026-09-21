@@ -185,6 +185,13 @@ def parse_extra(dex, text, poke=None):
     sp = nature = ability = item = None
     unknown = []
     for word in (text or "").replace(",", " ").split():
+        # ! **쓰는 쪽(ev_text)이 쓰는 말은 읽는 쪽도 알아야 한다.** 노력치를
+        #   비우면 '무투자' 라고 저장하는데 여기서 몰라서, 그 포켓몬 줄이
+        #   통째로 버려졌다 — 창을 다시 켜면 한 마리가 조용히 사라졌다
+        #   (2026-09-21, 창 점검에 "못 알아들은 말: 무투자" 가 떠서 잡음).
+        if word in ("무투자", "-"):
+            sp = {}
+            continue
         got, note = parse_evs(word)
         if got:
             sp = got
@@ -226,25 +233,48 @@ def build_one(dex, poke, sp, nature, ability, item):
     if item is None:
         item = base.item
         filled.append("도구")
-    if ability is None:
-        # **특성도 조용히 첫 번째 것으로 정해지고 있었다.** 하마돈이
-        # 모래의힘이면 날씨가 안 깔려서 판이 통째로 달라진다.
-        ability = base.ability
-        if len(poke.get("abilities") or ()) > 1:
-            filled.append("특성")
+    # 폼을 **먼저** 정한다. 특성은 그 폼이 가질 수 있는 것 중에서 골라야 한다.
     mega = dex.mega_by_item.get(item)
     if mega and not poke.get("isMega") and mega["dexNo"] == poke["dexNo"]:
         poke = mega
         ability = None            # 메가는 특성이 따로 정해져 있다
+    elif ability is None:
+        # **특성도 조용히 첫 번째 것으로 정해지고 있었다.** 하마돈이
+        # 모래의힘이면 날씨가 안 깔려서 판이 통째로 달라진다.
+        #
+        # ! 그 다음엔 **메가 특성을 빌려 왔다** (2026-09-21). popular_build 는
+        #   1위 도구가 메가스톤이면 메가 폼으로 만드는데, 그 특성(페어리스킨)
+        #   만 가져오고 폼은 보통(가디안)으로 남겼다. 도구를 메가스톤이 아닌
+        #   것으로 적고 특성 칸을 비우면 **50종**에서 그랬다 — 한카리아스는
+        #   부유가 붙어 땅 기술이 안 맞는 것으로 계산됐다. 저장 파일에 남아
+        #   다시 읽을 때 "못 알아들은 말: 페어리스킨" 으로 드러났다.
+        #   -> 그 폼의 특성 중 사용률이 제일 높은 것. 없으면 그 폼의 첫 특성.
+        own = [a["name"] for a in poke.get("abilities") or ()]
+        u = dex.usage.get(poke.get("key")) or {}
+        ranked = [a["name"] for a in sorted(u.get("abilities") or [],
+                                            key=lambda a: -(a.get("pct") or 0))
+                  if a.get("name") in own]
+        if base.ability in own and not ranked:
+            ability = base.ability
+        elif ranked:
+            ability = ranked[0]
+        else:
+            ability = own[0] if own else None
+        if len(own) > 1:
+            filled.append("특성")
     return calc.Build(dex, poke, sp=sp, nature=nature, ability=ability,
                       item=item), filled
-def read_line(dex, line):
+def read_line(dex, line, notes=None):
     """파티 파일 한 줄을 읽는다.
 
         한카리아스 지진,역린,화염방사,칼춤 | 명랑 A32S32 한카리아스나이트Z
 
     세로줄(|) 뒤는 없어도 된다. 없으면 사용률로 채우고 그렇다고 알린다.
     (빌드, [기술], 사용률로 채운 것들, 문제) 를 돌려준다.
+
+    notes 에 목록을 주면 **너그럽게 읽는다** — 못 알아들은 낱말은 빼고
+    나머지로 만들고, 뺀 것을 notes 에 적는다. 자동 저장 파일을 읽을 때 쓴다.
+    (직접 치는 줄은 엄격하게 둔다 — 오타는 바로 알려 주는 게 맞다.)
     """
     head, _, tail = line.partition("|")
     bits = head.split(None, 1)
@@ -256,18 +286,32 @@ def read_line(dex, line):
     for m in (bits[1].replace(",", " ").split() if len(bits) > 1 else []):
         kind, name = find_move_or_item(dex, m)
         if kind != "기술":
+            if notes is not None:
+                notes.append("%s: 기술 '%s' 을 못 읽어 뺐습니다" % (bits[0], m))
+                continue
             return None, None, None, ("'%s' 을 기술로 못 읽었습니다" % m)
         moves.append(name)
 
     sp, nature, ability, item, unknown = parse_extra(dex, tail, poke)
     if unknown:
-        return None, None, None, ("못 알아들은 말: %s" % ", ".join(unknown))
+        if notes is None:
+            return None, None, None, ("못 알아들은 말: %s" % ", ".join(unknown))
+        notes.append("%s: '%s' 를 못 알아들어 빼고 읽었습니다 (빈 칸은 사용률로 채움)"
+                     % (bits[0], ", ".join(unknown)))
     build, filled = build_one(dex, poke, sp, nature, ability, item)
     return build, moves, filled, None
 
 
-def load_party(dex, path=PARTY_FILE):
-    """파일에서 내 파티를 읽는다. [(빌드, [기술이름], 사용률로 채운 것들)]."""
+def load_party(dex, path=PARTY_FILE, notes=None):
+    """파일에서 내 파티를 읽는다. [(빌드, [기술이름], 사용률로 채운 것들)].
+
+    ! **한 줄이라도 못 읽으면 파티 전체를 버렸다** (return None). 경고는
+      콘솔에만 찍혀서 창에서는 안 보였고, 그 상태로 칸을 하나 고치면 자동
+      저장이 **빈 파티로 파일을 덮어써서** 적어 둔 파티가 영영 사라졌다
+      (2026-09-21). -> 못 읽은 낱말만 빼고 살린다. 못 찾은 포켓몬 줄만 뺀다.
+      무엇을 뺐는지는 notes 에 적는다 (창이 그걸 보여 준다).
+    """
+    notes = notes if notes is not None else []
     if not os.path.exists(path):
         return None
     out = []
@@ -276,11 +320,13 @@ def load_party(dex, path=PARTY_FILE):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            build, moves, filled, bad = read_line(dex, line)
+            build, moves, filled, bad = read_line(dex, line, notes=notes)
             if bad:
-                print("! 파티 파일: %s" % bad)
-                return None
+                notes.append("줄을 통째로 못 읽어 뺐습니다: %s — %s" % (line, bad))
+                continue
             out.append((build, moves, filled))
+    for n in notes:
+        print("! 파티 파일: %s" % n)
     return out or None
 
 
@@ -677,6 +723,64 @@ HELP = u"""
 #   tkinter 가 없어서 창은 윈도우에서만 돌아간다. 고르는 규칙을 여기로
 #   내려 둔 것과 같은 이유다 — 창은 보여 주고 받아 적기만 하고,
 #   틀리면 조용히 틀어질 계산은 전부 여기서 시험한다.
+
+
+MY_BRING = 3     # 챔피언스는 6마리 데려가 3마리를 낸다
+
+
+def my_turn_state(rows, active_slot):
+    """내 쪽 — 이번 판에 실제로 낸 놈들만 뽑는다.
+
+    rows         [(빌드 또는 None, [기술], HP%, 냈다)] — 자리 순서 그대로
+    active_slot  그 자리들 중 나와 있는 놈의 번호
+
+    돌려주는 것 dict — party [(빌드, [기술])] · my_hp · my_active ·
+    guessed(냈다를 하나도 안 켜서 채운 자리 전부로 봤나) · why(안 되면 왜).
+
+    ! **이게 없어서 창이 내 6마리 전부를 내 팀으로 계산했다** (2026-09-21).
+      실제로는 3마리만 나간다. 게다가 나와 있는 놈 말고는 HP 칸이 없어서
+      벤치가 전부 100% 였고, 쓰러진 내 포켓몬도 살아 있는 것으로 셌다.
+      같은 대면을 재 보니 6마리 약 80점 / 실제 3마리 약 40점 / 벤치 아머까오
+      HP 20% 면 0점 — **지는 판을 이긴다고 봤고 1위 추천도 바뀌었다.**
+      상대 쪽은 §5-26 에서 이미 고쳤는데 내 쪽만 비어 있었다.
+    ! 쓰러진 놈을 빼면 번호가 밀린다 — 나와 있는 놈을 다시 찾는다 (§5-27).
+    """
+    filled = [(i, b, mv, hp, br) for i, (b, mv, hp, br) in enumerate(rows)
+              if b is not None]
+    out = {"party": [], "my_hp": [], "my_active": 0,
+           "guessed": False, "why": None}
+    if not filled:
+        out["why"] = "내 파티가 비어 있습니다"
+        return out
+    chosen = [r for r in filled if r[4]]
+    if not chosen:
+        chosen = filled
+        out["guessed"] = True
+    if len(chosen) > MY_BRING and not out["guessed"]:
+        out["why"] = ("'냈다' 가 %d마리입니다 — 한 판에 %d마리만 냅니다"
+                      % (len(chosen), MY_BRING))
+        return out
+    alive = [r for r in chosen if r[3] > 0]
+    if not alive:
+        out["why"] = "낸 포켓몬이 전부 쓰러졌습니다"
+        return out
+    idx = None
+    for new_i, r in enumerate(alive):
+        if r[0] == active_slot:
+            idx = new_i
+            break
+    if idx is None:
+        if not any(r[0] == active_slot for r in filled):
+            out["why"] = "'나와 있음' 으로 고른 내 자리가 비어 있습니다"
+        elif not any(r[0] == active_slot for r in chosen):
+            out["why"] = "'나와 있음' 으로 고른 내 포켓몬이 '냈다' 가 아닙니다"
+        else:
+            out["why"] = "'나와 있음' 으로 고른 내 포켓몬이 쓰러졌습니다 (HP 0)"
+        return out
+    out["party"] = [(r[1], r[2]) for r in alive]
+    out["my_hp"] = [float(r[3]) for r in alive]
+    out["my_active"] = idx
+    return out
 
 
 def turn_state(my_hp, my_active, opp_rows, opp_active):

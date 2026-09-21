@@ -118,8 +118,10 @@ class Picker(object):
                               bg=FIELD, fg=TEXT, insertbackground=TEXT,
                               relief="flat", font=FONT)
         self.entry.pack(side="left")
+        # ✓ 자리를 **처음부터 잡아 둔다.** 비어 있다가 ✓ 가 붙는 순간 줄이
+        # 넓어져서 왼쪽 목록 오른쪽 끝(비우기 단추 등)이 잘렸다 (2026-09-21).
         self.mark = tk.Label(self.box, text="", bg=CARD, fg=DIM,
-                             font=FONT_S)
+                             font=FONT_S, width=2)
         self.mark.pack(side="left", padx=(4, 0))
 
         # 후보는 창 위에 떠야 다른 칸을 안 밀어낸다
@@ -288,6 +290,14 @@ class Picker(object):
 class Slot(object):
     """파티 한 자리. 칸에 골라 넣으면 능력치가 바로 다시 그려진다."""
 
+    def hp_pct(self):
+        return _hp_from(self.hp)
+
+    def on_active(self):
+        """'나와 있음' 이면 **당연히 낸 것이다** (상대 칸과 같은 규칙)."""
+        if self.poke is not None:
+            self.brought.set(True)
+
     def __init__(self, app, parent, index):
         tk = app.tk
         self.app = app
@@ -313,6 +323,33 @@ class Slot(object):
         self.title.pack(side="left", padx=(8, 0))
         tk.Button(top, text="비우기", command=self.clear, bg=LINE, fg=TEXT,
                   relief="flat", font=FONT_S).pack(side="right")
+
+        # -- 이번 판: HP · 냈다 · 나와 있음 ---------------------------------
+        # ! **상대 칸과 똑같이 만든다.** 이게 없어서 창이 내 6마리 전부를
+        #   HP 100% 로 계산했다 (2026-09-21). 규칙은 live.my_turn_state.
+        bt = tk.Frame(self.box, bg=CARD)
+        bt.pack(fill="x", pady=(3, 0))
+        tk.Label(bt, text="이번 판", bg=CARD, fg=DIM, font=FONT_S,
+                 width=6, anchor="w").pack(side="left")
+        tk.Label(bt, text="HP", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left", padx=(0, 1))
+        self.hp = tk.StringVar(value="100")
+        tk.Spinbox(bt, from_=0, to=100, increment=5, width=4,
+                   textvariable=self.hp, bg=FIELD, fg=TEXT,
+                   insertbackground=TEXT, relief="flat",
+                   buttonbackground=LINE, font=FONT_S).pack(side="left")
+        tk.Label(bt, text="% (0=쓰러짐)", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left", padx=(1, 0))
+        self.brought = tk.BooleanVar(value=False)
+        tk.Checkbutton(bt, text="냈다", variable=self.brought,
+                       bg=CARD, fg=TEXT, selectcolor=FIELD,
+                       activebackground=CARD, activeforeground=TEXT,
+                       font=FONT_S).pack(side="left", padx=(8, 0))
+        tk.Radiobutton(bt, text="나와 있음", variable=app.my_active,
+                       value=index, bg=CARD, fg=TEXT, selectcolor=FIELD,
+                       activebackground=CARD, activeforeground=TEXT,
+                       font=FONT_S, command=self.on_active
+                       ).pack(side="left", padx=(8, 0))
 
         # -- 성격 · 특성 · 도구 ---------------------------------------------
         row = tk.Frame(self.box, bg=CARD)
@@ -498,6 +535,18 @@ class Slot(object):
         self.redraw()
 
 
+def _hp_from(var):
+    """HP 칸 -> 숫자. **빈 칸은 만피.** 이상한 글자도 만피로 본다.
+    (float("" or 0) 은 0 이라, 그대로 두면 칸을 비웠을 때 조용히 '쓰러짐' 이 된다)"""
+    text = (var.get() or "").strip()
+    if not text:
+        return 100.0
+    try:
+        return max(0.0, min(100.0, float(text)))
+    except ValueError:
+        return 100.0
+
+
 class OppSlot(object):
     """상대 한 자리. 이름 · 남은 HP · 나와 있나, 셋만 받는다.
 
@@ -651,15 +700,24 @@ class App(object):
                            yscrollincrement=20)
         bar = tk.Scrollbar(left, orient="vertical", command=canvas.yview)
         self.party_box = tk.Frame(canvas, bg=BG)
-        self.party_box.bind(
-            "<Configure>",
-            lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        # ! **보이는 폭이 내용 폭을 따라가게 한다.** 폭 500 으로 못 박아 두니
+        #   빈 칸일 때 이미 딱 500 이었고, 성격·특성·도구를 채우면 536 이 돼서
+        #   **모든 칸**의 오른쪽 끝(비우기 · 능력 포인트 · 도구 칸)이 잘렸다.
+        #   (2026-09-21, 창을 실제로 띄워서 잡음) --점검 이 다시 잰다.
+        def _fit(_e=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            need = self.party_box.winfo_reqwidth()
+            if need > int(float(canvas.cget("width"))):
+                canvas.configure(width=need)
+        self.party_box.bind("<Configure>", _fit)
+        self._fit_party = _fit
         canvas.create_window((0, 0), window=self.party_box, anchor="nw")
         canvas.configure(yscrollcommand=bar.set)
         canvas.pack(side="left", fill="y", expand=False)
         bar.pack(side="left", fill="y")
         self.canvas = canvas
 
+        self.my_active = tk.IntVar(value=0)
         # **6자리로 연다.** 챔피언스는 6마리를 데려가서 3마리를 낸다.
         for i in range(MAX_PARTY):
             self.slots.append(Slot(self, self.party_box, i))
@@ -797,22 +855,12 @@ class App(object):
         tk.Label(box, text="이번 턴", bg=CARD, fg=DIM,
                  font=FONT_S).pack(anchor="w")
 
-        r2 = tk.Frame(box, bg=CARD)
-        r2.pack(fill="x", pady=(6, 0))
-        tk.Label(r2, text="나와 있는 내 포켓몬", bg=CARD, fg=DIM,
-                 font=FONT_S).pack(side="left")
-        self.active = tk.StringVar(value="1")
-        tk.Spinbox(r2, from_=1, to=6, width=3, textvariable=self.active,
-                   bg=FIELD, fg=TEXT, insertbackground=TEXT, relief="flat",
-                   buttonbackground=LINE, font=FONT_S).pack(side="left",
-                                                            padx=4)
-        tk.Label(r2, text="내 HP%", bg=CARD, fg=DIM,
-                 font=FONT_S).pack(side="left", padx=(10, 2))
-        self.my_hp = tk.StringVar(value="100")
-        tk.Spinbox(r2, from_=1, to=100, increment=5, width=4,
-                   textvariable=self.my_hp, bg=FIELD, fg=TEXT,
-                   insertbackground=TEXT, relief="flat",
-                   buttonbackground=LINE, font=FONT_S).pack(side="left")
+        # ! 여기 있던 「나와 있는 내 포켓몬(번호)」「내 HP%」 는 **없앴다.**
+        #   왼쪽 각 자리의 「이번 판」 줄로 옮겼다 (2026-09-21). 같은 값을
+        #   두 군데서 받으면 둘이 어긋나도 모른다.
+        tk.Label(box, text="내 쪽은 왼쪽 각 자리의 「이번 판」 줄에서 "
+                 "HP · 냈다 · 나와 있음을 고릅니다.",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w", pady=(4, 0))
 
         r4 = tk.Frame(box, bg=CARD)
         r4.pack(fill="x", pady=(6, 0))
@@ -913,7 +961,12 @@ class App(object):
             self.save_msg.config(text="저장 실패: %s" % e, fg=WARN)
 
     def _load_saved(self):
-        saved = live.load_party(self.dex)
+        notes = []
+        saved = live.load_party(self.dex, notes=notes)
+        if notes:
+            # 콘솔이 아니라 **창에** 보여 준다 — 콘솔은 창을 쓰는 사람에게 안 보인다
+            self.say("저장된 파티를 읽다가 고친 것:\n  " + "\n  ".join(notes)
+                     + "\n→ 칸을 확인하세요. 고치면 자동으로 다시 저장됩니다.")
         if not saved:
             return
         while len(self.slots) < len(saved):
@@ -935,9 +988,23 @@ class App(object):
             except (ValueError, AttributeError):
                 return default
 
-        idx = int(max(1, min(len(party), num(self.active, 1)))) - 1
-        my_hp = [100.0] * len(party)
-        my_hp[idx] = max(1.0, min(100.0, num(self.my_hp, 100)))
+        # 내 쪽 — **이번 판에 낸 놈만, 각자의 HP 로.** (live.my_turn_state)
+        mine_rows = []
+        for sl in self.slots:
+            b, bad = sl.build()
+            ok = b is not None and not bad
+            mine_rows.append((b if ok else None,
+                              sl.move_names() if ok else [],
+                              sl.hp_pct(), bool(sl.brought.get())))
+        mine = live.my_turn_state(mine_rows, self.my_active.get())
+        if mine["why"]:
+            self.say("%s — 왼쪽 「이번 판」 줄을 확인하세요." % mine["why"],
+                     clear=True)
+            return
+        party = mine["party"]
+        idx = mine["my_active"]
+        my_hp = mine["my_hp"]
+        self.guessed_mine = mine["guessed"]
 
         # 쓰러진 상대(HP 0)는 빼고 넘긴다. 빼면 번호가 밀리므로
         # **나와 있는 놈의 새 번호를 다시 찾는다.** 여기서 어긋나면
@@ -1079,6 +1146,10 @@ class App(object):
         if guessed_opp:
             L.append("! 「냈다」 를 하나도 안 켜서 **적은 것 전부**를 상대로")
             L.append("  봤습니다. 실제로 나온 놈만 켜면 더 정확합니다")
+        if getattr(self, "guessed_mine", False):
+            L.append("! 내 쪽 「냈다」 를 하나도 안 켜서 **채운 자리 전부**를 내")
+            L.append("  팀으로 봤습니다. 실제로는 3마리만 나갑니다 — 그대로 두면")
+            L.append("  이기는 쪽으로 크게 틀어집니다 (한 대면에서 약 80점 대 40점)")
         return "\n".join(L)
 
     def run(self):
@@ -1274,6 +1345,8 @@ def check():
 
     def spy(dex_, my_party, opp_pokes, **kw):
         seen_args["opp"] = [p["name"] for p in opp_pokes]
+        # 내 쪽도 본다 — 전엔 상대만 봐서 "내 6마리가 전부 넘어간다" 를 못 봤다
+        seen_args["mine"] = [b.poke["name"] for b in my_party]
         seen_args["state"] = kw.get("state")
         seen_args["ev"] = kw.get("evidence")
         return real(dex_, my_party, opp_pokes, **kw)
@@ -1350,6 +1423,58 @@ def check():
         print("선출이 안 나왔습니다:\n%s" % out[-600:])
         return 1
 
+    # ★ 내 쪽도 '낸 놈만, 각자의 HP 로' 계산에 가는가 (2026-09-21)
+    #   전엔 채운 6자리를 전부 HP 100% 로 넘겼다. 같은 대면이 약 80점 대 40점.
+    for sl in app.slots:
+        sl.brought.set(False)
+        sl.hp.set("100")
+    app.slots[0].brought.set(True)            # 하마돈
+    app.slots[1].brought.set(True)            # 아머까오
+    app.slots[1].hp.set("40")
+    app.my_active.set(1)
+    app.slots[1].on_active()
+    mine_args = {}
+
+    def spy2(dex_, my_party, opp_pokes, **kw):
+        mine_args["mine"] = [b.poke["name"] for b in my_party]
+        mine_args["state"] = kw.get("state")
+        return real(dex_, my_party, opp_pokes, **kw)
+
+    search.best_action = spy2
+    try:
+        app.secs.set("1")
+        mine_args.clear()
+        app.ask()
+        got1 = dict(mine_args)
+        app.slots[0].hp.set("0")               # 하마돈 쓰러짐
+        mine_args.clear()
+        app.ask()
+        got2 = dict(mine_args)
+        app.my_active.set(0)                   # 쓰러진 놈을 '나와 있음' 으로
+        mine_args.clear()
+        app.ask()
+        got3 = dict(mine_args)
+        said3 = app.out.get("1.0", "end")
+    finally:
+        search.best_action = real
+    st1 = got1.get("state") or {}
+    if got1.get("mine") != ["하마돈", "아머까오"]:
+        print("'냈다' 로 고른 둘만 넘어가야 하는데: %r" % got1.get("mine"))
+        return 1
+    if st1.get("my_hp") != [100.0, 40.0] or st1.get("my_active") != 1:
+        print("내 HP·나와 있는 번호가 칸과 다릅니다: %r" % st1)
+        return 1
+    st2 = got2.get("state") or {}
+    if got2.get("mine") != ["아머까오"] or st2.get("my_active") != 0:
+        print("쓰러진 내 포켓몬이 안 빠지거나 번호가 안 맞습니다: %r %r"
+              % (got2.get("mine"), st2))
+        return 1
+    if got3 or "쓰러졌습니다" not in said3:
+        print("쓰러진 놈을 나와 있음으로 골랐는데 그냥 계산했습니다: %r" % got3)
+        return 1
+    app.slots[0].hp.set("100")
+    app.my_active.set(0)
+
     # ★ 마우스로 쓸 수 있는가 (2026-09-21, 사용자가 창을 처음 써 보고 잡음)
     #   ① 후보를 **한 번** 눌러 고른다 — 전엔 두 번 눌러야 했는데 첫 번에 닫혔다
     #   ② 목록을 누르러 가는 동안 칸이 초점을 잃어도 목록이 안 닫힌다
@@ -1416,6 +1541,20 @@ def check():
     mw, _mh = app.root.minsize()
     if not mw or mw < app.min_size[0]:
         print("창의 최소 크기가 안 정해져 있습니다 (줄이면 오른쪽이 잘린다)")
+        return 1
+
+    # ★ 칸을 다 채워도 왼쪽 목록 오른쪽 끝이 안 잘리는가 (2026-09-21)
+    #   채우면 536 > 500 이 돼서 비우기 단추 등이 잘렸다.
+    try:
+        app.root.update_idletasks()
+        app._fit_party()
+        need = app.party_box.winfo_reqwidth()
+        have = int(float(app.canvas.cget("width")))
+    except Exception:
+        need = have = None
+    if isinstance(need, int) and need > 1 and have and need > have:
+        print("칸을 채우니 왼쪽 목록이 보이는 폭보다 넓습니다 (%d > %d) — "
+              "오른쪽 끝이 잘립니다" % (need, have))
         return 1
 
     # ★ 글자가 칸에 들어가는가 — 진짜 창에서만 잴 수 있다.
