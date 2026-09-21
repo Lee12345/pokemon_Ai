@@ -472,7 +472,40 @@ class Side(object):
           못 넣으면 "지금 이 상황" 이 아니라 "처음이었다면" 을 재게 된다.
         """
         self.dex = dex
+        # ★ **메가진화는 수(手)다.** 한 게임에 한 번이고, **언제 누구를**
+        #   할지 고르는 것 자체가 판단이다 (사용자: "무조건 B야. 이건
+        #   선택이 아니라 필수", 2026-09-21).
+        #   그래서 메가 폼으로 받은 것은 **기본 폼으로 되돌려 시작**하고,
+        #   메가 폼은 따로 들고 있다가 '메가' 를 두면 그때 바꾼다.
+        #   되돌리기 전에는 특성도 기본 폼 것이다 — 갑주무사는 메가 전에
+        #   단단한발톱이 아니라 위기회피다. 그게 실제 게임과 맞다.
+        self.mega_form = None
+        self.is_mega = False
+        origin = build
+        if build.poke.get("isMega"):
+            base_poke = calc.base_form(dex, build.poke)
+            if base_poke is not build.poke:
+                self.mega_form = build
+                build = calc.Build(
+                    dex, base_poke, sp=build.sp, nature=build.nature,
+                    ranks=build.ranks, item=build.item,
+                    ability=calc.base_ability(dex, base_poke),
+                    status=build.status, hp_ratio=build.hp_ratio)
         self.base = build
+        # ! **넘겨받은 그대로의 Build 도 들고 있는다.** 위에서 메가 폼을
+        #   기본 폼으로 갈아 끼우면 `self.base` 가 **새 객체**가 되는데,
+        #   `Policy` 는 계획의 주인을 `is` 로 확인한다. 그래서 이걸 안 두면
+        #   메가스톤 든 놈은 계획이 통째로 버려진다 — 전에 똑같은 자리에서
+        #   크게 당했다 (CLAUDE.md §8-4). 검사 [22] 가 이걸 잡았다.
+        self.origin = origin
+        # ★ **이 놈이 될 수 있는 Build 를 전부 들고 있는다.**
+        #   폼이 바뀌어도 '같은 놈' 인 것을 알아봐야 한다. 이게 없으면
+        #   메가진화한 순간 `Policy` 가 계획의 주인을 못 알아보고,
+        #   **내 기술 목록 밖의 기술을 꺼내 쓴다** (CLAUDE.md §8-1 의 재발).
+        #   실제로 그랬다 — 땅 기술만 줬는데 메가한 뒤 화염방사를 써서
+        #   아머까오(땅 무효)를 100% 로 이겼다. 검사 [41] 이 잡았다.
+        self.forms = [b for b in (origin, build, self.mega_form)
+                      if b is not None]
         self.max_hp = build.stat("hp")
         if hp_pct is None:
             self.hp = self.max_hp
@@ -515,6 +548,32 @@ class Side(object):
     @property
     def name(self):
         return self.base.name
+
+    def is_same(self, build):
+        """이 놈이 그 Build 로 만들어졌나. **폼이 바뀌어도 같은 놈이다.**"""
+        return any(build is f for f in self.forms)
+
+    @property
+    def can_mega(self):
+        """지금 메가진화할 수 있는 몸인가 (파티가 아직 안 썼는지는 Party 가 본다)."""
+        return self.mega_form is not None and not self.is_mega and self.alive
+
+    def mega(self):
+        """메가진화. 폼을 바꾸고 능력치를 다시 잡는다.
+
+        **남은 HP 비율을 지킨다.** 메가는 보통 HP 종족값이 안 바뀌지만,
+        바뀌는 폼이 생겨도 '반피였는데 만피가 되는' 일이 없게 한다.
+        """
+        if self.mega_form is None or self.is_mega:
+            return False
+        ratio = self.hp_ratio
+        self.base = self.mega_form
+        self.is_mega = True
+        self.max_hp = self.base.stat("hp")
+        self.hp = max(1, int(round(self.max_hp * ratio)))
+        # 특성이 바뀐다 — 탈(따라큐)처럼 특성에 딸린 상태도 다시 잡는다
+        self.disguise = (self.base.ability == DISGUISE)
+        return True
 
     @property
     def alive(self):
@@ -628,46 +687,22 @@ class Side(object):
 
 # **메가진화는 한 게임에 한 번뿐이다** (사용자가 알려 준 규칙, 2026-09-19).
 #
-# ! 이걸 안 지키고 있었다. `calc.popular_build` 이 "1위 도구가 메가스톤이면
-#   메가로 본다" 고 **만들 때** 폼을 바꿔 버려서, 파티에 메가스톤 든 놈이
-#   셋이면 **셋 다 메가로** 싸웠다. 경고도 없었다.
-#   재 보니 메가보만다·한카리아스·갑주무사 vs 하마돈·브리두라스·누리레느
-#   에서 **메가 3마리 34.2% / 메가 1마리 0.0%** 였다. 아예 다른 판이다.
-#   더 나쁜 것은 **선출 추천이 낼 수 없는 조합을 내놨다는 것이다** —
-#   "메가한카리아스Z · 아머까오 · 메가갑주무사" 는 메가가 둘이라 못 낸다.
+# ! 처음엔 이걸 아예 안 지키고 있었다. `calc.popular_build` 이 "1위 도구가
+#   메가스톤이면 메가로 본다" 며 **만들 때** 폼을 바꿔 버려서, 파티에 스톤
+#   든 놈이 셋이면 **셋 다 메가로** 싸웠다. 경고도 없었다.
+#   메가보만다·한카리아스·갑주무사 vs 하마돈·브리두라스·누리레느 에서
+#   **메가 3마리 34.2% / 메가 1마리 0.0%** — 아예 다른 판이었다.
 #
-# 누가 메가가 되나 — **먼저 나오는 놈**이다. 실제로도 보통 그렇게 둔다.
-# 이건 **정한 규칙이지 잰 것이 아니다.** 그래서 대전이 경고에 적는다.
+# ! 그 다음엔 "먼저 나오는 놈만 메가" 로 굳혀 놨는데, 그것도 틀렸다.
+#   진짜 규칙은 "한 게임에 한 번" 이지 "선봉만" 이 아니다. 갑주무사를
+#   기본 폼으로 버티다가 **나중에 나온 보만다를 메가로 쓰는** 수가 있는데
+#   그걸 표현조차 못 했다. 사용자가 못 박았다 —
+#   *"무조건 B야. 이건 선택이 아니라 필수"* (2026-09-21).
+#
+# 그래서 지금은 **메가가 수(手)다.** 모두 기본 폼으로 시작하고
+# (`Side.__init__`), 턴에 `("메가", 기술)` 을 두면 그때 메가가 된다.
+# 한 편이 한 번 쓰면 `Party.mega_used` 가 잠긴다.
 MEGA_PER_GAME = 1
-
-
-def _one_mega_only(dex, builds):
-    """한 편에서 메가는 하나만. 나머지는 스톤만 든 기본 폼으로 되돌린다.
-
-    돌려주는 것 (고친 빌드 목록, 사람이 읽을 알림 또는 None).
-    """
-    if not isinstance(builds, (list, tuple)):
-        builds = [builds]
-    megas = [i for i, b in enumerate(builds) if b.poke.get("isMega")]
-    if len(megas) <= MEGA_PER_GAME:
-        return list(builds), None
-    keep = megas[0]                     # 먼저 나오는 놈이 메가가 된다
-    out, reverted = [], []
-    for i, b in enumerate(builds):
-        if i in megas and i != keep:
-            base = calc.base_form(dex, b.poke)
-            reverted.append((b.name, base["name"]))
-            out.append(calc.Build(
-                dex, base, sp=b.sp, nature=b.nature, ranks=b.ranks,
-                item=b.item, ability=None, status=b.status,
-                hp_ratio=b.hp_ratio))
-        else:
-            out.append(b)
-    note = ("메가진화는 한 게임에 한 번뿐이라 **%s 만 메가**가 된다. "
-            "%s 는 스톤만 든 기본 폼으로 싸운다."
-            % (builds[keep].name,
-               ", ".join("%s→%s" % (a, c) for a, c in reverted)))
-    return out, note
 
 
 class Party(object):
@@ -683,7 +718,8 @@ class Party(object):
             builds = [builds]
         self.dex = dex
         hp_pcts = list(hp_pcts or [])
-        builds, self.mega_note = _one_mega_only(dex, builds)
+        # 이 편이 메가를 이미 썼는가. 한 게임에 한 번뿐이다.
+        self.mega_used = False
         self.members = [Side(dex, b,
                              hp_pcts[i] if i < len(hp_pcts) else None)
                         for i, b in enumerate(builds)]
@@ -701,6 +737,32 @@ class Party(object):
     @property
     def active(self):
         return self.members[self.active_idx]
+
+    def can_mega(self, side=None):
+        """지금 나와 있는 놈이 메가진화할 수 있나.
+
+        **한 게임에 한 번**이라 이미 썼으면 아무도 못 한다.
+        """
+        if self.mega_used:
+            return False
+        side = side or self.active
+        return side.can_mega
+
+    def do_mega(self, side=None):
+        """메가진화시킨다. 됐으면 True."""
+        side = side or self.active
+        if not self.can_mega(side):
+            return False
+        if side.mega():
+            self.mega_used = True
+            return True
+        return False
+
+    def mega_candidates(self):
+        """아직 메가를 안 썼다면, 메가할 수 있는 놈들의 번호."""
+        if self.mega_used:
+            return []
+        return [i for i, m in enumerate(self.members) if m.can_mega]
 
     @property
     def alive(self):
@@ -826,9 +888,6 @@ class Battle(object):
         self.log = [] if log else None
         self.warnings = []
         self._immune_abilities = status_immune_abilities(dex)
-        for party, who in ((self.me_party, "나"), (self.opp_party, "상대")):
-            if party.mega_note:
-                self._warn("%s: %s" % (who, party.mega_note))
         self._warn_dead_items()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
@@ -1667,14 +1726,38 @@ class Battle(object):
     def step(self, my_action, opp_action):
         """한 턴 진행.
 
-        수는 둘 중 하나다.
+        수는 셋 중 하나다.
           · 기술 (moves.json 의 항목)
           · ("교체", 번호)
+          · ("메가", 기술)   메가진화하고 그 기술을 쓴다
         교체는 기술보다 먼저 처리된다.
+
+        ! **메가는 순서를 정하기 전에 처리한다.** 메가하면 스피드가
+          바뀌는데, 순서를 먼저 정해 버리면 기본 폼 스피드로 겨루게 된다.
+          실제 게임도 메가가 먼저 일어나고 그 다음에 선공을 가린다.
+          조용히 틀어지는 자리라 여기 적어 둔다.
         """
         self.turn += 1
         self.me.protecting = False
         self.opp.protecting = False
+
+        # 0) 메가진화 — 순서를 가리기 **전에**
+        unwrapped = []
+        for action, party, who in ((my_action, self.me_party, "나"),
+                                   (opp_action, self.opp_party, "상대")):
+            if isinstance(action, tuple) and action[0] == "메가":
+                before = party.active.name
+                if party.do_mega():
+                    self._say("%s %s 가 메가진화했다 — %s"
+                              % (who, before, party.active.name))
+                else:
+                    # 이미 썼거나 스톤이 없다. 기술만 쓴다.
+                    self._say("%s %s 는 메가진화할 수 없다 (한 게임에 한 번)"
+                              % (who, before))
+                unwrapped.append(action[1])
+            else:
+                unwrapped.append(action)
+        my_action, opp_action = unwrapped
 
         # 1) 교체가 먼저다
         pending = []
@@ -2045,7 +2128,7 @@ class Policy(object):
     """
 
     def __init__(self, dex, party, foe_build, plan, allow_switch=True,
-                 moves=None, lead=None):
+                 moves=None, lead=None, auto_mega=True):
         """moves 를 주면 **계획이 끝난 뒤에도 그 기술들만 쓴다.**
 
         ! 이게 없어서 7단계가 조용히 거짓말을 했다. 계획(plan)은 첫 턴
@@ -2080,6 +2163,17 @@ class Policy(object):
             self.lead = party[0] if isinstance(party, (list, tuple)) else party
         self._fallback = {}
         self._foe = _first(foe_build)
+        # **계획(plan) 턴에도 메가를 할 것인가.**
+        #
+        # ! 기본은 True 다. 계획을 돌려 보는 쪽(`battle.evaluate` · 선출)은
+        #   "메가를 할지 말지" 를 따로 정하지 않으므로, 안 해 주면 메가
+        #   보유자가 **실제보다 약하게** 나온다. 재 보니 메가보만다의
+        #   이판사판태클 승률이 0.85 -> 0.69 로 떨어졌다 (스카이스킨이
+        #   기본 폼엔 없다). 선출 추천이 통째로 흔들리는 크기다.
+        # ! 7단계(`search.py`)만 False 로 준다. 거기서는 '메가하고 쓴다'
+        #   와 '그냥 쓴다' 가 **서로 다른 후보**라, 여기서 덮으면 탐색이
+        #   고른 답을 몰래 바꿔 버린다.
+        self.auto_mega = auto_mega
         # 계획이 끝난 뒤에는 스스로 뺄지도 판단한다.
         # 이게 없으면 상대가 죽을 때까지 절대 안 빠지고, 그러면 내 승률이
         # 실제보다 한참 높게 나온다 (재 보니 최대 89%p 차이가 났다).
@@ -2087,7 +2181,7 @@ class Policy(object):
 
     def _best_move(self, side):
         # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
-        restricted = bool(self.moves) and side.base is self.lead
+        restricted = bool(self.moves) and self._is_lead(side)
         key = (side.name, restricted)
         if key not in self._fallback:
             if restricted:
@@ -2107,26 +2201,53 @@ class Policy(object):
             self._fallback[key] = mv
         return self._fallback[key]
 
+    def _wrap_mega(self, party, action):
+        """메가를 아직 안 썼고 지금 나와 있는 놈이 할 수 있으면 같이 한다.
+
+        ! **이건 정한 규칙이지 잰 것이 아니다.** '기회가 오면 바로' 로 둔다 —
+          실제로도 대개 그렇게 두고, 안 그러면 메가를 영영 안 써서 그 편이
+          실제보다 약하게 나온다.
+        ! **계획(plan)은 여기서 안 건드린다.** 계획은 부른 쪽이 정한 수라,
+          "이번 턴에 메가를 안 한다" 도 하나의 수다. 그걸 여기서 덮으면
+          탐색이 고른 답을 몰래 바꿔 버린다 — 전에 `Policy` 가 기술을
+          몰래 바꿔 써서 크게 틀린 적이 있다 (CLAUDE.md §8).
+        """
+        if isinstance(action, tuple) or action is None:
+            return action
+        if party.can_mega():
+            return ("메가", action)
+        return action
+
+    def _is_lead(self, side):
+        """이 놈이 계획의 주인인가.
+
+        **넘겨받은 Build 와 실제로 싸우는 Build 가 다를 수 있다** —
+        메가스톤을 들면 `Side` 가 기본 폼으로 갈아 끼우기 때문이다.
+        둘 다 본다.
+        """
+        return side.is_same(self.lead)
+
     def act(self, party, turn_index, battle=None):
         # 계획은 처음 나온 놈의 수순이다. 그놈이 나와 있는 동안은 계획대로.
-        if party.active.base is self.lead and turn_index < len(self.plan):
-            return self.plan[turn_index]
+        if self._is_lead(party.active) and turn_index < len(self.plan):
+            want = self.plan[turn_index]
+            return self._wrap_mega(party, want) if self.auto_mega else want
 
         # 계획이 끝났거나 다른 놈이 나와 있다 — 빼는 게 나은지 본다
         if self.allow_switch and battle is not None:
             idx = battle.should_switch(party)
             if idx is not None:
                 return ("교체", idx)
-        if party.active.base is self.lead:
+        if self._is_lead(party.active):
             # ! **계획이 끝난 뒤 첫 수를 계속 반복하면 안 된다.**
             #   7단계는 "이번 턴에 이 수를 두면 어떻게 되나" 를 묻는데,
             #   반복해 버리면 "매 턴 이 수만 둔다면" 을 재게 된다.
             #   칼춤을 한 번 쓰는 것과 여섯 턴 내리 쓰는 것은 완전히
             #   다른 이야기다. 내 기술을 알 때는 매 턴 다시 고른다.
             if self.moves:
-                return self._best_move(party.active)
-            return _pick(self.plan, turn_index)
-        return self._best_move(party.active)
+                return self._wrap_mega(party, self._best_move(party.active))
+            return self._wrap_mega(party, _pick(self.plan, turn_index))
+        return self._wrap_mega(party, self._best_move(party.active))
 
 
 def action_name(action, party=None):
@@ -2184,7 +2305,8 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
-             opp_switch=True, matchup=None, my_moves=None, state=None):
+             opp_switch=True, matchup=None, my_moves=None, state=None,
+             auto_mega=True):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다.
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
@@ -2196,7 +2318,7 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
     # ! lead 를 **Battle 에게 물어서** 넘긴다. 손으로 me_build[0] 이라고
     #   적으면 state 로 '2번이 나와 있다' 를 줬을 때 조용히 어긋난다.
     mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves,
-                  lead=b.me_party.active.base)
+                  lead=b.me_party.active.base, auto_mega=auto_mega)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
                     allow_switch=opp_switch, lead=b.opp_party.active.base)
     for i in range(MAX_TURNS):

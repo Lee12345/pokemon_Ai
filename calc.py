@@ -523,6 +523,33 @@ def base_form(dex, poke):
     return same[0] if same else poke
 
 
+def base_ability(dex, poke):
+    """그 폼이 실제로 쓰는 특성. 사용률 1위 중 **그 폼이 가질 수 있는 것.**
+
+    메가를 기본 폼으로 되돌릴 때 쓴다 (`battle.Side`). 그냥 첫 번째
+    특성을 쓰면 안 된다 — 사용률이 알려 주는 것과 다를 수 있다.
+    dex 하나당 한 번만 세고 외워 둔다 (`Side` 는 판마다 수천 번 만들어진다).
+    """
+    cache = getattr(dex, "_base_ability", None)
+    if cache is None:
+        cache = {}
+        dex._base_ability = cache
+    key = poke.get("key") or poke["name"]
+    if key in cache:
+        return cache[key]
+    own = [a["name"] for a in poke["abilities"]]
+    got = own[0] if own else None
+    if len(own) > 1:
+        u = dex.usage.get(poke.get("key")) or dex.usage.get(
+            "%04d-00" % poke["dexNo"])
+        for cand in ((u or {}).get("abilities") or []):
+            if cand["name"] in own:
+                got = cand["name"]
+                break
+    cache[key] = got
+    return got
+
+
 class Build(object):
     """실제로 싸우는 한 마리. 포켓몬 + 노력치 + 성격 + 상태."""
 

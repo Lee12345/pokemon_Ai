@@ -300,18 +300,23 @@ def attach_leads(rows, table, opp6):
 
 
 def real_names(dex, party, trio, lead):
-    """**실제로 싸우는 몸의 이름**을 선봉부터 순서대로.
+    """**판이 시작될 때의 몸 이름**을 선봉부터 순서대로.
 
-    ! 메가진화는 한 게임에 한 번뿐이라, 메가스톤을 둘 이상 들고 나가도
-      메가가 되는 것은 **먼저 나오는 놈** 하나다. 그런데 보고서가
-      `calc.popular_build` 이 만든 이름을 그대로 찍으면 '메가보만다' 라고
-      적어 놓고 실제로는 '보만다' 로 싸운다. **화면과 계산이 갈라지는
-      자리다** — 이 저장소가 늘 고장나는 방식이다.
-      그래서 `battle._one_mega_only` 를 똑같이 태워서 이름을 받는다.
+    ! 메가는 한 게임에 한 번이고, **언제 누구를 할지는 대전 중에 고른다.**
+      그래서 선출 화면에서는 아직 아무도 메가가 아니다. 여기서
+      '메가보만다' 라고 찍으면 화면과 계산이 갈라진다 — 이 저장소가 늘
+      고장나는 방식이다. 기본 폼 이름으로 적고, 메가가 가능한 놈은
+      `*` 로 표시한다.
     """
     order = [lead] + [i for i in trio if i != lead]
-    fixed, _note = battle._one_mega_only(dex, [party[i] for i in order])
-    return [b.name for b in fixed]
+    out = []
+    for i in order:
+        b = party[i]
+        if b.poke.get("isMega"):
+            out.append(calc.base_form(dex, b.poke)["name"] + "*")
+        else:
+            out.append(b.name)
+    return out
 
 
 def _trio_line(dex, party, r, key="lead"):
@@ -384,9 +389,10 @@ def short_report(dex, my6, opp6, got):
     L.append("   ! **선봉은 정한 규칙으로 골랐다** (상대에게 평균 승률이")
     L.append("     제일 높은 놈). 3마리처럼 끝까지 돌려 본 것이 아니다.")
     L.append("   ! 상대 배분·기술은 사용률 1위로 봤다 (아직 분포를 안 썼다).")
-    if any("메가" in b.name for b in my6):
-        L.append("   ! 메가는 **한 게임에 하나뿐**이라 선봉만 메가가 된다.")
-        L.append("     위 이름은 실제로 싸우는 몸으로 적었다.")
+    if any(b.poke.get("isMega") for b in my6):
+        L.append("   ! `*` 는 메가스톤을 든 놈이다. 메가는 **한 게임에**")
+        L.append("     **한 번**뿐이고, 누구를 언제 할지는 대전 중에")
+        L.append("     7단계가 고른다. 그래서 여기서는 기본 폼으로 적었다.")
     L.append("  " + "=" * 52)
     return "\n".join(L)
 

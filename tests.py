@@ -884,8 +884,16 @@ def test_search(dex):
     #       땅 기술만 든 한카리아스가 2턴째부터 화염방사를 쓰고 있었다.
     #   (나) 점수가 '이기면 1.0' 이라, 이놈을 공짜로 잃어도 벤치가
     #       이기면 같은 점수였다. 그래서 뺐어야 할 자리에서 안 뺐다.
+    # ! 벤치(누리레느)가 어차피 이기는 자리라 점수가 다닥다닥 붙는다.
+    #   그래서 **벤치를 빼고 1대1 로** 재서 답을 또렷하게 만든다 —
+    #   때릴 수단이 없으면 이 판은 못 이긴다.
     top, got = pick(["한카리아스", "누리레느"], "아머까오",
-                    ["지진", "대지의힘", "칼춤", "스텔스록"], 4.0)
+                    ["지진", "대지의힘", "칼춤", "스텔스록"], 5.0)
+    ground_only = [r for r in got["rows"] if "교체" not in r["name"]]
+    check("때릴 수단이 없으면 공격수들이 전부 바닥이다 (최고 %.2f)"
+          % max(r["score"] for r in ground_only),
+          max(r["score"] for r in ground_only) < 0.95,
+          [(r["name"], round(r["score"], 3)) for r in ground_only[:3]])
     check("때릴 수단이 없으면 교체를 고른다 (%s)" % top["name"],
           "교체" in top["name"], [(r["name"], round(r["score"], 3))
                                  for r in got["rows"][:3]])
@@ -893,8 +901,11 @@ def test_search(dex):
     # ② 통하는 기술이 있으면 그걸 고른다 -------------------------------------
     top2, got2 = pick(["한카리아스", "누리레느"], "아머까오",
                       ["지진", "역린", "화염방사", "칼춤"], 4.0)
+    # ! '메가진화 + 화염방사' 도 정답이다 — 메가가 수가 된 뒤로 후보가
+    #   기술마다 둘씩이다. 재고 싶은 것은 **불꽃을 고르는가** 지
+    #   메가를 하느냐가 아니다.
     check("강철 상대에 불꽃을 고른다 (%s)" % top2["name"],
-          top2["name"] == "화염방사",
+          "화염방사" in top2["name"],
           [(r["name"], round(r["score"], 3)) for r in got2["rows"][:3]])
 
     # ③ 기술 제한이 정말로 걸리는가 (①의 (가) 재발 방지) --------------------
@@ -1749,57 +1760,84 @@ def test_switching(dex):
     check("교체하면 나와 있는 놈이 바뀐다", bt.me.name == "고릴타", bt.me.name)
 
     # --- 스텔스록은 바위 상성을 탄다 ---
-    # ! 전에는 [메가보만다, 한카리아스] 로 했는데 **둘 다 메가스톤을 든다.**
-    #   메가는 한 게임에 하나뿐이라 뒤쪽이 기본 폼(드래곤/땅)으로 되돌아가
-    #   바위가 0.5배가 되고 1/16 이 된다. 검사 자체가 틀린 파티를 쓰고
-    #   있었던 것이다. **검사를 느슨하게 하지 않고 파티를 합법으로 바꾼다** —
-    #   재고 싶은 것은 '압정이 상성을 타는가' 지 메가 규칙이 아니다.
-    bt = battle.Battle(dex, [B("고릴타"), B("한카리아스")], B("하마돈"),
-                       rng=random.Random(1), log=True)
-    bt.me_party.hazards["스텔스록"] = 1
-    bt.switch_in(bt.me_party, 1)
-    chomp = bt.me_party.members[1]
-    check("2번이 메가로 남아 있다 (%s)" % chomp.name,
-          chomp.base.poke.get("isMega"), chomp.name)
-    # 메가한카리아스Z 는 순수 드래곤 -> 바위는 보통(x1) -> 1/8
-    check("스텔스록 데미지가 상성을 탄다",
-          chomp.max_hp - chomp.hp == max(1, int(chomp.max_hp * 1.0 / 8)),
-          chomp.max_hp - chomp.hp)
+    # ! 전에는 [메가보만다, 한카리아스] 로 재면서 "메가한카리아스Z 는 순수
+    #   드래곤이라 1배" 라고 적어 놨는데, 메가는 **대전 중에** 되는 것이라
+    #   판이 시작될 때는 아무도 메가가 아니다. 검사 자체가 틀린 전제였다.
+    #   이제 **두 몸을 나란히 재서** 상성을 정말 타는지 본다.
+    #     보만다   드래곤/비행 -> 바위 2배   -> 1/4
+    #     한카리아스 드래곤/땅   -> 바위 0.5배 -> 1/16
+    for name, mult in (("보만다", 2.0), ("한카리아스", 0.5)):
+        bt = battle.Battle(dex, [B("고릴타"), B(name)], B("하마돈"),
+                           rng=random.Random(1), log=True)
+        bt.me_party.hazards["스텔스록"] = 1
+        bt.switch_in(bt.me_party, 1)
+        m = bt.me_party.members[1]
+        want = max(1, int(m.max_hp * mult / 8))
+        check("스텔스록이 %s 에게 %.1f배로 들어간다 (%d/%d)"
+              % (name, mult, m.max_hp - m.hp, m.max_hp),
+              m.max_hp - m.hp == want, (m.max_hp - m.hp, want))
 
-    # --- ★ 메가진화는 한 게임에 한 번뿐이다 ---
-    # 사용자가 알려 준 규칙 (2026-09-19). 이걸 안 지키고 있었다 —
-    # popular_build 이 만들 때 폼을 바꿔서 파티에 스톤이 셋이면 셋 다
-    # 메가로 싸웠다. 경고도 없었다. 재 보니 메가 3마리 34.2% /
-    # 메가 1마리 0.0% 로 **아예 다른 판**이었다.
+    # --- ★ 메가진화는 한 게임에 한 번이고, **그 자체가 수(手)다** ---
+    # 사용자가 두 번에 걸쳐 못 박았다 —
+    #   "메가진화는 한 게임에 한번만" (2026-09-19)
+    #   "무조건 B야. 이건 선택이 아니라 필수" (2026-09-21)
+    # 처음엔 셋 다 메가로 싸웠고(34.2% vs 0.0%), 그 다음엔 "선봉만 메가" 로
+    # 굳혀서 **메가를 아껴 뒀다 나중에 쓰는 수를 표현조차 못 했다.**
     tri = [B("메가보만다"), B("한카리아스"), B("갑주무사")]
     check("셋 다 메가스톤을 든다 (검사 전제)",
           all(b.poke.get("isMega") for b in tri), [b.name for b in tri])
     bt3 = battle.Battle(dex, tri, B("하마돈"), rng=random.Random(1))
-    got_mega = [m.name for m in bt3.me_party.members
-                if m.base.poke.get("isMega")]
-    check("실제로 메가가 되는 것은 하나뿐이다 (%s)" % ", ".join(got_mega),
-          len(got_mega) == 1, got_mega)
-    check("메가가 되는 것은 **먼저 나오는 놈**이다",
-          bt3.me_party.members[0].base.poke.get("isMega"),
-          bt3.me_party.members[0].name)
-    check("되돌아간 놈은 스톤을 그대로 들고 있다",
-          bt3.me_party.members[1].item is not None,
-          bt3.me_party.members[1].item)
-    check("되돌렸으면 승률 옆에 말해 준다",
-          any("한 게임에 한 번" in w for w in bt3.warnings), bt3.warnings)
-    # 상대 쪽도 똑같이 걸려야 한다 (사용률로 뽑으면 메가가 여럿 나온다)
+    check("판이 시작될 때는 **아무도 메가가 아니다**",
+          not any(m.is_mega for m in bt3.me_party.members),
+          [m.name for m in bt3.me_party.members])
+    check("메가 전에는 기본 폼 특성을 쓴다 (갑주무사 = %s)"
+          % bt3.me_party.members[2].base.ability,
+          bt3.me_party.members[2].base.ability == "위기회피",
+          bt3.me_party.members[2].base.ability)
+    check("셋 다 메가 후보다", bt3.me_party.mega_candidates() == [0, 1, 2],
+          bt3.me_party.mega_candidates())
+
+    # ("메가", 기술) 로 그 턴에 메가가 된다
+    bt3.step(("메가", dex.find_move("지진")), dex.find_move("맹독"))
+    check("('메가', 기술) 을 두면 메가가 된다 (%s)" % bt3.me.name,
+          bt3.me.is_mega, bt3.me.name)
+    check("한 편은 한 번만 — 이제 후보가 없다",
+          bt3.me_party.mega_candidates() == [],
+          bt3.me_party.mega_candidates())
+    check("두 번째 메가는 거부된다",
+          not bt3.me_party.do_mega(bt3.me_party.members[1]),
+          bt3.me_party.members[1].name)
+
+    # ★ **메가는 기술보다 먼저 처리돼야 한다.** 늦게 하면 기본 폼 능력치로
+    #   때리게 되고, 스피드도 기본 폼으로 겨루게 된다. 조용히 틀어지는 자리라
+    #   '같은 씨앗에서 데미지가 달라지는가' 로 못 박는다.
+    def _hit(mega):
+        b = battle.Battle(dex, [B("메가보만다")], B("하마돈"),
+                          rng=random.Random(7))
+        mv = dex.find_move("이판사판태클")
+        h = b.opp.hp
+        b.step(("메가", mv) if mega else mv, dex.find_move("맹독"))
+        return h - b.opp.hp
+    on, off = _hit(True), _hit(False)
+    check("메가가 기술보다 먼저 걸린다 (메가 %d / 기본 %d)" % (on, off),
+          on != off, (on, off))
+    check("메가 쪽이 더 아프다", on > off, (on, off))
+
+    # 상대 쪽도 똑같이 걸린다
     bt4 = battle.Battle(dex, B("하마돈"), tri, rng=random.Random(1))
-    opp_mega = [m.name for m in bt4.opp_party.members
-                if m.base.poke.get("isMega")]
-    check("상대 파티에도 똑같이 걸린다 (%s)" % ", ".join(opp_mega),
-          len(opp_mega) == 1, opp_mega)
-    # 하나뿐이면 아무것도 안 건드린다
-    one = [B("메가보만다"), B("고릴타")]
-    bt5 = battle.Battle(dex, one, B("하마돈"), rng=random.Random(1))
-    check("메가가 하나면 그대로 둔다",
-          bt5.me_party.members[0].base.poke.get("isMega")
-          and not any("한 게임에 한 번" in w for w in bt5.warnings),
-          [m.name for m in bt5.me_party.members])
+    check("상대도 기본 폼으로 시작한다",
+          not any(m.is_mega for m in bt4.opp_party.members),
+          [m.name for m in bt4.opp_party.members])
+    bt4.step(dex.find_move("맹독"), ("메가", dex.find_move("이판사판태클")))
+    check("상대도 메가를 쓸 수 있다 (%s)" % bt4.opp.name,
+          bt4.opp.is_mega, bt4.opp.name)
+
+    # 메가 스톤이 없으면 메가 수가 없다
+    plain = battle.Battle(dex, [B("고릴타"), B("하마돈")], B("하마돈"),
+                          rng=random.Random(1))
+    check("스톤이 없으면 메가 후보가 없다",
+          plain.me_party.mega_candidates() == [],
+          plain.me_party.mega_candidates())
 
     # --- 압정은 떠 있으면 안 밟지만 스텔스록은 밟는다 ---
     bt = battle.Battle(dex, [B("하마돈"), B("메가보만다")], B("하마돈"),
@@ -1835,7 +1873,9 @@ def test_switching(dex):
                        rng=random.Random(2))
     bt.me_party.members[0].base.ability = "흡반"
     bt.step(dex.find_move("용의춤"), dex.find_move("날려버리기"))
-    check("흡반이 강제 교체를 막는다", bt.me.name == "메가보만다", bt.me.name)
+    # ! 이름이 '메가보만다' 가 아니라 '보만다' 다 — 메가는 대전 중에 두는
+    #   수라서 판이 시작될 때는 기본 폼이다. 막히는 동작 자체는 그대로다.
+    check("흡반이 강제 교체를 막는다", bt.me.name == "보만다", bt.me.name)
 
     # --- 쓰러지면 다음이 나오고, 파티가 다 죽어야 끝난다 ---
     bt = battle.Battle(dex, [B("메가보만다"), B("고릴타")], B("하마돈"),
@@ -1940,8 +1980,25 @@ def test_policy(dex):
     pol = battle.Policy(dex, me, opp, plan)
 
     party = battle.Party(dex, me)
+    # ! 메가를 들 수 있는 놈이면 계획 턴에도 메가를 같이 한다
+    #   (`auto_mega`). 그래서 수가 ("메가", 기술) 로 나온다 — 그게 맞다.
+    #   안 해 주면 메가 보유자가 실제보다 약해진다 (0.85 -> 0.69 로 쟀다).
+    def _mv(action):
+        return action[1] if isinstance(action, tuple) else action
+    first = pol.act(party, 0)
     check("리드는 계획대로 쓴다",
-          pol.act(party, 0)["name"] == "이판사판태클", pol.act(party, 0))
+          _mv(first)["name"] == "이판사판태클", first)
+    check("계획 턴에도 메가를 같이 한다",
+          isinstance(first, tuple) and first[0] == "메가", first)
+    # ★ **메가스톤을 들면 Side 가 기본 폼으로 갈아 끼운다.** 그때
+    #   `self.base` 가 새 객체가 되는데, Policy 는 계획의 주인을 `is` 로
+    #   확인한다. 그래서 이걸 안 챙기면 **메가스톤 든 놈은 계획이 통째로
+    #   버려진다** — 전에 똑같은 자리에서 크게 당했다 (§8-4).
+    #   이 검사가 실제로 그 결함을 잡았다 (2026-09-21).
+    check("메가스톤을 들어도 계획의 주인을 알아본다",
+          pol._is_lead(party.active), (party.active.name, pol.lead.name))
+    check("그래서 넘겨받은 Build 를 그대로 들고 있는다",
+          party.active.origin is me[0], party.active.origin.name)
     party.active_idx = 1
     got = pol.act(party, 0)
     check("바뀐 뒤에는 그놈 기술을 쓴다",

@@ -101,6 +101,13 @@ def candidate_actions(dex, party, my_moves=None):
         moves = [m for m, _ in battle.realistic_moveset(dex, side.base.poke)]
         guessed = True
     out = [("기술", m) for m in moves]
+    # ★ **메가진화도 수다.** 한 게임에 한 번이라 "지금 쓸까, 아껴 둘까" 가
+    #   진짜 판단이다. 기술마다 '메가하고 쓴다' 를 짝으로 넣는다.
+    #   사용자가 못 박았다 — "무조건 B야. 이건 선택이 아니라 필수".
+    #   후보가 두 배가 되지만, 예산 배분(가망 없는 수를 먼저 접는 것)이
+    #   그대로 돌아가므로 나쁜 쪽은 금방 떨어진다.
+    if party.can_mega():
+        out += [("메가", m) for m in moves]
     for i, _ in party.bench():
         out.append(("교체", i))
     return out, guessed
@@ -109,7 +116,11 @@ def candidate_actions(dex, party, my_moves=None):
 def _as_plan(action):
     """후보 하나를 battle.Policy 가 받는 '계획' 으로."""
     kind, what = action
-    return [("교체", what)] if kind == "교체" else [what]
+    if kind == "교체":
+        return [("교체", what)]
+    if kind == "메가":
+        return [("메가", what)]
+    return [what]
 
 
 def _score(res):
@@ -218,17 +229,26 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     threat = best.best_threat(rows)
     opp_plan = [threat["move"]] if threat else [
         opp_moves[0] if opp_moves else dex.find_move("막치기")]
+    # 상대도 메가를 쓴다. **안 쓰게 두면 상대가 실제보다 약해진다** —
+    # 그러면 내 승률이 통째로 뻥튀기된다. 상대는 '첫 기회에 바로' 로 둔다
+    # (정한 규칙이지 잰 것이 아니다. `Policy._wrap_mega` 와 같은 규칙).
+    if opp_builds[oi].poke.get("isMega"):
+        opp_plan = [("메가", opp_plan[0])]
     opp = opp_builds if len(opp_builds) > 1 else opp_builds[0]
 
     if turns is None:
+        # auto_mega=False — '메가하고 쓴다' 와 '그냥 쓴다' 가 서로 다른
+        # 후보이므로, 계획 턴에 Policy 가 멋대로 메가를 붙이면 안 된다.
         res = battle.run_once(dex, my_party, opp, _as_plan(action),
-                              opp_plan, rng, my_moves=my_moves, state=state)
+                              opp_plan, rng, my_moves=my_moves, state=state,
+                              auto_mega=False)
         return _score(res)
 
     # 끊어 보기 — run_once 를 못 쓰므로 직접 돈다
     b = battle.Battle(dex, my_party, opp, rng=rng, **st)
     mine = battle.Policy(dex, my_party, opp, _as_plan(action),
-                         moves=my_moves, lead=b.me_party.active.base)
+                         moves=my_moves, lead=b.me_party.active.base,
+                         auto_mega=False)
     theirs = battle.Policy(dex, opp, my_party, opp_plan,
                            lead=b.opp_party.active.base)
     for i in range(turns):
@@ -370,6 +390,8 @@ def action_name(dex, party, action):
     kind, what = action
     if kind == "교체":
         return "%s 로 교체" % party.members[what].name
+    if kind == "메가":
+        return "메가진화 + %s" % what["name"]
     return what["name"]
 
 
