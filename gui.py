@@ -76,6 +76,8 @@ GOOD = "#5fd18c"
 WARN = "#f07070"
 
 FONT = ("Malgun Gothic", 10)
+WHEEL_UNITS = 3          # 휠 한 칸에 몇 줄 (캔버스는 한 줄 20px)
+MIN_OUT_H = 120          # 창을 줄여도 결과 칸은 이만큼 남긴다 (px)
 FONT_S = ("Malgun Gothic", 9)
 FONT_B = ("Malgun Gothic", 11, "bold")
 
@@ -140,8 +142,15 @@ class Picker(object):
         self.entry.bind("<Down>", self._down)
         self.entry.bind("<Return>", self._enter)
         self.entry.bind("<Escape>", lambda _e: self.hide())
-        self.entry.bind("<FocusOut>", lambda _e: self.box.after(150,
-                                                               self.hide))
+        # ! **목록을 마우스로 누르는 순간에도 칸은 초점을 잃는다.** 전에는
+        #   그때 무조건 0.15초 뒤 목록을 닫았고, 목록은 **두 번** 눌러야
+        #   골라졌다. 첫 번 누르면 닫혀서 두 번째가 닿지 않았다 — 마우스로는
+        #   아예 못 골랐다 (엔터만 됐다). 윈도우에서 창을 처음 실제로 써 본
+        #   사용자가 잡았다 (2026-09-21). 가짜 tkinter 로는 못 보는 종류다.
+        #   -> 한 번 누르면 고르고, 마우스가 목록 위에 있으면 닫지 않는다.
+        self.entry.bind("<FocusOut>", lambda _e: self.box.after(
+            150, self._maybe_hide))
+        self.list.bind("<ButtonRelease-1>", self._click)
         self.list.bind("<Double-Button-1>", self._enter)
         self.list.bind("<Return>", self._enter)
 
@@ -216,6 +225,32 @@ class Picker(object):
             self.pop.withdraw()
         except Exception:
             pass
+
+    def _pointer_in_pop(self):
+        """마우스가 후보 목록 위에 있나."""
+        try:
+            x, y = self.pop.winfo_pointerxy()
+            w = self.pop.winfo_containing(x, y)
+        except Exception:
+            return False
+        return w is not None and str(w).startswith(str(self.pop))
+
+    def _maybe_hide(self):
+        # 목록을 누르러 가는 중이면 닫지 않는다 — 닫으면 못 고른다
+        if self._pointer_in_pop():
+            return
+        self.hide()
+
+    def _click(self, e):
+        """한 번 눌러서 고른다. 누른 줄을 직접 찾는다 (선택이 늦게 잡힐 수 있다)."""
+        if not getattr(self, "_hits", None):
+            return "break"
+        i = self.list.nearest(e.y)
+        if i < 0 or i >= len(self._hits):
+            return "break"
+        self.list.selection_clear(0, "end")
+        self.list.selection_set(i)
+        return self._enter()
 
     def _down(self, _e):
         # 닫혀 있으면 **먼저 연다.** 전에는 닫혀 있을 때 아래키가
@@ -612,7 +647,8 @@ class App(object):
         # 왼쪽 — 파티 (스크롤이 필요하다. 세 마리면 길다)
         left = tk.Frame(body, bg=BG)
         left.pack(side="left", fill="y")
-        canvas = tk.Canvas(left, bg=BG, highlightthickness=0, width=500)
+        canvas = tk.Canvas(left, bg=BG, highlightthickness=0, width=500,
+                           yscrollincrement=20)
         bar = tk.Scrollbar(left, orient="vertical", command=canvas.yview)
         self.party_box = tk.Frame(canvas, bg=BG)
         self.party_box.bind(
@@ -637,6 +673,64 @@ class App(object):
         right.pack(side="left", fill="both", expand=True, padx=(10, 0))
         self._build_opp(right)
         self._build_turn(right)
+
+        # ! **휠이 아예 연결돼 있지 않았다.** 왼쪽 파티는 여섯 자리라
+        #   길어서 스크롤이 필수인데, 막대를 잡아 끌어야만 내려갔다.
+        #   (2026-09-21, 사용자가 창을 처음 실제로 써 보고 잡음)
+        #   윈도우 Tk 8.6 은 휠을 **초점 가진 칸**에 보낸다 — 마우스 밑이
+        #   아니다. 그래서 전체에 걸고, 마우스 밑이 어디인지 직접 본다.
+        self.root.bind_all("<MouseWheel>", self._on_wheel)
+        self.root.bind_all("<Button-4>", self._on_wheel)     # 리눅스
+        self.root.bind_all("<Button-5>", self._on_wheel)
+
+        # ! **창을 줄이면 오른쪽이 잘렸다.** 왼쪽을 폭 500 으로 못 박았는데
+        #   최소 크기를 안 정해서, 좁히면 오른쪽 패널이 창 밖으로 밀려났다.
+        #   -> 가로는 내용물보다 못 줄이게 한다. 세로는 결과 칸만 줄어들게
+        #   남겨 둔다 (왼쪽은 스크롤, 결과 칸은 늘었다 줄었다 한다).
+        self.root.update_idletasks()
+        min_h = (self.root.winfo_reqheight() - self.out.winfo_reqheight()
+                 + MIN_OUT_H)
+        self.root.minsize(self.root.winfo_reqwidth(), min_h)
+        self.min_size = (self.root.winfo_reqwidth(), min_h)
+
+    def wheel_target(self, w):
+        """마우스 밑 위젯 -> 굴릴 것. 파티 칸 어디든 왼쪽 캔버스를 굴린다.
+
+        결과 칸(Text)·후보 목록(Listbox) 위면 그것을 굴린다.
+        아무것도 아니면 None.
+        """
+        node = w
+        while node is not None:
+            if node is self.canvas:
+                return self.canvas
+            try:
+                cls = node.winfo_class()
+            except Exception:
+                cls = ""
+            if cls in ("Text", "Listbox"):
+                return node
+            node = getattr(node, "master", None)
+        return None
+
+    def _on_wheel(self, e):
+        try:
+            w = self.root.winfo_containing(e.x_root, e.y_root)
+        except Exception:
+            w = None
+        target = self.wheel_target(w)
+        if target is None:
+            return None
+        if target is not self.canvas and target is getattr(e, "widget", None):
+            return None           # 그 칸이 제 휠을 이미 처리했다 — 두 번 굴리지 않는다
+        num = getattr(e, "num", None)
+        if num == 4:
+            step = -1
+        elif num == 5:
+            step = 1
+        else:
+            step = -1 if (e.delta or 0) > 0 else 1
+        target.yview_scroll(step * WHEEL_UNITS, "units")
+        return "break"
 
     def add_slot(self):
         """남은 자리 — 이제 처음부터 6자리를 열어 두므로 쓸 일이 없다.
@@ -1256,6 +1350,74 @@ def check():
         print("선출이 안 나왔습니다:\n%s" % out[-600:])
         return 1
 
+    # ★ 마우스로 쓸 수 있는가 (2026-09-21, 사용자가 창을 처음 써 보고 잡음)
+    #   ① 후보를 **한 번** 눌러 고른다 — 전엔 두 번 눌러야 했는데 첫 번에 닫혔다
+    #   ② 목록을 누르러 가는 동안 칸이 초점을 잃어도 목록이 안 닫힌다
+    #   ③ 파티 칸 위에서 휠을 굴리면 왼쪽이 내려간다 — 휠이 아예 안 걸려 있었다
+    #   ④ 창을 내용물보다 좁게 못 줄인다 — 줄이면 오른쪽이 잘렸다
+    pk = app.slots[MAX_PARTY - 1].name
+    if "<ButtonRelease-1>" not in (pk.list.bind() or ()):
+        print("후보 목록에 '한 번 누르기' 가 안 걸려 있습니다")
+        return 1
+    pk.var.set("한카")
+    pk.refresh(force=True)
+
+    class _Ev(object):
+        x = y = x_root = y_root = 0
+        delta = -120
+        num = None
+        widget = None
+
+    pk._pointer_in_pop = lambda: True
+    pk._maybe_hide()
+    kept = pk.pop.winfo_viewable()
+    pk._pointer_in_pop = lambda: False
+    pk._maybe_hide()
+    closed = not pk.pop.winfo_viewable()
+    del pk._pointer_in_pop
+    if not (kept and closed):
+        print("목록 위에 마우스가 있어도 닫힙니다 (남음 %s / 밖이면 닫힘 %s)"
+              % (kept, closed))
+        return 1
+    pk.refresh(force=True)
+    pk._click(_Ev())
+    got = pk.get()
+    if not got or got.get("name") != "한카리아스":
+        print("후보를 한 번 눌렀는데 안 들어갑니다: %r" % (got,))
+        return 1
+
+    if not app.root.bind_all("<MouseWheel>"):
+        print("창에 휠이 안 걸려 있습니다")
+        return 1
+    inside = app.slots[MAX_PARTY - 1].box
+    if app.wheel_target(inside) is not app.canvas:
+        print("파티 칸 위의 휠이 왼쪽 목록을 안 굴립니다")
+        return 1
+    if app.wheel_target(app.out) is not app.out:
+        print("결과 칸 위의 휠이 결과 칸을 안 굴립니다")
+        return 1
+    app.root.update_idletasks()
+    app.canvas.yview_moveto(0)
+    before = app.canvas.yview()
+    real_containing = app.root.winfo_containing
+    app.root.winfo_containing = lambda x, y: inside
+    app._on_wheel(_Ev())
+    app.root.winfo_containing = real_containing
+    after = app.canvas.yview()
+    if before and after and tuple(before) != (0.0, 1.0):
+        if not after[0] > before[0]:
+            print("휠을 굴렸는데 왼쪽이 안 내려갑니다: %s -> %s"
+                  % (before, after))
+            return 1
+    else:
+        print("  (휠로 실제로 내려가는지는 못 쟀다 — 창이 안 보이는 상태라서)")
+    # ! 처음엔 'mw > 0' 으로 봤는데, 최소 크기를 안 정해도 tkinter 가 기본값
+    #   1x1 을 돌려줘서 통과해 버렸다 — 일부러 줄을 지워 보고 알았다.
+    mw, _mh = app.root.minsize()
+    if not mw or mw < app.min_size[0]:
+        print("창의 최소 크기가 안 정해져 있습니다 (줄이면 오른쪽이 잘린다)")
+        return 1
+
     # ★ 글자가 칸에 들어가는가 — 진짜 창에서만 잴 수 있다.
     #   「특수공격」 이 「특수공ㅈ」 로 잘려 있었는데 가짜 tkinter 점검은
     #   통과했다. 생김새는 가짜로는 안 보인다.
@@ -1268,7 +1430,8 @@ def check():
         return 1
 
     print("창 점검 끝 — 후보 고르기 · 능력치 · 노력치 규칙 · 6자리 ·"
-          " 상대 파티가 계산까지 가는지 · 추천 · 선출 · 글자 잘림까지 돌았습니다")
+          " 상대 파티가 계산까지 가는지 · 추천 · 선출 · 마우스(한 번 누르기·휠)"
+          " · 최소 크기 · 글자 잘림까지 돌았습니다")
     print("  " + text.strip().splitlines()[-1])
     app.root.destroy()
     return 0

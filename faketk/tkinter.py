@@ -61,6 +61,8 @@ class _W(object):
     def __init__(self, master=None, **kw):
         self._kw = dict(kw)
         self._children = []
+        self._binds = {}
+        self.master = master if isinstance(master, _W) else None
         if isinstance(master, _W):
             master._children.append(self)
 
@@ -71,7 +73,23 @@ class _W(object):
     def configure(self, **kw): self._kw.update(kw)
     config = configure
     def cget(self, key): return self._kw.get(key, "")
-    def bind(self, *a, **kw): pass
+    def bind(self, seq=None, fn=None, *a, **kw):
+        # **무엇을 걸었는지는 기억한다.** 빈 함수로 두면 "목록을 한 번
+        # 누르면 고른다" 가 걸려 있는지조차 시험할 수가 없다 (2026-09-21).
+        if seq is None:
+            return tuple(self._binds)
+        if fn is not None:
+            self._binds[seq] = fn
+        return self._binds.get(seq)
+    def bind_all(self, seq=None, fn=None, *a, **kw):
+        return self.bind(seq, fn)
+    def winfo_class(self): return type(self).__name__
+    def winfo_children(self): return list(self._children)
+    def winfo_containing(self, x, y): return None
+    def winfo_pointerxy(self): return (0, 0)
+    def winfo_reqwidth(self): return 100
+    def winfo_reqheight(self): return 20
+    def yview_scroll(self, n, what): pass
     def after(self, ms, fn=None, *a):
         if fn is not None:
             fn(*a)
@@ -96,6 +114,7 @@ class Canvas(_W):
     def delete(self, *a): pass
     def bbox(self, *a): return (0, 0, 100, 100)
     def yview(self, *a): pass
+    def yview_moveto(self, *a): pass
 class Scrollbar(_W):
     def set(self, *a): pass
 class Entry(_W):
@@ -115,6 +134,7 @@ class Listbox(_W):
         self._rows = []
     def delete(self, a, b=None): self._rows = []
     def insert(self, where, text): self._rows.append(text)
+    def nearest(self, y): return 0 if self._rows else -1
     def size(self): return len(self._rows)
     def curselection(self): return (0,) if self._rows else ()
     def selection_clear(self, *a): pass
@@ -159,7 +179,12 @@ class Toplevel(_W):
 
 
 class Tk(_W):
+    _min = (0, 0)
     def title(self, *a): pass
+    def minsize(self, w=None, h=None):
+        if w is None:
+            return self._min
+        self._min = (w, h)
     def withdraw(self): pass
     def geometry(self, *a): pass
     def mainloop(self): pass
