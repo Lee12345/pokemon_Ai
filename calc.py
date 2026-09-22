@@ -85,6 +85,11 @@ CONFIG = {
     #   사용자가 확인해 줌 (2026-09-22): 2회 37.5% · 3회 37.5% · 4회 12.5% · 5회 12.5%.
     #   평균 3.1회 → 3.0회.
     "multi_hit_2to5": [0.375, 0.375, 0.125, 0.125],   # 2·3·4·5회 — 사용자가 확인해 줌
+    # --- 명중률·회피율 랭크 (2026-09-22) ---
+    # 설명문은 '회피율을 2단계 올린다' 까지만 적는다. 한 단계가 몇 배인지는 본편 값을
+    # 가져다 쓴다 — 미확인. (내 명중 − 상대 회피) 가 n 이면 n>=0: (3+n)/3, n<0: 3/(3-n).
+    # 대전이 쓸 때 경고를 띄운다.
+    "accuracy_stage_base": 3,
     # --- 형태 추론 (1-A) / 세기는 구축기사 표본으로 맞춤 (1-B) ---
     #
     # 처음에는 넷 다 내가 감으로 잡았다. 그 뒤 구축기사 **개체 1,326마리**로
@@ -623,6 +628,24 @@ _FAIL_NOT_TYPE = re.compile(r"자신이 (\S+?)타입이 아닌 경우 실패")
 #   죽기살기: "상대의 남은 HP에서 자신의 남은 HP를 뺀 수치만큼 데미지를 준다.
 #             상대의 HP가 자신의 HP 이하면 실패한다."
 _ENDEAVOR = re.compile(r"상대의 남은 HP에서 자신의 남은 HP를 뺀 수치만큼 데미지")
+#   정해진 양이 들어가는 기술들 (2026-09-22)
+_FIXED_N = re.compile(r"상대 HP에 (\d+)데미지를 준다")                  # 지구던지기·나이트헤드
+_HALF_HP = re.compile(r"상대의 남은 HP의 절반만큼 데미지")                # 분노의앞니
+_FINAL_GAMBIT = re.compile(r"사용할 때 남은 HP만큼의 데미지")             # 목숨걸기
+_OHKO = re.compile(r"상대를 기절시킨다")                                   # 일격필살 4개
+_OHKO_TYPE_IMMUNE = re.compile(r"(\S+?)타입인 상대에게는 맞지 않는다")     # 절대영도 — 얼음
+# 절대영도: "얼음타입 이외의 포켓몬이 사용하면 명중률이 20%가 된다" (battle 이 명중에서 본다)
+_OHKO_ACC_UNLESS = re.compile(r"(\S+?)타입 이외의 포켓몬이 사용하면 명중률이 (\d+)%")
+
+
+def ohko_proof_abilities(dex):
+    """'일격필살 기술의 효과도 받지 않는다' (옹골참). dex 에 외운다."""
+    got = getattr(dex, "_ohko_proof", None)
+    if got is None:
+        got = {a["name"] for a in dex.abilities
+               if "일격필살 기술의 효과도 받지 않는다" in (a.get("description") or "")}
+        dex._ohko_proof = got
+    return got
 # 몸(Build)만 보고는 판정할 수 없는 조건(나온 첫 턴·상대가 고른 기술·필드 등)은
 # `battle.Battle.move_blocked` 가 본다. 여기에는 몸만으로 되는 것만 둔다.
 
@@ -669,7 +692,8 @@ _ATK_RANK = re.compile(
     r"((?:자신|상대)의 )?([가-힣]+(?:, ?[가-힣]+)*)[를을] (\d)단계 "
     r"(올린|떨어뜨린|올리고|떨어뜨리고)")
 _ATK_STAT_WORD = {"공격": "attack", "방어": "defense", "특수공격": "spAtk",
-                  "특수방어": "spDef", "스피드": "speed"}
+                  "특수방어": "spDef", "스피드": "speed",
+                  "명중률": "accuracy", "회피율": "evasion"}   # battle.STAT_WORD 와 같게
 _ATK_STATUS = re.compile(r"상대를 ([가-힣]+(?:, [가-힣]+)*)(?: 중 하나의)? 상태로 만든다")
 _ATK_FLINCH = re.compile(r"상대를 풀죽게 한다")
 _ATK_DRAIN = re.compile(r"준 데미지의 (\d+)/(\d+)만큼 자신의 HP를 회복")
@@ -759,6 +783,8 @@ def attack_effects(move):
         "knock_off": bool(_KNOCK_OFF.search(d)),
         "thaw_foe": bool(_THAW_FOE.search(d)),
         "self_faint": bool(_SELF_FAINT.search(d)),
+        # 목숨걸기 — 자폭과 달리 **맞았을 때만** 쓴 쪽이 기절한다 (고스트에게 막히면 안 함)
+        "faint_on_hit": bool(_FINAL_GAMBIT.search(d)),
         "hits": hits,
         "powers": [int(x) for x in mp.groups()] if mp else None,
         "stop_on_miss": bool(_MULTI_STOP.search(d)),
@@ -952,22 +978,42 @@ def calc_damage(dex, attacker, defender, move, critical=False,
             return {"error": "%s 에게 %s 타입은 효과가 없습니다." % (
                 defender.name, move_type)}
 
-    # 죽기살기 — 위력이 아니라 남은 HP 의 차이만큼 들어간다 (상성·자속·난수 없음).
-    # 데이터의 위력 1 로 계산하면 1~2 데미지가 나와서 조용히 쓸모없는 기술이 된다.
-    if _ENDEAVOR.search(move.get("description") or ""):
-        gap = hp_now(defender) - hp_now(attacker)
-        if gap <= 0:
+    # 위력이 아니라 **정해진 양** 이 들어가는 기술 (상성 배율·자속·난수·스크린 없음,
+    # 타입 무효만 탄다 — 바로 위에서 걸렀다). 데이터의 위력은 1 이라, 그대로 계산하면
+    # 1~2 데미지가 나와서 조용히 쓸모없는 기술이 됐다 (2026-09-22 전까지 전부 그랬다).
+    d_text = move.get("description") or ""
+    fixed, why_fixed = None, None
+    if _ENDEAVOR.search(d_text):                       # 죽기살기
+        fixed = hp_now(defender) - hp_now(attacker)
+        if fixed <= 0:
             return {"error": "실패 — 상대 HP가 자신 HP 이하"}
-        rolls = [gap] * (CONFIG["random_max"] - CONFIG["random_min"] + 1)
+        why_fixed = "상대 남은 HP − 자신 남은 HP"
+    elif _OHKO.search(d_text):                          # 땅가르기·절대영도·뿔드릴·가위자르기
+        if defender.ability in ohko_proof_abilities(dex):
+            return {"error": "%s 의 %s — 일격필살 기술이 안 통한다"
+                             % (defender.name, defender.ability)}
+        m = _OHKO_TYPE_IMMUNE.search(d_text)
+        if m and m.group(1) in defender.types:
+            return {"error": "%s타입에게는 맞지 않는다" % m.group(1)}
+        fixed, why_fixed = hp_now(defender), "일격필살 (맞으면 기절)"
+    elif _FIXED_N.search(d_text):                       # 지구던지기·나이트헤드
+        fixed = int(_FIXED_N.search(d_text).group(1))
+        why_fixed = "고정 %d" % fixed
+    elif _HALF_HP.search(d_text):                       # 분노의앞니
+        fixed, why_fixed = max(1, hp_now(defender) // 2), "상대 남은 HP 의 절반"
+    elif _FINAL_GAMBIT.search(d_text):                  # 목숨걸기
+        fixed, why_fixed = hp_now(attacker), "자신의 남은 HP 만큼 (쓰면 기절)"
+    if fixed is not None:
+        rolls = [fixed] * (CONFIG["random_max"] - CONFIG["random_min"] + 1)
         return {
             "move": move, "moveType": move_type, "power": 0,
-            "notes": ["죽기살기: 상대 남은 HP − 자신 남은 HP = %d 고정" % gap],
+            "notes": ["%s: %s = %d" % (move["name"], why_fixed, fixed)],
             "warnings": warnings, "attack": a, "defense": d, "hp": hp,
             "effectiveness": eff, "stab": 1.0, "critical": 1.0, "burn": 1.0,
-            "rolls": rolls, "min": gap, "max": gap,
-            "minPct": gap * 100.0 / hp, "maxPct": gap * 100.0 / hp,
-            "ohkoChance": 1.0 if gap >= hp else 0.0,
-            "hitsMin": math.ceil(hp / gap), "hitsMax": math.ceil(hp / gap),
+            "rolls": rolls, "min": fixed, "max": fixed,
+            "minPct": fixed * 100.0 / hp, "maxPct": fixed * 100.0 / hp,
+            "ohkoChance": 1.0 if fixed >= hp else 0.0,
+            "hitsMin": math.ceil(hp / fixed), "hitsMax": math.ceil(hp / fixed),
             # 스크린·급소·날씨로 바뀌지 않는 고정 데미지다 (battle._hit 가 본다)
             "fixed": True,
         }

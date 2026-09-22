@@ -38,7 +38,14 @@ import scout
 STAT_WORD = {
     "공격": "attack", "방어": "defense", "특수공격": "spAtk",
     "특수방어": "spDef", "스피드": "speed",
+    # 2026-09-22 — 명중률·회피율 랭크. 전에는 없어서 작아지기(장침바루 44%)가
+    # '효과를 못 읽었다' 로만 떴고, 모래뿌리기 같은 것도 아무 일도 안 했다.
+    "명중률": "accuracy", "회피율": "evasion",
 }
+# 로그에 찍는 이름. calc.STAT_KO 에는 명중률·회피율이 없다 (실능 계산용이라).
+STAT_LABEL = dict(calc.STAT_KO, accuracy="명중률", evasion="회피율")
+# 명중 판정 전용 랭크 — Side.ranks 에만 있고 Build(실능) 에는 안 쓰인다.
+HIT_RANKS = ("accuracy", "evasion")
 
 # 날씨가 어느 타입을 올리고 어느 타입을 깎는가.
 # **게임 데이터에 숫자가 없다.** 본편 값을 쓰고 경고를 띄운다 — 압정과 같다.
@@ -512,6 +519,11 @@ def skill_link_abilities(dex):
     return _abilities_saying(dex, "_skill_link", "연속 기술을 사용하면 최고 횟수로")
 
 
+# 작아지기 (2026-09-22) — 쓰면 "자신은 작아지기 상태가 된다". 누르기·썬더다이브 등 7개는
+# "작아지기 상태인 상대에게는 위력이 2배가 되며 반드시 명중한다".
+_MINIMIZE_SELF = re.compile(r"자신은 작아지기 상태가 된다")
+_MINIMIZE_PUNISH = re.compile(r"작아지기 상태인 상대에게는 위력이 (\d+)배가 되며 반드시 명중")
+
 # 거대해머 — "이 기술은 2회 연속으로 사용할 수 없다." (설명문에 '실패' 가 없어서 따로 둔다)
 _NO_REPEAT = re.compile(r"이 기술은 2회 연속으로 사용할 수 없다")
 
@@ -575,6 +587,8 @@ class Side(object):
             # 1 이상은 남긴다 — 0 으로 시작하면 이미 쓰러진 것이다
             self.hp = max(1, int(round(self.max_hp * pct / 100.0)))
         self.ranks = dict(build.ranks)
+        for k in HIT_RANKS:
+            self.ranks.setdefault(k, 0)
         self.status = build.status
         self.item = build.item
         self.item_used = False
@@ -626,6 +640,7 @@ class Side(object):
         self.stockpile = 0           # 비축하기 횟수 (토해내기)
         self.last_failed = False     # 직전 행동이 실패했나 (분함의발구르기·열불내기)
         self.last_move = None        # 직전에 쓴 기술 (Policy._just_failed — 상대가 본다)
+        self.minimized = False       # 작아지기 상태 (교체하면 풀린다)
         # 판 중간에서 시작해 '막 나왔는지' 를 몰라서 막 나왔다고 **가정한** 몸인가.
         # Battle.__init__ 이 켜고, 실제로 교체해 들어오면 여기서 꺼진다.
         self.fresh_guessed = False
@@ -762,7 +777,7 @@ class Side(object):
         return self.base.types
 
     def rank_text(self):
-        got = ["%s%+d" % (calc.STAT_KO[k], v)
+        got = ["%s%+d" % (STAT_LABEL[k], v)
                for k, v in self.ranks.items() if v]
         return " ".join(got) if got else "없음"
 
@@ -1092,7 +1107,7 @@ class Battle(object):
             side.item_used = True
             self._say("%s 의 %s — %s %s%+d (지금 %s)"
                       % (side.name, side.item, side.name,
-                         calc.STAT_KO[key], ef["step"], side.rank_text()))
+                         STAT_LABEL[key], ef["step"], side.rank_text()))
 
     def _apply_hazards(self, party, side):
         """나올 때 압정을 밟는다. 수치는 게임 데이터에 없어서 본편 값 가정."""
@@ -1154,7 +1169,7 @@ class Battle(object):
             if foe.bump(ab["stat"], ab["step"]):
                 self._say("%s 의 %s — %s %s%+d"
                           % (side.name, side.base.ability, foe.name,
-                             calc.STAT_KO[ab["stat"]], ab["step"]))
+                             STAT_LABEL[ab["stat"]], ab["step"]))
         elif ab["kind"] == "self_rank":
             if side.bump(ab["stat"], ab["step"]):
                 self._say("%s 의 %s — 공격%+d" % (side.name, side.base.ability,
@@ -1174,6 +1189,7 @@ class Battle(object):
             old.confused = 0
             old.drowsy = 0
             old.protecting = False
+            old.minimized = False                # 작아지기도 물러나면 풀린다
         party.active_idx = idx
         side = party.active
         side.reset_entry()                       # 방금 나온 것을 이제 안다
@@ -1376,6 +1392,11 @@ class Battle(object):
             stage += ef["step"]
         crit = self.rng.random() < calc.crit_chance(move, stage)
         extra = self._power_scale(move, atk)
+        mm = _MINIMIZE_PUNISH.search(d_text)
+        if mm and dfn.minimized:
+            extra *= int(mm.group(1))
+            self._say("%s 의 %s — 작아진 상대에게 위력 %s배"
+                      % (atk.name, move["name"], mm.group(1)))
         m2 = _AFTER_FAIL.search(d_text)
         if m2 and atk.last_failed:
             extra *= int(m2.group(1))
@@ -1465,6 +1486,8 @@ class Battle(object):
                 continue          # 토해내기 — 비축한 만큼 위력을 위에서 실제로 넣었다
             if "회 연속" in c:
                 continue          # 연속기 — 위에서 실제로 여러 번 때렸다
+            if "고정 데미지" in c and res.get("fixed"):
+                continue          # 나이트헤드 등 — calc 가 정해진 양으로 실제로 넣었다
             self._warn("%s: %s" % (move["name"], c))
 
         self._secondaries(atk, dfn, move, fx, dmg, connected, sheer)
@@ -1474,9 +1497,35 @@ class Battle(object):
     def _accuracy_roll(self, atk, dfn, move, who, quiet=False):
         """명중 판정. 맞으면 True. (연속기의 두 번째부터도 이걸 쓴다)"""
         acc = move.get("accuracy")
+        d = move.get("description") or ""
         if acc is None or acc > 100:
             return True
+        # 작아지기 — "작아지기 상태인 상대에게는 ... 반드시 명중한다"
+        if dfn.minimized and _MINIMIZE_PUNISH.search(d):
+            return True
+        ohko = bool(calc._OHKO.search(d))
+        if ohko:
+            # 일격필살은 명중이 **고정** 이다 (랭크·도구가 안 탄다). 절대영도는
+            # "얼음타입 이외의 포켓몬이 사용하면 명중률이 20%" — 설명문에서 읽는다.
+            m = calc._OHKO_ACC_UNLESS.search(d)
+            if m and m.group(1) not in atk.types:
+                acc = int(m.group(2))
+            if self.rng.random() > acc / 100.0:
+                if not quiet:
+                    self._say("%s 의 %s — 빗나감 (명중 %d%% 고정)"
+                              % (atk.name, move["name"], acc))
+                return False
+            return True
         hit_p = acc / 100.0
+        # 명중률·회피율 랭크 (미확인 본편 배율 — calc.CONFIG)
+        stage = max(-6, min(6, atk.ranks.get("accuracy", 0)
+                            - dfn.ranks.get("evasion", 0)))
+        if stage:
+            base = calc.CONFIG["accuracy_stage_base"]
+            hit_p *= ((base + stage) / float(base) if stage > 0
+                      else base / float(base - stage))
+            self._warn("명중률·회피율 랭크 배율((%d+n)/%d)은 게임 데이터에 없는 "
+                       "미확인 값입니다" % (base, base))
         for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
             ef = item_effect(self.dex, src.item, kind)
             if ef:
@@ -1560,7 +1609,7 @@ class Battle(object):
                 if dfn.bump(ab["stat"], ab["step"]):
                     self._say("%s 의 %s — %s %s%+d (지금 %s)"
                               % (dfn.name, dfn.base.ability,
-                                 dfn.name, calc.STAT_KO[ab["stat"]],
+                                 dfn.name, STAT_LABEL[ab["stat"]],
                                  ab["step"], dfn.rank_text()))
             elif ab["kind"] == "hazard_on_hit" and move["category"] == "물리":
                 foe_party = self._party_of(atk)
@@ -1634,6 +1683,9 @@ class Battle(object):
         """
         if not connected:
             return
+        if fx.get("faint_on_hit") and atk.alive:
+            atk.hp = 0
+            self._say("%s 는 %s 로 쓰러졌다" % (atk.name, move["name"]))
         shield = dfn.base.ability in shield_dust_abilities(self.dex)
         for g in fx["groups"]:
             if g["cond"]:
@@ -1666,7 +1718,7 @@ class Battle(object):
                     if moved:
                         self._say("%s 의 %s — %s %s%+d (지금 %s)"
                                   % (atk.name, move["name"], side.name,
-                                     calc.STAT_KO[e["stat"]], moved,
+                                     STAT_LABEL[e["stat"]], moved,
                                      side.rank_text()))
                 elif k == "status":
                     opts = e["options"]
@@ -1774,6 +1826,9 @@ class Battle(object):
             user.stockpile += 1
             self._say("%s 의 %s — 비축 %d회" % (user.name, move["name"],
                                                 user.stockpile))
+        if _MINIMIZE_SELF.search(d_text) and not user.minimized:
+            user.minimized = True
+            self._say("%s 는 작아졌다" % user.name)
 
         for ef in move_effects(move):
             k = ef["kind"]
@@ -1787,7 +1842,7 @@ class Battle(object):
                         if user.bump(ef["stat"], ef["step"]):
                             self._say("%s 의 미러아머 — %s 에게 %s%+d 로 되돌렸다"
                                       % (target.name, user.name,
-                                         calc.STAT_KO[ef["stat"]], ef["step"]))
+                                         STAT_LABEL[ef["stat"]], ef["step"]))
                     else:
                         self._say("%s 의 %s — 능력이 안 깎인다"
                                   % (target.name, target.base.ability))
@@ -1796,12 +1851,12 @@ class Battle(object):
                 if moved:
                     self._say("%s 의 %s — %s %s%+d (지금 %s)"
                               % (user.name, move["name"], side.name,
-                                 calc.STAT_KO[ef["stat"]], moved,
+                                 STAT_LABEL[ef["stat"]], moved,
                                  side.rank_text()))
                 else:
                     self._say("%s 의 %s — %s 는 더 이상 안 변한다"
                               % (user.name, move["name"],
-                                 calc.STAT_KO[ef["stat"]]))
+                                 STAT_LABEL[ef["stat"]]))
             elif k == "heal":
                 if user.hp >= user.max_hp:
                     self._say("%s 의 %s — HP가 꽉 차서 실패" % (user.name, move["name"]))
@@ -2119,7 +2174,10 @@ class Battle(object):
         if move["category"] == "변화":
             self._use_status(actor, target, move)
         else:
-            self._hit(actor, target, move, None)
+            # ! 전에는 순서를 None 으로 넘겨서 포커스렌즈("상대보다 행동 순서가 늦으면
+            #   명중률 1.2배")가 **한 번도** 안 돌았다 — APPLIED_ITEM_KINDS 에 들어 있어서
+            #   경고도 없었다. 상대가 이 턴에 이미 움직였으면(교체 포함) 내가 늦은 것이다.
+            self._hit(actor, target, move, "후공" if target.moved else "선공")
             # 자폭·대폭발·미스트버스트 — 막히거나 빗나가도 쓴 쪽은 쓰러진다 (본편 규칙)
             if calc.attack_effects(move)["self_faint"] and actor.alive:
                 actor.hp = 0
@@ -3060,7 +3118,7 @@ def opponent_plan(dex, opp_build, me_build, worst_case=False):
 # 보고서
 # ---------------------------------------------------------------------------
 def _rank_text(ranks):
-    got = ["%s%+.1f" % (calc.STAT_KO[k], v) for k, v in ranks.items()
+    got = ["%s%+.1f" % (STAT_LABEL[k], v) for k, v in ranks.items()
            if abs(v) >= 0.05]
     return " ".join(got) if got else "없음"
 

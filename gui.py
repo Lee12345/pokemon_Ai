@@ -718,6 +718,11 @@ class App(object):
         self.canvas = canvas
 
         self.my_active = tk.IntVar(value=0)
+        # 「이번 턴에 막 나옴」 — 속이기·만나자마자는 나온 뒤 첫 기술일 때만 된다
+        # (2026-09-22). 손이 덜 가게: 처음엔 켜져 있고(첫 턴은 둘 다 막 나옴),
+        # 계산하고 나면 꺼지고, '나와 있음' 을 바꾸면 그쪽이 다시 켜진다.
+        self.my_fresh = tk.BooleanVar(value=True)
+        self.my_active.trace_add("write", lambda *_a: self.my_fresh.set(True))
         # **6자리로 연다.** 챔피언스는 6마리를 데려가서 3마리를 낸다.
         for i in range(MAX_PARTY):
             self.slots.append(Slot(self, self.party_box, i))
@@ -811,6 +816,8 @@ class App(object):
                            "배분·성격은 안 묻습니다 (사용률에서 뽑습니다).",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
         self.opp_active = tk.IntVar(value=0)
+        self.opp_fresh = tk.BooleanVar(value=True)
+        self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
                                   font=FONT_S, anchor="w")
         self.opp_state.pack(anchor="w")
@@ -861,6 +868,19 @@ class App(object):
         tk.Label(box, text="내 쪽은 왼쪽 각 자리의 「이번 판」 줄에서 "
                  "HP · 냈다 · 나와 있음을 고릅니다.",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w", pady=(4, 0))
+
+        rf = tk.Frame(box, bg=CARD)
+        rf.pack(fill="x", pady=(6, 0))
+        tk.Label(rf, text="이번 턴에 막 나옴", bg=CARD, fg=DIM,
+                 font=FONT_S).pack(side="left")
+        for text, var in (("내 쪽", self.my_fresh), ("상대", self.opp_fresh)):
+            tk.Checkbutton(rf, text=text, variable=var, bg=CARD, fg=TEXT,
+                           selectcolor=FIELD, activebackground=CARD,
+                           activeforeground=TEXT,
+                           font=FONT_S).pack(side="left", padx=(6, 0))
+        tk.Label(box, text="(속이기·만나자마자가 되는 턴인가. 계산하면 꺼지고, "
+                 "'나와 있음' 을 바꾸면 켜집니다)",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
 
         r4 = tk.Frame(box, bg=CARD)
         r4.pack(fill="x", pady=(6, 0))
@@ -1026,6 +1046,12 @@ class App(object):
         secs = max(1.0, num(self.secs, 10))
         ev = live.evidence_map(self.seen, opp_pokes)
         oi = state["opp_active"]
+        # 막 나왔나 — 계산에 넘기고, 넘긴 뒤엔 끈다 (다음 턴엔 이미 나와 있던 것이다).
+        # 안 넘기면 대전이 '모름' 으로 보고 막 나온 것으로 가정한다 (경고만 남긴다).
+        state = dict(state, my_fresh=bool(self.my_fresh.get()),
+                     opp_fresh=bool(self.opp_fresh.get()))
+        self.my_fresh.set(False)
+        self.opp_fresh.set(False)
 
         self.busy = True
         self.go.config(text="생각하는 중...", state="disabled")
@@ -1363,11 +1389,18 @@ def check():
             print("추천이 안 나왔습니다:\n%s" % text)
             return 1
         first = dict(seen_args)
+        # 「이번 턴에 막 나옴」 — 첫 계산은 둘 다 켜진 채로 넘어가고, 넘긴 뒤엔 꺼진다
+        fresh1 = ((first.get("state") or {}).get("my_fresh"),
+                  (first.get("state") or {}).get("opp_fresh"))
+        after1 = (app.my_fresh.get(), app.opp_fresh.get())
 
         # ⑦ 나와 있는 상대를 2번으로 바꾸면 번호가 따라가는가
         app.opp_active.set(1)
         app.ask()
         moved = (seen_args.get("state") or {}).get("opp_active")
+        # 상대만 바꿨으니 상대만 '막 나옴' 이어야 한다
+        fresh2 = ((seen_args.get("state") or {}).get("my_fresh"),
+                  (seen_args.get("state") or {}).get("opp_fresh"))
 
         # ★ 안 밝혀진 놈은 이번 턴 계산에서 빠져야 한다
         kil2 = dex.find_pokemon("킬가르도")
@@ -1387,6 +1420,15 @@ def check():
         return 1
     if moved != 1:
         print("'나와 있음' 을 바꿨는데 안 따라갑니다: %r" % (moved,))
+        return 1
+    if fresh1 != (True, True):
+        print("첫 계산이 '막 나옴' 으로 안 넘어갔습니다: %r" % (fresh1,))
+        return 1
+    if after1 != (False, False):
+        print("계산한 뒤 '막 나옴' 이 안 꺼졌습니다: %r" % (after1,))
+        return 1
+    if fresh2 != (False, True):
+        print("상대 '나와 있음' 을 바꿨는데 '막 나옴' 이 안 따라갑니다: %r" % (fresh2,))
         return 1
     if seen_args.get("opp") != ["한카리아스", "타부자고"]:
         print("상대 파티가 계산까지 안 갔습니다: %r" % (seen_args.get("opp"),))

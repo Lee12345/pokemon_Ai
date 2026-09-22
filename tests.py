@@ -4071,6 +4071,172 @@ def test_attack_effects(dex):
           one["expected"] > one["res"]["min"] * 2.5, one)
 
 
+def test_zoom_lens(dex):
+    """포커스렌즈 — "상대보다 행동 순서가 늦으면 기술의 명중률이 1.2배가 된다."
+
+    2026-09-22 까지 **한 번도 안 돌았다.** `_hit` 이 늘 순서 자리에 None 을 받아서
+    '후공이면' 이 늘 거짓이었다. `APPLIED_ITEM_KINDS` 에 들어 있어서 경고도 없었다 —
+    CLAUDE.md §5 가 제일 고약하다고 한 '붙었다고 말하면서 안 도는' 종류다.
+    명중 80% 스톤에지로 잰다: 늦게 치면 96%, 먼저 치면 그대로 80%.
+    """
+    import battle, random
+    print("\n[50] 포커스렌즈 — 늦게 치면 명중 1.2배")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+
+    def rate(me_name, op_name, lens, n=600):
+        hit = 0
+        for seed in range(n):
+            me = P(me_name)
+            me.item = "포커스렌즈" if lens else "먹다남은음식"
+            b = battle.Battle(dex, me, P(op_name), rng=random.Random(seed), log=True,
+                              my_fresh=True, opp_fresh=True)
+            b.step(M("스톤에지"), M("철벽"))
+            hit += not any("스톤에지 — 빗나감" in line for line in b.log)
+        return hit * 100.0 / n
+
+    slow = P("하마돈").stat("speed") < P("보만다").stat("speed")
+    check("하마돈이 보만다보다 느리다 (시험의 전제)", slow)
+    late_lens = rate("하마돈", "보만다", True)
+    late_none = rate("하마돈", "보만다", False)
+    early_lens = rate("보만다", "하마돈", True)
+    check("늦게 치면 포커스렌즈로 명중이 오른다 (%.0f%% vs 렌즈 없이 %.0f%%)"
+          % (late_lens, late_none), late_lens >= 92 and late_none <= 86,
+          (late_lens, late_none))
+    check("먼저 치면 포커스렌즈가 안 든다 (%.0f%%)" % early_lens,
+          early_lens <= 86, early_lens)
+
+
+def test_fixed_ohko_minimize(dex):
+    """정해진 양이 들어가는 기술 · 일격필살 · 명중률/회피율 랭크 · 작아지기 (2026-09-22).
+
+    전에는 나이트헤드·지구던지기·분노의앞니·목숨걸기·일격필살 4개가 **위력 1** 로
+    계산됐다 (한 턴 표는 '아래 숫자는 무시할 것' 이라고만 적었다). 작아지기(장침바루 44%)는
+    '효과를 못 읽었다' 로만 떴다 — 회피율 랭크가 모델에 없었다.
+    """
+    import battle, best, random, re
+    print("\n[51] 고정 데미지 · 일격필살 · 명중/회피 랭크 · 작아지기")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+
+    def duel(me, op, mine, theirs, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+        for a, o in zip(mine, theirs):
+            b.step(a, o)
+        return b
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    def hit_of(b, who, move):
+        m = re.search(r"%s 의 %s → \S+ 에게 (\d+)" % (re.escape(who), move), " ".join(b.log))
+        return int(m.group(1)) if m else 0
+
+    # ① 정해진 양
+    r = calc.calc_damage(dex, P("다크펫"), P("하마돈"), M("나이트헤드"))
+    check("나이트헤드: 상대가 누구든 50 (%s~%s)" % (r.get("min"), r.get("max")),
+          r.get("min") == r.get("max") == 50, r)
+    r = calc.calc_damage(dex, P("다크펫"), P("잠만보"), M("나이트헤드"))
+    check("나이트헤드: 노말에게는 안 통한다 (타입 무효는 탄다)", "error" in r, r)
+    r = calc.calc_damage(dex, P("잠만보"), P("하마돈"), M("지구던지기"))
+    check("지구던지기: 50", r.get("max") == 50, r)
+    b = duel(P("잠만보"), P("하마돈"), [M("분노의앞니")], [iron])
+    check("분노의앞니: 상대 남은 HP 의 절반 (%d / 최대 %d)"
+          % (hit_of(b, "잠만보", "분노의앞니"), b.opp.max_hp),
+          hit_of(b, "잠만보", "분노의앞니") == b.opp.max_hp // 2, b.log)
+    row = best.rate_moves(dex, P("다크펫"), P("하마돈"), [(M("나이트헤드"), None)])[0]
+    check("한 턴 표도 나이트헤드를 50 으로 본다 (%.1f)" % row["expected"],
+          abs(row["expected"] - 50) < 1e-9, row.get("expected"))
+
+    # ② 목숨걸기 — 맞으면 자기 HP 만큼 주고 쓰러진다, 안 통하면 안 쓰러진다
+    b = duel([P("하마돈"), P("누리레느")], P("한카리아스"), [M("목숨걸기")], [iron])
+    check("목숨걸기: 자기 HP 만큼 주고 쓰러진다 (%d)" % hit_of(b, "하마돈", "목숨걸기"),
+          hit_of(b, "하마돈", "목숨걸기") == b.me_party.members[0].max_hp
+          and not b.me_party.members[0].alive, b.log)
+    b = duel([P("하마돈"), P("누리레느")], P("다크펫"), [M("목숨걸기")], [iron])
+    check("목숨걸기: 고스트에게 막히면 안 쓰러진다", b.me_party.members[0].alive, b.log)
+
+    # ③ 일격필살
+    hit = None
+    for seed in range(30):
+        b = duel(P("잠만보"), P("누리레느"), [M("땅가르기")], [iron], seed=seed)
+        if said(b, "땅가르기 →"):
+            hit = b
+            break
+    check("땅가르기: 맞으면 한 방에 쓰러진다", hit is not None and not hit.opp.alive,
+          hit.log if hit else None)
+    tough = P("누리레느")
+    tough.ability = "옹골참"
+    b = duel(P("잠만보"), tough, [M("땅가르기")], [iron], seed=1)
+    check("옹골참: 일격필살이 안 통한다 (설명문에서 읽음)",
+          b.opp.alive and b.opp.hp == b.opp.max_hp, b.log)
+    r = calc.calc_damage(dex, P("얼음귀신"), P("얼음귀신"), M("절대영도"))
+    check("절대영도: 얼음타입에게는 안 맞는다", "error" in r, r)
+
+    def ohko_rate(user, move, n=600, evasion=0):
+        hits = 0
+        for seed in range(n):
+            b = battle.Battle(dex, P(user), P("누리레느"), rng=random.Random(seed),
+                              my_fresh=True, opp_fresh=True)
+            b.opp.ranks["evasion"] = evasion
+            b.step(M(move), iron)
+            hits += not b.opp.alive
+        return hits * 100.0 / n
+    ice = ohko_rate("얼음귀신", "절대영도")
+    check("절대영도: 얼음타입이 쓰면 30%% 근처 (%.0f%%)" % ice, 24 <= ice <= 36, ice)
+    fissure = ohko_rate("잠만보", "땅가르기")
+    fissure_eva = ohko_rate("잠만보", "땅가르기", evasion=2)
+    check("일격필살 명중은 고정 — 회피율 +2 에도 그대로 (%.0f%% / %.0f%%)"
+          % (fissure, fissure_eva), abs(fissure - fissure_eva) < 1e-9
+          and 24 <= fissure <= 36, (fissure, fissure_eva))
+    other = ohko_rate("잠만보", "절대영도")          # 잠만보는 얼음타입이 아니다
+    check("절대영도: 얼음타입이 아니면 20%% 근처 (%.0f%%)" % other,
+          14 <= other <= 26, other)
+
+    # ④ 명중률·회피율 랭크 — 스톤에지(80%) 에 회피율 +2 면 80 x 3/5 = 48%
+    def edge_rate(eva, n=600):
+        hits, warned = 0, False
+        for seed in range(n):
+            b = battle.Battle(dex, P("하마돈"), P("누리레느"), rng=random.Random(seed),
+                              log=True, my_fresh=True, opp_fresh=True)
+            b.opp.ranks["evasion"] = eva
+            b.step(M("스톤에지"), iron)
+            hits += not said(b, "스톤에지 — 빗나감")
+            warned = warned or any("회피율 랭크" in w for w in b.warnings)
+        return hits * 100.0 / n, warned
+    base_rate, w0 = edge_rate(0)
+    eva_rate, w2 = edge_rate(2)
+    check("회피율 +2 면 명중이 준다 (%.0f%% → %.0f%%, 기대 80 → 48)" % (base_rate, eva_rate),
+          74 <= base_rate <= 86 and 42 <= eva_rate <= 54, (base_rate, eva_rate))
+    check("회피율 랭크 배율은 미확인이라 경고한다 (안 쓰면 안 한다)", w2 and not w0, (w0, w2))
+
+    # ⑤ 작아지기
+    b = duel(P("누리레느"), P("잠만보"), [M("작아지기")], [iron])
+    check("작아지기: 회피율 +2 · 작아지기 상태", b.me.ranks["evasion"] == 2 and b.me.minimized,
+          b.me.ranks)
+    b = duel(P("누리레느"), P("잠만보"), [M("작아지기"), iron], [iron, M("누르기")])
+    ctl = duel(P("누리레느"), P("잠만보"), [iron, iron], [iron, M("누르기")])
+    check("누르기: 작아진 상대에게 2배 (%d vs 대조 %d)"
+          % (hit_of(b, "잠만보", "누르기"), hit_of(ctl, "잠만보", "누르기")),
+          hit_of(b, "잠만보", "누르기") > hit_of(ctl, "잠만보", "누르기") * 1.8, (b.log, ctl.log))
+    missed = 0
+    for seed in range(100):
+        b = duel(P("누리레느"), P("렌트라"), [M("작아지기"), iron], [iron, M("썬더다이브")],
+                 seed=seed)
+        missed += said(b, "썬더다이브 — 빗나감")
+    check("썬더다이브: 작아진 상대에게 반드시 명중 (회피율 +2 인데도 100번 중 %d번 빗나감)"
+          % missed, missed == 0, missed)
+    b = battle.Battle(dex, [P("누리레느"), P("하마돈")], P("잠만보"), rng=random.Random(1),
+                      my_fresh=True, opp_fresh=True)
+    b.step(M("작아지기"), iron)
+    b.step(("교체", 1), iron)
+    check("교체하면 작아지기가 풀린다", not b.me_party.members[0].minimized
+          and b.me_party.members[0].ranks["evasion"] == 0, b.me_party.members[0].ranks)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -4124,6 +4290,8 @@ def main():
     test_poltergeist(dex)
     test_fail_conditions(dex)
     test_attack_effects(dex)
+    test_zoom_lens(dex)
+    test_fixed_ohko_minimize(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
