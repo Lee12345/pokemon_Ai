@@ -12,3 +12,5 @@ build/
 dist/
 *.spec
 내기록/
+# 포켓몬 공식 그림 원본 (127MB) — fetch_art.py 로 다시 받는다. 줄인 것은 data/art/ 에 올린다
+data/art_raw/

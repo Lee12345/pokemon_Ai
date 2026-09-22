@@ -8,6 +8,8 @@
 """
 
 import itertools
+import json
+import os
 import math
 import sys
 
@@ -4943,6 +4945,115 @@ def test_abilities_batch3(dex):
           not any("'일루전'" in w for w in bb.warnings), bb.warnings)
 
 
+def test_artmatch(dex):
+    """[55] 선출 화면에서 상대 6마리를 그림으로 알아보기 (2026-09-22).
+
+    화면 두 장: 사용자 아이패드 녹화(4:3, 2732x2048) · 유튜브 스위치 화면(16:9, 1341x749).
+    둘 다 오른쪽 절반만 `data/screens/` 에 있다. 정답은 사용자가 알려 줬다.
+    """
+    import colorsys
+    import artmatch
+    import fetch_art
+    import pngio
+    print("\n[55] 선출 화면 — 상대 6마리를 그림으로")
+    here = os.path.dirname(os.path.abspath(__file__))
+    truth = {
+        "선출_아이패드.png": ["다크펫", "대쓰여너/암컷의 모습", "빠르모트", "블래키", "드래캄", "무장조"],
+        "선출_스위치.png": ["플라엣테/영원의 꽃", "아머까오", "더시마사리", "한카리아스", "개굴닌자", "메타몽"],
+    }
+
+    def key_of(label):
+        name, _, form = label.partition("/")
+        hits = [p for p in dex.pokemon if p["name"] == name and not p["isMega"]
+                and (not form or p["formName"] == form)]
+        assert len(hits) == 1 or not form, label
+        return hits[0]["key"]
+
+    def read(fname):
+        return pngio.read_png(os.path.join(here, "data", "screens", fname))
+
+    def picks(w, h, px):
+        return [r[0][1] for _, r in artmatch.identify(w, h, px)]
+
+    # 그림 자료가 게임 자료와 맞는가 — 없으면 그 포켓몬은 영영 못 알아본다
+    with open(os.path.join(here, "data", "art", "index.json"), encoding="utf-8") as f:
+        index = json.load(f)["art"]
+    lacking = [p["key"] for p in dex.pokemon if p["key"] not in index]
+    check("게임 자료의 포켓몬 %d개 전부 그림이 있다" % len(dex.pokemon), not lacking, lacking[:5])
+    w, h, px = pngio.read_png(os.path.join(here, "data", "art", "0445-00.png"))
+    check("그림은 96x96, 투명 바탕", (w, h) == (96, 96) and px[3] == 0, (w, h, px[3]))
+
+    for fname, labels in truth.items():
+        want = [key_of(l) for l in labels]
+        w, h, px = read(fname)
+        ranked = [r for _, r in artmatch.identify(w, h, px)]
+        got = [r[0][1] for r in ranked]
+        check("%s: 6마리 전부 맞힘" % fname, got == want,
+              [(l, g) for l, g, k in zip(labels, got, want) if g != k])
+        if fname == "선출_아이패드.png":
+            # 몸에 빨간 곳이 있는 무장조·드래캄 — 바탕에 묻히는 빨간 곳을 셈에서 빼야 확실히 앞선다
+            # (빼지 않으면 무장조가 2등과 0.11 차 — 잰 값 0.23)
+            gaps = {labels[i]: ranked[i][0][0] - ranked[i][1][0] for i in (4, 5)}
+            check("빨간 몸(드래캄·무장조)도 2등과 0.2 넘게 앞선다", min(gaps.values()) > 0.2, gaps)
+        if fname == "선출_스위치.png":
+            # 틀이 한 칸(4점) 어긋나도 — 기기마다 칸 속 자리가 조금씩 다르다 (잰 폭 0.536~0.584 H)
+            old = artmatch.FRAME_X
+            artmatch.FRAME_X = old + artmatch.CELL / artmatch.GRID * artmatch.FRAME_SCALE
+            try:
+                got = picks(w, h, px)
+            finally:
+                artmatch.FRAME_X = old
+            check("그림 틀이 한 칸 어긋나도 6마리 맞힘", got == want,
+                  [(l, g) for l, g, k in zip(labels, got, want) if g != k])
+        if fname == "선출_아이패드.png":
+            # 해상도가 낮아도 — 절반으로 줄인 화면 (가로 683, 스위치 사진보다 거칠다)
+            sw, sh, spx = pngio.shrink(w, h, px, max(w, h) // 2)
+            got = picks(sw, sh, spx)
+            check("아이패드 화면을 절반 해상도로 줄여도 6마리 맞힘", got == want,
+                  [(l, g) for l, g, k in zip(labels, got, want) if g != k])
+        if fname == "선출_스위치.png":
+            # 이로치 흉내 — 그림의 색상을 반 바퀴 돌린다 (사용자: 이로치를 못 알아볼까 봐)
+            px2 = bytearray(px)
+            for x0, y0, x1, y1 in artmatch.find_panels(w, h, px):
+                for y in range(y0, y1):
+                    for x in range(x0, (x0 + x1) // 2):
+                        i = (y * w + x) * 4
+                        r, g, b = px2[i], px2[i + 1], px2[i + 2]
+                        if not artmatch.is_panel(r, g, b):
+                            hh, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+                            r, g, b = colorsys.hsv_to_rgb((hh + 0.5) % 1, s, v)
+                            px2[i], px2[i + 1], px2[i + 2] = int(r * 255), int(g * 255), int(b * 255)
+            got = picks(w, h, px2)
+            check("그림 색을 반 바퀴 돌려도(이로치) 6마리 맞힘", got == want,
+                  [(l, g) for l, g, k in zip(labels, got, want) if g != k])
+            # 칸이 6개가 아니면 멈춘다 — 조용히 5마리로 읽지 않는다
+            panels = artmatch.find_panels(w, h, px)
+            cut = panels[5][1] - 2
+            cw, ch, cpx = pngio.crop(w, h, px, 0, 0, w, cut)
+            try:
+                artmatch.find_panels(cw, ch, cpx)
+                stopped = False
+            except ValueError as e:
+                stopped = "6개가 아니라 5개" in str(e)
+            check("마지막 칸이 잘린 화면은 '6개가 아니라 5개' 로 멈춘다", stopped)
+
+    # PNG 읽기·쓰기
+    tmp = os.path.join(here, "data", "screens", "_검사.png")
+    img = bytearray(range(256)) * 3 + bytearray(256)
+    pngio.write_png(tmp, 8, 32, img)
+    back = pngio.read_png(tmp)
+    os.remove(tmp)
+    check("PNG 로 쓰고 다시 읽으면 점 하나 안 바뀐다", back == (8, 32, img))
+    # champs 그림 목록(CSS) 읽기
+    css = ('--sprite-96-04-png:url("https://x/pokemon-sprite-96-04.png?v=1");'
+           '.dex-0445-00-96{background-image:var(--sprite-96-04-image-set);'
+           '--poke-x:-192px;--poke-y:-576px;}')
+    sheets, cells = fetch_art.parse_css(css)
+    check("champs 목록: 판 주소와 자리를 읽는다",
+          sheets == {"04": "https://x/pokemon-sprite-96-04.png?v=1"}
+          and cells == {"0445-00": ("04", 192, 576)}, (sheets, cells))
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -5001,6 +5112,7 @@ def main():
     test_abilities_batch1(dex)
     test_abilities_batch2(dex)
     test_abilities_batch3(dex)
+    test_artmatch(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

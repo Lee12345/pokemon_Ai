@@ -16,6 +16,7 @@
 # 이 스크립트를 만들며 걸린 것 (다시 밟지 말 것):
 #   - Windows.Globalization.Language 를 따로 불러와야 한다 (안 하면 형을 못 찾음).
 #   - $task.Wait() 의 true 가 결과에 섞여 나온다 → [void] 로 버린다.
+#   - 글자가 하나도 없는 사진이면 결과가 null 이라 WriteAllLines 가 죽는다 → @(...) 로 감싼다.
 #   - $l.Words[0] 이 배열로 나오는 경우가 있다 → Select-Object -First 1.
 # ! UTF-8 BOM 으로 저장해야 한다 — PowerShell 5.1 이 BOM 없는 한글을 깨뜨린다.
 param([string]$Path)
@@ -37,10 +38,10 @@ $dec = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([
 $bmp = Await ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
 $eng = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('ko'))
 $res = Await ($eng.RecognizeAsync($bmp)) ([Windows.Media.Ocr.OcrResult])
-$out = foreach ($l in $res.Lines) {
+[string[]]$out = @(foreach ($l in $res.Lines) {
     $w = $l.Words | Select-Object -First 1
     $r = $w.BoundingRect
     $x = [int]($r | Select-Object -First 1).X; $y = [int]($r | Select-Object -First 1).Y
     "{0,5},{1,5}  {2}" -f $x, $y, $l.Text
-}
+})
 [IO.File]::WriteAllLines("$Path.txt", $out, [Text.Encoding]::UTF8)
