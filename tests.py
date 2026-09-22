@@ -5215,9 +5215,10 @@ def test_screenread(dex):
           and "폴터가이스트" in ev["다크펫"].seen_moves, ev)
     notes = screenread.apply(bd, {"kind": "풍선", "mon": "타부자고", "side": "me", "item": "풍선"}, dex)
     check("내 풍선은 상대 도구로 안 들어간다", "타부자고" not in bd.opp_items, bd.opp_items)
-    notes = screenread.apply(bd, {"kind": "능력하락", "mon": "다크펫", "side": "opp", "stat": "공격"}, dex)
-    check("칸이 없는 일(능력 하락)은 '계산엔 안 들어감' 이라 말한다",
-          not notes[0][0] and "안 들어감" in notes[0][1] and "공격" in notes[0][1], notes)
+    # (처음엔 능력 하락으로 봤는데 2026-09-23 에 랭크 칸이 생겨 이제 들어간다 — 여전히 칸이 없는 앙코르로)
+    notes = screenread.apply(bd, {"kind": "앙코르", "mon": "다크펫", "side": "opp"}, dex)
+    check("칸이 없는 일(앙코르)은 '계산엔 안 들어감' 이라 말한다",
+          not notes[0][0] and "안 들어감" in notes[0][1] and "앙코르" in notes[0][1], notes)
 
     # -- 문구 칸 찾기 — 비율로 (4:3 · 16:9) ------------------------------------
     for w, h, lines in ((2732, 2048, [(440, 1597, "상대 다크펫의"), (439, 1689, "폴터가이스트!"),
@@ -5292,6 +5293,121 @@ def test_screenread(dex):
           got["kind"])
 
 
+def test_mid_state(dex):
+    """[58] 실전 중간 상태 — 상태이상 · 랭크 · 날씨·필드 · 압정을 계산에 넣는다 (2026-09-23).
+
+    전엔 창에 칸이 없어서 계산이 매번 '상태 없음 · 랭크 0 · 날씨는 특성으로 · 압정 없음' 으로 돌았다.
+    칸만 있고 계산에 안 들어가면 조용히 틀리므로 **값이 결과를 바꾸는지** 를 본다.
+    """
+    import random as _r
+    import gui
+    import live
+    import search
+    print("\n[58] 실전 중간 상태 — 상태이상·랭크·날씨·압정")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    mk = lambda me, op, **kw: battle.Battle(dex, me, op, rng=_r.Random(3), log=True,
+                                            my_fresh=False, opp_fresh=False, **kw)
+    garch, hippo = P("한카리아스"), P("하마돈")
+    quake = dex.find_move("지진")
+    iron = dex.find_move("철벽")
+
+    def dmg(**kw):
+        b = mk(garch, hippo, **kw)
+        before = b.opp.hp
+        b.step(quake, iron)
+        return before - b.opp.hp
+
+    base = dmg(my_ranks={}, opp_ranks={}, field={"weather": None})
+    minus2 = dmg(my_ranks={"attack": -2}, opp_ranks={}, field={"weather": None})
+    burned = dmg(my_ranks={}, opp_ranks={}, my_status=["화상"], field={"weather": None})
+    check("공격 랭크 −2 를 넘기면 지진 데미지가 준다 (%d → %d)" % (base, minus2),
+          0 < minus2 < base * 0.6, (base, minus2))
+    check("화상을 넘기면 물리 데미지가 준다 (%d → %d)" % (base, burned), 0 < burned < base * 0.6,
+          (base, burned))
+    b = mk(garch, hippo, my_ranks={}, opp_ranks={})
+    check("날씨 '자동' (field 안 줌) 이면 하마돈 모래날림으로 모래바람", b.field.weather == "모래바람",
+          b.field.weather)
+    b = mk(garch, hippo, my_ranks={}, opp_ranks={}, field={"weather": None})
+    check("날씨 '없음' 을 넘기면 모래날림이 있어도 날씨 없음 (이미 그친 판)", b.field.weather is None,
+          b.field.weather)
+    b = mk(garch, hippo, my_ranks={}, opp_ranks={}, field={"weather": "비", "weather_turns": 2})
+    check("날씨 비 2턴을 넘기면 그대로", (b.field.weather, b.field.weather_turns) == ("비", 2))
+    b = mk(garch, [hippo, P("보만다")], my_ranks={}, opp_ranks={},
+           opp_status=[None, "마비"], my_hazards={"스텔스록": 1, "압정뿌리기": 2})
+    check("상태이상은 자리마다 (벤치 보만다 마비) · 압정은 그쪽 자리에",
+          b.opp_party.members[1].status == "마비" and b.me_party.hazards == {"스텔스록": 1, "압정뿌리기": 2})
+    b = mk(garch, hippo, my_ranks={}, opp_ranks={}, my_status=["졸음"])
+    b.step(iron, iron)
+    check("졸음(하품 다음 턴)을 넘기면 이번 턴 끝에 잠든다", b.me.status == "잠듦", b.me.status)
+    b = mk(garch, hippo, my_ranks={}, opp_ranks={}, opp_status=["맹독"])
+    check("맹독은 몇 턴째인지 모른다고 경고한다", any("맹독" in w for w in b.warnings), b.warnings)
+    # ★ 위협을 다시 발동하지 않는다 — 랭크를 넘기면 창에 적힌 랭크가 지금 랭크
+    mence = P("보만다")
+    old = mk(garch, mence)
+    new = mk(garch, mence, my_ranks={}, opp_ranks={})
+    # 1위 보만다는 메가스톤을 든 몸이라 Build 특성은 스카이스킨이지만, 대전은 메가 전(위협)으로 시작한다
+    check("랭크를 안 넘기면 예전처럼 위협이 들어간다 (옛 호출·판 처음부터)",
+          old.opp.base.ability == "위협" and old.me.ranks["attack"] == -1,
+          (old.opp.base.ability, old.me.ranks))
+    check("랭크를 넘기면 위협을 다시 안 넣는다 — 계산할 때마다 또 깎이지 않게",
+          new.me.ranks["attack"] == 0, new.me.ranks)
+    for bad in ({"my_status": ["혼수"]}, {"my_ranks": {"힘": 1}}, {"field": {"weather": "황사"}}):
+        try:
+            mk(garch, hippo, **bad)
+            ok = False
+        except ValueError:
+            ok = True
+        check("모르는 값은 조용히 무시하지 않고 멈춘다 (%s)" % list(bad.values())[0], ok)
+    # 탐색(창이 부르는 것)까지 — 넘긴 상태가 끝까지 가는가
+    got = search.best_action(dex, [garch], [hippo.poke], my_moves=["지진", "칼춤"], seconds=0.3,
+                             state={"my_hp": [100], "my_active": 0, "opp_hp": [100], "opp_active": 0,
+                                    "my_fresh": False, "opp_fresh": False, "my_ranks": {"attack": 6},
+                                    "opp_ranks": {}, "field": {"weather": None}, "my_status": [None],
+                                    "opp_status": [None], "my_hazards": None, "opp_hazards": None})
+    check("탐색에 실전 중간 상태를 넘겨도 돈다 (공격 +6 이면 칼춤보다 지진)",
+          got["rows"][0]["name"].startswith("지진"), [(r["name"], r["score"]) for r in got["rows"][:3]])
+    mid = {"my_status": ["화상", None], "opp_status": [None], "my_ranks": {"attack": -1},
+           "opp_ranks": {}, "field": {"weather": "모래바람", "weather_turns": 3},
+           "my_hazards": None, "opp_hazards": {"스텔스록": 1, "압정뿌리기": 2}}
+    said = gui.describe_mid(mid, ["한카리아스", "하마돈"], ["보만다"])
+    check("창이 넘긴 판 상태를 한 줄로 보여 준다", said == "한카리아스 화상 · 내 랭크 공-1 · "
+          "날씨 모래바람 3턴 · 상대 쪽 스텔스록 압정뿌리기×2", said)
+    rows = [(None, 100), (hippo.poke, 0), (hippo.poke, 50), (hippo.poke, 100)]
+    check("넘기는 상대 목록의 원래 자리 번호 (쓰러진 놈·빈 칸 뺌)", live.alive_slots(rows) == [2, 3])
+
+    # -- 화면에서 읽은 일 → 새 칸 (판) -----------------------------------------
+    import screenread
+    row = lambda n, st=None: {"poke": dex.find_pokemon(n), "hp": 100.0, "brought": True, "status": st}
+    bd = screenread.Board([row("한카리아스"), row("누리레느")], [row("하마돈"), row("보만다", "화상")])
+    ap = lambda **ev: screenread.apply(bd, ev, dex)
+    ap(kind="능력하락", mon="한카리아스", side="me", stat="공격")
+    ap(kind="능력하락", mon="한카리아스", side="me", stat="공격")
+    notes = ap(kind="능력하락", mon="누리레느", side="me", stat="방어")
+    check("「공격이 떨어졌다」 두 번 → 나와 있는 놈 공격 −2 · 벤치 것은 안 넣음",
+          bd.ranks["me"] == {"attack": -2} and not notes[0][0], (bd.ranks, notes))
+    ap(kind="나옴", mon="누리레느", side="me")
+    check("내가 교체하면 내 랭크가 풀린다", bd.ranks["me"] == {} and bd.my_active == 1, bd.ranks)
+    ap(kind="하품", mon="하마돈", side="opp")
+    notes = ap(kind="하품", mon="보만다", side="opp")
+    check("하품 → 졸음 · 이미 화상인 놈은 안 바뀜",
+          bd.opp[0]["status"] == "졸음" and bd.opp[1]["status"] == "화상", [r["status"] for r in bd.opp])
+    ap(kind="나옴", mon="보만다", side="opp")
+    check("졸음인 놈이 들어가면 졸음이 풀린다 (게임 규칙)", bd.opp[0]["status"] is None, bd.opp[0])
+    ap(kind="잠듦", mon="하마돈", side="opp")
+    s1 = bd.opp[0]["status"]
+    ap(kind="깸", mon="하마돈", side="opp")
+    check("잠듦 → 잠듦, 눈을 떴다 → 없음", s1 == "잠듦" and bd.opp[0]["status"] is None)
+    ap(kind="모래바람데미지", mon="보만다", side="opp")
+    w1 = bd.weather
+    ap(kind="모래바람끝")
+    check("모래바람이 덮침 → 날씨 모래바람, 가라앉음 → 없음", w1 == "모래바람" and bd.weather == "없음",
+          (w1, bd.weather))
+    ap(kind="스텔스록깔림")
+    ap(kind="스텔스록데미지", mon="누리레느", side="me")
+    check("「상대의 주변에」 → 상대 쪽 스텔스록 · 내가 박힘 → 내 쪽 스텔스록",
+          bd.hazards["opp"] == {"스텔스록": 1} and bd.hazards["me"] == {"스텔스록": 1}, bd.hazards)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -5353,6 +5469,7 @@ def main():
     test_artmatch(dex)
     test_msgread(dex)
     test_screenread(dex)
+    test_mid_state(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

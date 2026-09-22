@@ -1266,13 +1266,22 @@ class Battle(object):
     def __init__(self, dex, me_build, opp_build, rng=None, log=False,
                  matchup=None, my_hp=None, opp_hp=None, my_active=0,
                  opp_hazards=None, my_hazards=None, opp_active=0,
-                 my_fresh=None, opp_fresh=None):
+                 my_fresh=None, opp_fresh=None, my_status=None, opp_status=None,
+                 my_ranks=None, opp_ranks=None, field=None):
         """my_fresh / opp_fresh — 지금 나와 있는 놈이 **이번 턴에 막 나왔나.**
 
         속이기·만나자마자는 나온 뒤 첫 기술일 때만 된다. 판 처음부터 돌리면
         당연히 True 지만(run_once 가 그렇게 준다), 실전 중간 상태에서 부르면
         알 수가 없다. None(모름)이면 막 나온 것으로 보되, 그 가정 때문에
         그 기술이 먹혔으면 **경고를 남긴다** — 조용히 넘어가지 않게.
+
+        실전 중간 상태 (2026-09-23 — 화면에서 읽은 것을 계산에 넣으려고):
+          my_status / opp_status  파티 자리마다 상태이상 [None, "독", …] (HP 처럼 물러나도 남는다).
+                                  "졸음" 은 하품을 맞은 다음 턴 — 이번 턴 끝에 잠든다.
+          my_ranks / opp_ranks    **나와 있는 놈**의 랭크 {"attack": -1, …} (물러나면 풀린다)
+          field                   {"weather": "모래바람"|None, "weather_turns": n,
+                                   "terrain": …|None, "terrain_turns": n}. 주면 **등장 특성으로
+                                  날씨를 다시 깔지 않는다** — 이미 깔린 판이다. 안 주면(None) 예전처럼 깐다.
         """
         self.dex = dex
         # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
@@ -1305,7 +1314,52 @@ class Battle(object):
         self._warn_dead_abilities()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
-        self._entry_weather()
+        for party, sts in ((self.me_party, my_status), (self.opp_party, opp_status)):
+            for side, st in zip(party.members, sts or ()):
+                self._start_status(side, st)
+        for party, ranks in ((self.me_party, my_ranks), (self.opp_party, opp_ranks)):
+            for k, v in (ranks or {}).items():
+                if k not in party.active.ranks:
+                    raise ValueError("모르는 랭크 이름: %s" % k)
+                party.active.ranks[k] = max(-6, min(6, int(v)))
+        # ★ 등장 특성(위협 등)은 **랭크를 넘기면 다시 발동하지 않는다.** 창은 계산할 때마다 대전을
+        #   새로 만든다 — 몇 턴째 나와 있는 보만다의 위협이 계산할 때마다 또 들어갔다. 랭크 칸이 없을
+        #   땐 그게 '대충 맞는' 쪽이었지만, 화면에서 「공격이 떨어졌다」 를 읽어 랭크로 넣으면 두 번
+        #   깎인다 (2026-09-23). 랭크를 넘기면 = 창에 적힌 랭크가 지금 랭크다.
+        ranks_given = my_ranks is not None or opp_ranks is not None
+        if field is None and not ranks_given:
+            self._entry_weather()          # 예전 그대로 (판 처음부터 · 옛 호출)
+        else:
+            field = field or {}
+            for key, tkey in (("weather", "weather_turns"), ("terrain", "terrain_turns")):
+                kind = field.get(key)
+                if kind:
+                    if kind not in set(WEATHER_ABILITY.values()):
+                        raise ValueError("모르는 날씨·필드: %s" % kind)
+                    self.field.set(kind, turns=int(field.get(tkey) or 5))
+            self._entry_weather(auto_weather="weather" not in field,
+                                auto_terrain="terrain" not in field,
+                                entry=not ranks_given)
+
+    # 실전 중간에 이미 걸려 있던 상태 — 몇 턴째인지는 화면에 안 나온다
+    START_STATUS = ("화상", "마비", "독", "맹독", "잠듦", "얼음", "졸음")
+
+    def _start_status(self, side, st):
+        if not st:
+            return
+        if st not in self.START_STATUS:
+            raise ValueError("모르는 상태이상: %s" % st)
+        if st == "졸음":
+            side.drowsy = 1          # 하품을 맞은 다음 턴 — 이번 턴 끝에 잠든다
+            return
+        side.status = st
+        if st == "잠듦":
+            side.status_turns = self._sleep_turns(side, self.rng.randint(
+                calc.CONFIG["sleep_min"], calc.CONFIG["sleep_max"]))
+            self._warn("%s 는 잠든 지 몇 턴째인지 몰라 **방금 잠든 것**으로 봤습니다" % side.name)
+        elif st == "맹독":
+            side.toxic_n = 1
+            self._warn("%s 의 맹독이 몇 턴째인지 몰라 **1턴째**로 봤습니다 (데미지가 적게 잡힘)" % side.name)
 
     # 지금 나와 있는 놈. 교체가 들어와도 나머지 코드는 그대로 돌아간다.
     @property
@@ -1602,20 +1656,25 @@ class Battle(object):
         self.switch_in(party, idx, "%s 에 밀려서" % by_name)
         return True
 
-    def _entry_weather(self):
+    def _entry_weather(self, auto_weather=True, auto_terrain=True, entry=True):
         """등장만으로 날씨를 까는 특성. 상위권에 99.8% 로 깔려 있다.
 
         둘 다 갖고 있으면 **느린 쪽이 나중에 발동해서 이긴다** (본편 규칙).
         빠른 순서대로 깔면 느린 쪽 것이 남는다.
+
+        auto_weather / auto_terrain 이 False 면 그쪽은 이미 정해진 것(실전 중간 상태)이라 안 깐다.
+        entry 가 False 면 위협 같은 등장 특성·씨앗 도구도 안 한다 (이미 일어났다).
         """
         order = sorted(
             ((self.me, "나"), (self.opp, "상대")),
             key=lambda x: -best.effective_speed(self.dex, x[0].as_build())[0])
         for side, who in order:
             w = WEATHER_ABILITY.get(side.base.ability)
-            if w:
+            if w and (auto_terrain if w in TERRAIN else auto_weather):
                 self.field.set(w)
                 self._say("%s(%s) 등장 — %s" % (side.name, side.base.ability, w))
+        if not entry:
+            return
         for side, who in order:
             self._entry_abilities(side)
         for side, who in order:

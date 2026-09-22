@@ -55,6 +55,7 @@ import os
 import sys
 import threading
 
+import battle
 import best
 import calc
 import live
@@ -83,6 +84,54 @@ FONT_B = ("Malgun Gothic", 11, "bold")
 
 STAT_ORDER = live.STAT_ORDER
 MAX_PARTY = live.MAX_PARTY     # 6마리를 데려간다
+
+# 실전 중간 상태 칸 (2026-09-23) — 이름은 battle 이 쓰는 그대로
+NO_STATUS = "없음"
+STATUS_CHOICES = (NO_STATUS,) + battle.Battle.START_STATUS
+AUTO = "자동"
+WEATHER_CHOICES = (AUTO, "없음", "쾌청", "비", "모래바람", "눈")
+TERRAIN_CHOICES = (AUTO, "없음", "그래스필드", "일렉트릭필드", "사이코필드", "미스트필드")
+RANK_KEYS = (("attack", "공"), ("defense", "방"), ("spAtk", "특공"), ("spDef", "특방"),
+             ("speed", "스피"), ("accuracy", "명중"), ("evasion", "회피"))
+HAZARD_KEYS = (("스텔스록", 1), ("압정뿌리기", 3), ("독압정", 2), ("끈적끈적네트", 1))
+
+
+def _int(var, default=0):
+    try:
+        return int(float(var.get()))
+    except (ValueError, TypeError, AttributeError):
+        return default
+
+
+def describe_mid(mid, my_names, opp_names):
+    """넘긴 실전 중간 상태를 한 줄로 — 화면과 계산이 같은 값을 보게 (넘긴 것 그대로 적는다)."""
+    bits = []
+    for names, sts in ((my_names, mid.get("my_status")), (opp_names, mid.get("opp_status"))):
+        bits += ["%s %s" % (n, s) for n, s in zip(names, sts or ()) if s]
+    short = dict(RANK_KEYS)
+    for who, key in (("내", "my_ranks"), ("상대", "opp_ranks")):
+        r = mid.get(key) or {}
+        if r:
+            bits.append("%s 랭크 %s" % (who, " ".join("%s%+d" % (short[k], v) for k, v in r.items())))
+    f = mid.get("field") or {}
+    for key, word in (("weather", "날씨"), ("terrain", "필드")):
+        if key in f:
+            bits.append("%s %s" % (word, "%s %d턴" % (f[key], f[key + "_turns"]) if f[key] else "없음"))
+    for who, key in (("내 쪽", "my_hazards"), ("상대 쪽", "opp_hazards")):
+        h = mid.get(key) or {}
+        if h:
+            bits.append("%s %s" % (who, " ".join("%s%s" % (k, "" if v == 1 else "×%d" % v)
+                                               for k, v in h.items())))
+    return " · ".join(bits)
+
+
+def _choice_box(tk, parent, var, values, width):
+    """고르는 칸 — 가짜 tkinter 에도 있는 Spinbox 에 값 목록을 준다 (드롭다운은 가짜에 없다)."""
+    box = tk.Spinbox(parent, values=values, textvariable=var, width=width, state="readonly",
+                     bg=FIELD, fg=TEXT, readonlybackground=FIELD, relief="flat",
+                     buttonbackground=LINE, font=FONT_S, wrap=True)
+    var.set(values[0])
+    return box
 
 
 def have_tk():
@@ -350,6 +399,9 @@ class Slot(object):
                        activebackground=CARD, activeforeground=TEXT,
                        font=FONT_S, command=self.on_active
                        ).pack(side="left", padx=(8, 0))
+        # 상태이상 — 물러나도 남는다 (그래서 자리마다)
+        self.status = tk.StringVar()
+        _choice_box(tk, bt, self.status, STATUS_CHOICES, 5).pack(side="left", padx=(8, 0))
 
         # -- 성격 · 특성 · 도구 ---------------------------------------------
         row = tk.Frame(self.box, bg=CARD)
@@ -447,6 +499,7 @@ class Slot(object):
             pk.set("", None)
         for key, _ko in STAT_ORDER:
             self.stat_rows[key]["ev"].set("0")
+        self.status.set(NO_STATUS)
         self.redraw()
 
     def evs(self):
@@ -596,6 +649,8 @@ class OppSlot(object):
                        activebackground=CARD, activeforeground=TEXT,
                        font=FONT_S,
                        command=self.on_active).pack(side="left", padx=(6, 0))
+        self.status = tk.StringVar()
+        _choice_box(tk, self.box, self.status, STATUS_CHOICES, 5).pack(side="left", padx=(6, 0))
         # 한눈에 보이는 표시 — ● 밝혀짐 / ○ 아직 모름
         self.state_label = tk.Label(self.box, text="", bg=CARD, fg=DIM,
                                     font=FONT_S, width=8, anchor="w")
@@ -887,6 +942,64 @@ class App(object):
                  "'나와 있음' 을 바꾸면 켜집니다)",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
 
+        # -- 실전 중간 상태: 날씨·필드 · 압정 · 랭크 (2026-09-23) ---------------------
+        # 전엔 칸이 없어 계산이 매번 '날씨는 특성으로, 랭크 0, 압정 없음' 으로 돌았다.
+        rw = tk.Frame(box, bg=CARD)
+        rw.pack(fill="x", pady=(6, 0))
+        self.weather, self.weather_turns = tk.StringVar(), tk.StringVar(value="5")
+        self.terrain, self.terrain_turns = tk.StringVar(), tk.StringVar(value="5")
+        for label, var, turns, values in (("날씨", self.weather, self.weather_turns, WEATHER_CHOICES),
+                                          ("필드", self.terrain, self.terrain_turns, TERRAIN_CHOICES)):
+            tk.Label(rw, text=label, bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(0, 2))
+            _choice_box(tk, rw, var, values, 9).pack(side="left")
+            tk.Label(rw, text="남은", bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(4, 1))
+            tk.Spinbox(rw, from_=1, to=8, width=2, textvariable=turns, bg=FIELD, fg=TEXT,
+                       insertbackground=TEXT, relief="flat", buttonbackground=LINE,
+                       font=FONT_S).pack(side="left")
+            tk.Label(rw, text="턴", bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(1, 10))
+        tk.Label(box, text="(자동 = 나와 있는 포켓몬의 특성으로. 모래날림 하마돈이 나와 있으면 모래바람)",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
+
+        self.hazards, self.ranks = {}, {}
+        for side, who in (("me", "내 쪽"), ("opp", "상대 쪽")):
+            rh = tk.Frame(box, bg=CARD)
+            rh.pack(fill="x", pady=(4, 0))
+            tk.Label(rh, text="%s 압정" % who, bg=CARD, fg=DIM, font=FONT_S,
+                     width=11, anchor="w").pack(side="left")
+            self.hazards[side] = {}
+            for name, most in HAZARD_KEYS:
+                if most == 1:
+                    var = tk.BooleanVar(value=False)
+                    tk.Checkbutton(rh, text=name, variable=var, bg=CARD, fg=TEXT,
+                                   selectcolor=FIELD, activebackground=CARD,
+                                   activeforeground=TEXT, font=FONT_S).pack(side="left", padx=(0, 4))
+                else:
+                    var = tk.StringVar(value="0")
+                    tk.Label(rh, text=name, bg=CARD, fg=TEXT, font=FONT_S).pack(side="left")
+                    tk.Spinbox(rh, from_=0, to=most, width=2, textvariable=var, bg=FIELD, fg=TEXT,
+                               insertbackground=TEXT, relief="flat", buttonbackground=LINE,
+                               font=FONT_S).pack(side="left", padx=(1, 6))
+                self.hazards[side][name] = var
+        for side, who in (("me", "내 랭크"), ("opp", "상대 랭크")):
+            rr = tk.Frame(box, bg=CARD)
+            rr.pack(fill="x", pady=(4, 0))
+            tk.Label(rr, text=who, bg=CARD, fg=DIM, font=FONT_S, width=11,
+                     anchor="w").pack(side="left")
+            self.ranks[side] = {}
+            for key, short in RANK_KEYS:
+                var = tk.StringVar(value="0")
+                tk.Label(rr, text=short, bg=CARD, fg=TEXT, font=FONT_S).pack(side="left")
+                tk.Spinbox(rr, from_=-6, to=6, width=2, textvariable=var, bg=FIELD, fg=TEXT,
+                           insertbackground=TEXT, relief="flat", buttonbackground=LINE,
+                           font=FONT_S).pack(side="left", padx=(1, 5))
+                self.ranks[side][key] = var
+        tk.Label(box, text="(랭크는 나와 있는 포켓몬 것 — 바꾸면 0 으로. 위협 등으로 떨어진 것도 "
+                 "여기 적어야 계산에 들어갑니다)", bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
+        # 나와 있는 놈이 바뀌면 그쪽 랭크는 풀린다 (게임 규칙)
+        self._last_active = {"me": self.my_active.get(), "opp": self.opp_active.get()}
+        self.my_active.trace_add("write", lambda *_a: self.reset_ranks("me"))
+        self.opp_active.trace_add("write", lambda *_a: self.reset_ranks("opp"))
+
         # 화면 사진 넣기 — 선출 화면이면 상대 6마리, 대전 화면이면 문구 칸의 일 (screenread)
         rs = tk.Frame(box, bg=CARD)
         rs.pack(fill="x", pady=(6, 0))
@@ -917,6 +1030,47 @@ class App(object):
         self.say("왼쪽에 파티를 채우고, 상대를 고른 뒤 '무엇을 둘까?' 를 누르세요.")
 
     # -- 움직이기 ---------------------------------------------------------
+    def reset_ranks(self, side):
+        """나와 있는 놈이 **실제로 바뀌었을 때만** 그쪽 랭크를 0 으로.
+        (tkinter 는 같은 값을 다시 넣어도 '바뀜' 으로 알린다 — 같은 자리를 다시 눌러도 지워질 뻔했다.)"""
+        now = (self.my_active if side == "me" else self.opp_active).get()
+        last = getattr(self, "_last_active", {})
+        if last.get(side) == now:
+            return
+        last[side] = now
+        self._last_active = last
+        for var in getattr(self, "ranks", {}).get(side, {}).values():
+            var.set("0")
+
+    def mid_state(self, my_slots, opp_slots):
+        """창의 실전 중간 상태 칸 -> 계산에 넘길 것 (battle.Battle 의 이름 그대로).
+
+        my_slots / opp_slots — 넘기는 목록의 각 자리가 원래 몇 번 자리였나. 상태이상은 자리마다다.
+        """
+        st = lambda sl: None if sl.status.get() in ("", NO_STATUS) else sl.status.get()
+        field = {}
+        for key, var, turns in (("weather", self.weather, self.weather_turns),
+                                ("terrain", self.terrain, self.terrain_turns)):
+            v = var.get()
+            if v and v != AUTO:
+                field[key] = None if v == "없음" else v
+                field[key + "_turns"] = max(1, _int(turns, 5))
+        hz = {}
+        for side in ("me", "opp"):
+            got = {}
+            for name, most in HAZARD_KEYS:
+                var = self.hazards[side][name]
+                n = (1 if var.get() else 0) if most == 1 else max(0, min(most, _int(var)))
+                if n:
+                    got[name] = n
+            hz[side] = got or None
+        ranks = {side: {k: max(-6, min(6, _int(v))) for k, v in self.ranks[side].items()
+                        if _int(v)} for side in ("me", "opp")}
+        return {"my_status": [st(self.slots[i]) for i in my_slots],
+                "opp_status": [st(self.opp_slots[i]) for i in opp_slots],
+                "my_ranks": ranks["me"], "opp_ranks": ranks["opp"], "field": field,
+                "my_hazards": hz["me"], "opp_hazards": hz["opp"]}
+
     def say(self, text, clear=False):
         if clear:
             self.out.delete("1.0", "end")
@@ -1071,6 +1225,9 @@ class App(object):
         # 안 넘기면 대전이 '모름' 으로 보고 막 나온 것으로 가정한다 (경고만 남긴다).
         state = dict(state, my_fresh=bool(self.my_fresh.get()),
                      opp_fresh=bool(self.opp_fresh.get()))
+        # 상태이상 · 랭크 · 날씨·필드 · 압정 — 자리 번호는 넘기는 목록에 맞춘다
+        mid = self.mid_state(mine["slots"], live.alive_slots(rows))
+        state.update(mid)
         self.my_fresh.set(False)
         self.opp_fresh.set(False)
 
@@ -1082,6 +1239,10 @@ class App(object):
                          for p, hp in zip(opp_pokes, state["opp_hp"]))
         self.say("상대 %s 를 놓고 %.0f초 생각합니다...\n(나와 있는 상대: %s)"
                  % (said, secs, opp_pokes[oi]["name"]), clear=True)
+        extra = describe_mid(mid, [b.poke["name"] for b, _m in party],
+                             [p["name"] for p in opp_pokes])
+        if extra:
+            self.say("넘긴 판 상태: " + extra)
 
         args = (party, opp_pokes, ev, secs, state, idx)
         if self.headless:
@@ -1115,12 +1276,27 @@ class App(object):
             b, bad = sl.build()
             # 최대 HP(능력치) — 화면의 「145/215」 로 누가 나와 있는지 맞춰 볼 때 쓴다
             my.append({"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get()),
-                       "maxhp": b.stat("hp") if b is not None and not bad else None})
-        opp = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get())}
+                       "maxhp": b.stat("hp") if b is not None and not bad else None,
+                       "status": sl.status.get()})
+        opp = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get()),
+                "status": sl.status.get()}
                for sl in self.opp_slots]
-        return screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
-                                bool(self.my_fresh.get()), bool(self.opp_fresh.get()),
-                                self.seen, self.opp_items, self.opp_abilities)
+        bd = screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
+                              bool(self.my_fresh.get()), bool(self.opp_fresh.get()),
+                              self.seen, self.opp_items, self.opp_abilities)
+        bd.ranks = {side: {k: _int(v) for k, v in self.ranks[side].items()} for side in ("me", "opp")}
+        # 판에서는 '자동' 을 None 으로 둔다
+        auto = lambda v: None if v in ("", AUTO) else v
+        bd.weather, bd.weather_turns = auto(self.weather.get()), _int(self.weather_turns, 5)
+        bd.terrain, bd.terrain_turns = auto(self.terrain.get()), _int(self.terrain_turns, 5)
+        bd.hazards = {}
+        for side in ("me", "opp"):
+            got = {}
+            for name, most in HAZARD_KEYS:
+                var = self.hazards[side][name]
+                got[name] = (1 if var.get() else 0) if most == 1 else _int(var)
+            bd.hazards[side] = got
+        return bd
 
     def set_board(self, bd):
         """screenread.Board -> 창의 칸. '나와 있음' 을 바꾸면 '막 나옴' 이 켜지므로
@@ -1128,6 +1304,7 @@ class App(object):
         for sl, row in zip(self.slots, bd.my):
             sl.hp.set("%g" % row["hp"])
             sl.brought.set(bool(row["brought"]))
+            sl.status.set(row.get("status") or NO_STATUS)
         for sl, row in zip(self.opp_slots, bd.opp + [None] * len(self.opp_slots)):
             poke = row["poke"] if row else None
             if poke is not sl.poke:
@@ -1135,9 +1312,21 @@ class App(object):
                 sl.poke = poke
             sl.hp.set("%g" % (row["hp"] if row else 100.0))
             sl.brought.set(bool(row and row["brought"]))
+            sl.status.set((row and row.get("status")) or NO_STATUS)
             sl.redraw_state()
+        # 나와 있음 → (바뀌었으면 랭크 0) → 판의 랭크 → 막 나옴 순서
         self.my_active.set(bd.my_active)
         self.opp_active.set(bd.opp_active)
+        for side in ("me", "opp"):
+            for k, var in self.ranks[side].items():
+                var.set(str(bd.ranks.get(side, {}).get(k, 0)))
+            for name, var in self.hazards[side].items():
+                n = bd.hazards.get(side, {}).get(name, 0)
+                var.set(bool(n) if isinstance(var, self.tk.BooleanVar) else str(n))
+        self.weather.set(bd.weather or AUTO)
+        self.weather_turns.set(str(bd.weather_turns))
+        self.terrain.set(bd.terrain or AUTO)
+        self.terrain_turns.set(str(bd.terrain_turns))
         self.my_fresh.set(bool(bd.my_fresh))
         self.opp_fresh.set(bool(bd.opp_fresh))
         self.seen, self.opp_items, self.opp_abilities = bd.seen, bd.opp_items, bd.opp_abilities
@@ -1760,7 +1949,13 @@ def check():
         ("쓰러짐.png", {"kind": "대전", "lines": ["x"], "event": {
             "kind": "쓰러짐", "mon": "로토무", "side": "opp"}}, None),
         ("하품.png", {"kind": "대전", "lines": ["x"], "event": {
-            "kind": "하품", "mon": "하마돈", "side": "opp"}}, None)]
+            "kind": "하품", "mon": "하마돈", "side": "opp"}}, None),
+        ("하락.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "능력하락", "mon": "하마돈", "side": "opp", "stat": "공격"}}, None),
+        ("모래.png", {"kind": "대전", "lines": ["x"], "event": {"kind": "모래바람시작"}}, None),
+        ("록.png", {"kind": "대전", "lines": ["x"], "event": {"kind": "스텔스록깔림"}}, None),
+        ("앙코르.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "앙코르", "mon": "하마돈", "side": "opp"}}, None)]
     app._apply_screens(fake)
     shown = app.out.get("1.0", "end")
     o = app.opp_slots
@@ -1776,8 +1971,28 @@ def check():
         bad.append("타부자고의 풍선이 안 들어감")
     if o[0].hp_pct() != 0:
         bad.append("쓰러진 로토무 HP 가 0 이 아님")
-    if "○ 상대 하마돈: 하품" not in shown or "이렇게 읽었습니다" not in shown:
-        bad.append("칸이 없는 일(하품)을 '계산에 안 들어감' 으로 안 알림")
+    if "○ 상대 하마돈: 앙코르" not in shown or "이렇게 읽었습니다" not in shown:
+        bad.append("칸이 없는 일(앙코르)을 '계산에 안 들어감' 으로 안 알림")
+    # 새 칸 (2026-09-23): 하품 → 졸음 · 공격 하락 → 랭크 −1 · 모래바람 · 상대 쪽 스텔스록
+    if o[1].status.get() != "졸음":
+        bad.append("하품을 맞은 하마돈 상태가 졸음이 아님 (%s)" % o[1].status.get())
+    if app.ranks["opp"]["attack"].get() != "-1":
+        bad.append("상대 공격 랭크가 −1 이 아님 (%s)" % app.ranks["opp"]["attack"].get())
+    if app.weather.get() != "모래바람" or not app.hazards["opp"]["스텔스록"].get():
+        bad.append("날씨·스텔스록이 칸에 안 들어감")
+    # 그리고 그 칸들이 **계산에 넘어가는가** — 넘길 목록 번호에 맞춰서
+    mid = app.mid_state([0], [1, 2])
+    if (mid["opp_status"] != ["졸음", None] or mid["opp_ranks"] != {"attack": -1}
+            or mid["field"].get("weather") != "모래바람" or mid["opp_hazards"] != {"스텔스록": 1}
+            or "terrain" in mid["field"]):
+        bad.append("새 칸이 계산에 넘어가는 모양이 틀림 (%s)" % mid)
+    # 나와 있는 상대가 바뀌면 상대 랭크는 0 으로 (같은 자리를 다시 넣을 땐 그대로)
+    app.opp_active.set(1)
+    kept = app.ranks["opp"]["attack"].get()
+    app.opp_active.set(2)
+    if kept != "-1" or app.ranks["opp"]["attack"].get() != "0":
+        bad.append("나와 있는 상대가 바뀔 때 랭크 처리가 틀림 (%s → %s)"
+                   % (kept, app.ranks["opp"]["attack"].get()))
     ev = live.evidence_map(app.seen, [p for p in (o[1].poke, o[2].poke)],
                            app.opp_items, app.opp_abilities)
     if not ev or ev["타부자고"].item != "풍선" or "지진" not in ev["하마돈"].seen_moves:

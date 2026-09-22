@@ -214,6 +214,11 @@ class Board(object):
         self.seen = seen if seen is not None else {}
         self.opp_items = opp_items if opp_items is not None else {}
         self.opp_abilities = opp_abilities if opp_abilities is not None else {}
+        # 실전 중간 상태 (창의 칸과 같다). 자리마다의 상태이상은 my/opp 줄의 'status'.
+        self.ranks = {"me": {}, "opp": {}}              # 나와 있는 놈의 랭크
+        self.weather, self.weather_turns = None, 5      # None = 자동 (특성으로)
+        self.terrain, self.terrain_turns = None, 5
+        self.hazards = {"me": {}, "opp": {}}            # 그쪽 자리에 깔린 것 {"스텔스록": 1, …}
 
     def find(self, side, name):
         rows = self.my if side == "me" else self.opp
@@ -237,6 +242,23 @@ REVIVE_HP = 50.0     # 회생의기도 설명: "기절한 지닌 포켓몬을 �
 
 def _who(side):
     return "내" if side == "me" else "상대"
+
+
+def _switch_to(board, side, i):
+    """그쪽의 나와 있는 놈을 i 로. 바뀌었으면 True — 막 나옴을 켜고, **랭크를 풀고**, 들어간 놈의
+    졸음(하품)을 푼다 (게임 규칙: 교체하면 랭크·졸음이 사라진다)."""
+    now = board.my_active if side == "me" else board.opp_active
+    if now == i:
+        return False
+    rows = board.my if side == "me" else board.opp
+    if 0 <= now < len(rows) and rows[now].get("status") == "졸음":
+        rows[now]["status"] = None
+    if side == "me":
+        board.my_active, board.my_fresh = i, True
+    else:
+        board.opp_active, board.opp_fresh = i, True
+    board.ranks[side] = {}
+    return True
 
 
 def apply(board, ev, dex):
@@ -263,11 +285,7 @@ def apply(board, ev, dex):
         if not rows[i]["brought"]:
             rows[i]["brought"] = True
             changed.append("냈다")
-        if side == "me" and board.my_active != i:
-            board.my_active, board.my_fresh = i, True
-            changed.append("나와 있음")
-        if side == "opp" and board.opp_active != i:
-            board.opp_active, board.opp_fresh = i, True
+        if _switch_to(board, side, i):
             changed.append("나와 있음")
         if kind == "나옴":
             if side == "me":
@@ -315,6 +333,9 @@ def apply(board, ev, dex):
         return [(True, "내 %s: %s (내 쪽이라 칸은 그대로)" % (name, kind))]
     if kind == "이김":
         return [(True, "승부에서 이겼다")]
+    got = _apply_mid(board, ev, kind, side, name)
+    if got is not None:
+        return got
     what = _NO_FIELD.get(kind, kind)
     if ev.get("stat"):
         what += " (%s)" % ev["stat"]
@@ -322,6 +343,55 @@ def apply(board, ev, dex):
         what += " (%s)" % ev["type"]
     who = ("%s %s: " % (_who(side), name)) if name else ""
     return [(False, "%s%s — 창에 칸이 없어 계산엔 안 들어감" % (who, what))]
+
+
+def _apply_mid(board, ev, kind, side, name):
+    """랭크 · 상태이상 · 날씨 · 압정 칸에 넣는 일 (2026-09-23). 해당 없으면 None."""
+    import battle
+    if kind == "능력하락":
+        key = battle.STAT_WORD.get(ev.get("stat"))
+        i = board.find(side, name)
+        active = board.my_active if side == "me" else board.opp_active
+        if key is None or i is None:
+            return [(False, "%s %s: %s 하락 — 누구인지·무엇인지 못 맞춤" % (_who(side), name, ev.get("stat")))]
+        if i != active:
+            return [(False, "%s %s: %s 하락 — 나와 있는 놈이 아니라 안 넣음" % (_who(side), name, ev.get("stat")))]
+        r = board.ranks.setdefault(side, {})
+        r[key] = max(-6, r.get(key, 0) - 1)
+        return [(True, "%s %s: %s 랭크 %+d" % (_who(side), name, ev["stat"], r[key]))]
+    if kind in ("하품", "잠듦", "자는중", "깸"):
+        i = board.find(side, name)
+        if i is None:
+            return [(False, "%s: %s 파티에 없음 — 칸을 확인하세요" % (name, _who(side)))]
+        row = (board.my if side == "me" else board.opp)[i]
+        before = row.get("status")
+        if kind == "하품":
+            if before and before not in ("없음", "졸음"):
+                return [(True, "%s %s: 하품 — 이미 %s 라 안 바꿈" % (_who(side), name, before))]
+            row["status"] = "졸음"
+        elif kind == "깸":
+            row["status"] = None
+        else:
+            row["status"] = "잠듦"
+        now = row["status"] or "없음"
+        return [(True, "%s %s: 상태 %s" % (_who(side), name, now))]
+    if kind == "모래바람시작":
+        board.weather, board.weather_turns = "모래바람", 5
+        return [(True, "날씨 모래바람 5턴 (보송보송바위면 8턴 — 남은 턴은 확인하세요)")]
+    if kind == "모래바람끝":
+        board.weather = "없음"
+        return [(True, "날씨 없음 (모래바람이 가라앉음)")]
+    if kind == "모래바람데미지":
+        if board.weather != "모래바람":
+            board.weather = "모래바람"
+            return [(True, "모래바람이 불고 있음 → 날씨 모래바람 (남은 턴은 몰라 %d 로 둠)"
+                     % board.weather_turns)]
+        return [(True, "모래바람 데미지 (날씨는 이미 모래바람)")]
+    if kind in ("스텔스록깔림", "스텔스록데미지"):
+        where = "opp" if kind == "스텔스록깔림" else side     # 「상대의 주변에」 만 봤다
+        board.hazards.setdefault(where, {})["스텔스록"] = 1
+        return [(True, "%s 쪽에 스텔스록" % ("상대" if where == "opp" else "내"))]
+    return None
 
 
 def apply_hp(board, res):
@@ -338,7 +408,8 @@ def apply_hp(board, res):
         if named:
             j = board.find("opp", named[0])
             if j is not None and j != i:
-                board.opp_active, board.opp_fresh, i = j, True, j
+                _switch_to(board, "opp", j)
+                i = j
                 out.append((True, "상대 이름 칸이 %s — 나와 있는 상대를 그쪽으로" % named[0]))
         row = board.opp[i] if 0 <= i < len(board.opp) else None
         if row is None or row["poke"] is None:
@@ -357,7 +428,7 @@ def apply_hp(board, res):
         same = [j for j, r in enumerate(board.my) if r.get("maxhp") == full]
         if len(same) == 1 and same[0] != i:
             i = same[0]
-            board.my_active, board.my_fresh = i, True
+            _switch_to(board, "me", i)
             out.append((True, "최대 HP %d 가 내 %s 와 같다 — 나와 있는 내 포켓몬을 그쪽으로"
                         % (full, board.my[i]["poke"]["name"])))
         elif 0 <= i < len(board.my):

@@ -788,7 +788,14 @@ def my_turn_state(rows, active_slot):
     out["party"] = [(r[1], r[2]) for r in alive]
     out["my_hp"] = [float(r[3]) for r in alive]
     out["my_active"] = idx
+    # 넘긴 목록의 각 자리가 원래 몇 번 자리였나 — 상태이상처럼 자리마다 따로 넘기는 것을 맞출 때 쓴다
+    out["slots"] = [r[0] for r in alive]
     return out
+
+
+def alive_slots(opp_rows):
+    """turn_state 가 넘기는 상대 목록의 각 자리가 원래 몇 번 자리였나 (같은 규칙으로 센다)."""
+    return [i for i, (poke, hp) in enumerate(opp_rows) if poke is not None and hp > 0]
 
 
 def turn_state(my_hp, my_active, opp_rows, opp_active):
