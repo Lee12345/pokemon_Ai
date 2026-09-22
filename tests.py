@@ -5223,7 +5223,9 @@ def test_screenread(dex):
     for w, h, lines in ((2732, 2048, [(440, 1597, "상대 다크펫의"), (439, 1689, "폴터가이스트!"),
                                       (2657, 185, "31"), (1310, 1506, "도구")]),
                         (1341, 749, [(216, 568, "상대 개굴닌자는"), (216, 602, "악타입이 됐다!"),
-                                     (10, 336, "진짜 무섭긴하네요"), (1120, 278, "개굴닌자의")])):
+                                     (10, 336, "진짜 무섭긴하네요"), (1120, 278, "개굴닌자의"),
+                                     # 같은 자리의 시계 — 한글이 없으니 문구가 아니다
+                                     (234, 611, "05:55"), (200, 640, "b")])):
         got = screenread.message_lines(lines, w, h)
         check("문구 칸만 골라낸다 (%dx%d)" % (w, h), got == [lines[0][2], lines[1][2]], got)
     check("사진 크기를 머리만 읽어 안다 (PNG · JPG)",
@@ -5232,10 +5234,47 @@ def test_screenread(dex):
           (screenread.image_size(scr("선출_스위치.png")),
            screenread.image_size(scr("대전_스위치_타입바뀜.jpg"))))
 
-    # -- 사진 통째로 (윈도우 글자 인식이 있어야) --------------------------------
+    # -- HP 넣기 (글자 인식 없이) --------------------------------------------
+    import hpread
+    bd = board()
+    bd.my[0]["maxhp"], bd.my[1]["maxhp"], bd.my[2]["maxhp"] = 215, 160, 170
+    bd.opp_active = 1
+    notes = screenread.apply_hp(bd, {"opp_hp": {"hp": 62.3, "warn": None}, "my_hp": (145, 215)})
+    check("상대 HP → 나와 있는 상대 칸, 내 HP 145/215 → 67%",
+          bd.opp[1]["hp"] == 62.3 and bd.my[0]["hp"] == 67.4, (bd.opp[1], bd.my[0], notes))
+    bd.my_active = 1
+    notes = screenread.apply_hp(bd, {"my_hp": (100, 215)})
+    check("최대 HP 215 가 하마돈 칸과만 같다 → 나와 있는 내 포켓몬을 하마돈으로",
+          bd.my_active == 0 and bd.my[0]["hp"] == 46.5 and "하마돈" in notes[0][1], notes)
+    bd.my[1]["maxhp"] = 215
+    notes = screenread.apply_hp(bd, {"my_hp": (50, 999)})
+    check("최대 HP 가 나와 있는 칸과 다르면 '칸을 확인하세요'",
+          any(not ok and "확인" in t for ok, t in notes), notes)
+    ref, why = hpread.scale(2732, 69.0)
+    ref2, why2 = hpread.scale(2732, 90.0)
+    check("HP 잣대: 화면 너비 비례 (아이패드 2732 → 69.9), 잰 높이와 10% 넘게 다르면 잰 값 + 알림",
+          abs(ref - 69.94) < 0.1 and why is None and ref2 == 90.0 and why2, (ref, why, ref2, why2))
+
+    # -- 사진 통째로 (윈도우 글자 인식 · JPG 바꾸기가 있어야) --------------------
     if os.name != "nt":
-        print("  (윈도우가 아니라 사진 글자 인식은 건너뜀)")
+        print("  (윈도우가 아니라 사진으로 하는 검사는 건너뜀)")
         return
+    import pngio
+    pngio_read = lambda p: pngio.read_png(screenread.to_png(p))
+    for f, want_hp in (("대전_아이패드_HP87.jpg", 87), ("대전_아이패드_HP4.jpg", 4),
+                       ("대전_스위치_HP62.jpg", 62)):
+        w, h, px = pngio_read(scr(f))
+        m = hpread.measure(w, h, px)
+        check("상대 HP 막대: %s → %d%% (±2)" % (f, want_hp), m and abs(m["hp"] - want_hp) <= 2,
+              m and round(m["hp"], 1))
+        if f == "대전_아이패드_HP87.jpg":
+            sw, sh, spx = pngio.shrink(w, h, px, max(w, h) // 2)
+            m = hpread.measure(sw, sh, spx)
+            check("절반 해상도로 줄여도 87% (±2)", m and abs(m["hp"] - 87) <= 2, m and round(m["hp"], 1))
+    w, h, px = pngio_read(scr("대전_아이패드_폴터가이스트.jpg"))
+    check("HP 칸이 안 보이는 장면(문구 중)은 HP 를 안 만든다", hpread.measure(w, h, px) is None)
+    got = screenread.read_screen(scr("대전_스위치_HP62.jpg"), dex, msgread.Names(dex, []))
+    check("스위치 화면: 내 HP 172/191 을 숫자로 읽는다", got.get("my_hp") == (172, 191), got.get("my_hp"))
     names = msgread.Names(dex, ["타부자고", "다크펫", "개굴닌자"])
     want = {"대전_아이패드_풍선.jpg": {"kind": "풍선", "mon": "타부자고", "side": "me"},
             "대전_아이패드_폴터가이스트.jpg": {"kind": "기술", "mon": "다크펫", "side": "opp",

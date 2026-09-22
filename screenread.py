@@ -124,8 +124,10 @@ def _ocr_file(tmp, scale):
 def message_lines(lines, w, h):
     """글자 인식 줄들 → 문구 칸 줄만, 위에서부터."""
     x0, y0, x1, y1 = MSG_BOX
+    # 문구는 한글이 있다 — 같은 자리에 걸리는 시계(「06:41」)·표시 조각(「b」)은 뺀다
     got = [(y, t) for x, y, t in lines
-           if x0 <= x / float(w) < x1 and y0 <= y / float(h) < y1]
+           if x0 <= x / float(w) < x1 and y0 <= y / float(h) < y1
+           and len(re.findall(r"[가-힣]", t)) >= 2]
     return [t for _, t in sorted(got)]
 
 
@@ -146,10 +148,55 @@ def read_screen(path, dex, names):
             opp.append({"key": key, "gender": gender, "score": score,
                         "gap": score - ranked[1][0] if len(ranked) > 1 else score})
         return {"kind": "선출", "opp": opp}
-    lines = message_lines(ocr(path, 2 if w < SMALL_W else 1), w, h)
-    if not lines:
-        return {"kind": "대전", "lines": [], "event": {"kind": "못 읽음", "text": ""}}
-    return {"kind": "대전", "lines": lines, "event": msgread.read(lines, names)}
+    import hpread
+    raw = ocr(path, 2 if w < SMALL_W else 1)
+    lines = message_lines(raw, w, h)
+    out = {"kind": "대전", "lines": lines,
+           "event": msgread.read(lines, names) if lines else None,
+           "opp_hp": hpread.measure(w, h, px),
+           "opp_name": opp_name_line(raw, w, h, names),
+           "my_hp": my_hp_numbers(raw, w, h)}
+    return out
+
+
+# 내 HP 는 「172/191」 처럼 숫자로 나온다 — 글자 인식이 잘 읽는다 (아이패드 145/215, 스위치 172/191).
+# 자리: 왼쪽 아래 (아이패드 x 0.14·y 0.95, 스위치 x 0.13·y 0.94).
+MY_HP_BOX = (0.0, 0.80, 0.40, 1.0)
+# 상대 이름 칸: 오른쪽 위 (아이패드 x 0.83·y 0.04, 스위치 x 0.83·y 0.05)
+OPP_NAME_BOX = (0.60, 0.0, 1.0, 0.15)
+
+
+def _in(box, x, y, w, h):
+    x0, y0, x1, y1 = box
+    return x0 <= x / float(w) < x1 and y0 <= y / float(h) < y1
+
+
+def my_hp_numbers(lines, w, h):
+    """(지금, 최대) 또는 None."""
+    for x, y, t in lines:
+        m = re.search(r"(\d{1,3})\s*/\s*(\d{1,3})", t)
+        if m and _in(MY_HP_BOX, x, y, w, h):
+            cur, full = int(m.group(1)), int(m.group(2))
+            if 0 < full and cur <= full:
+                return cur, full
+    return None
+
+
+def opp_name_line(lines, w, h, names):
+    """상대 이름 칸에서 읽힌 이름 → (이름, 점수, 읽힌 글) 또는 None. 이 판 포켓몬에서만 맞춘다."""
+    import msgread
+    pool = names.here or []
+    best = None
+    for x, y, t in lines:
+        if not _in(OPP_NAME_BOX, x, y, w, h) or "%" in t:
+            continue
+        body = msgread.normalize(t)
+        if len(body) < 2 or not pool:
+            continue
+        name, sc = names.best(body, pool)
+        if best is None or sc > best[1]:
+            best = (name, sc, t)
+    return best if best and best[1] >= 0.5 else None
 
 
 # ── 판 ────────────────────────────────────────────────────────────────
@@ -275,6 +322,56 @@ def apply(board, ev, dex):
         what += " (%s)" % ev["type"]
     who = ("%s %s: " % (_who(side), name)) if name else ""
     return [(False, "%s%s — 창에 칸이 없어 계산엔 안 들어감" % (who, what))]
+
+
+def apply_hp(board, res):
+    """대전 화면의 HP 를 판에 넣는다 → [(넣었나, 한 줄)].
+
+    상대 HP 는 **나와 있는 상대 칸**에 넣는다. 이름 칸이 읽혔고 다른 칸의 이름이면 그 칸으로
+    (그리고 그놈이 나와 있는 것으로). 내 HP 는 나와 있는 내 칸에.
+    """
+    out = []
+    m = res.get("opp_hp")
+    if m:
+        i = board.opp_active
+        named = res.get("opp_name")
+        if named:
+            j = board.find("opp", named[0])
+            if j is not None and j != i:
+                board.opp_active, board.opp_fresh, i = j, True, j
+                out.append((True, "상대 이름 칸이 %s — 나와 있는 상대를 그쪽으로" % named[0]))
+        row = board.opp[i] if 0 <= i < len(board.opp) else None
+        if row is None or row["poke"] is None:
+            out.append((False, "상대 HP %.0f%% 를 쟀지만 나와 있는 상대 칸이 비어 있음" % m["hp"]))
+        else:
+            row["hp"] = round(m["hp"], 1)
+            row["brought"] = True
+            out.append((True, "상대 %s: HP %.0f%% (막대로 잼)" % (row["poke"]["name"], m["hp"])))
+        if m.get("warn"):
+            out.append((False, "상대 HP: " + m["warn"]))
+    mine = res.get("my_hp")
+    if mine:
+        cur, full = mine
+        i = board.my_active
+        # 최대 HP 는 그 포켓몬의 HP 능력치다 — 딱 한 칸만 맞으면 그놈이 나와 있는 것이다
+        same = [j for j, r in enumerate(board.my) if r.get("maxhp") == full]
+        if len(same) == 1 and same[0] != i:
+            i = same[0]
+            board.my_active, board.my_fresh = i, True
+            out.append((True, "최대 HP %d 가 내 %s 와 같다 — 나와 있는 내 포켓몬을 그쪽으로"
+                        % (full, board.my[i]["poke"]["name"])))
+        elif 0 <= i < len(board.my):
+            have = board.my[i].get("maxhp")
+            if have and have != full:
+                out.append((False, "내 HP 최대치 %d 가 나와 있는 칸(%s, HP %d)과 다름 — 칸을 확인하세요"
+                            % (full, board.my[i]["poke"]["name"], have)))
+        row = board.my[i] if 0 <= i < len(board.my) else None
+        if row is None or row["poke"] is None:
+            out.append((False, "내 HP %d/%d 를 읽었지만 나와 있는 내 칸이 비어 있음" % mine))
+        else:
+            row["hp"] = round(cur * 100.0 / full, 1)
+            out.append((True, "내 %s: HP %d/%d = %.0f%%" % (row["poke"]["name"], cur, full, row["hp"])))
+    return out
 
 
 def apply_preview(board, found, dex):

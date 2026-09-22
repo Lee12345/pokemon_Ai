@@ -1110,8 +1110,12 @@ class App(object):
     def board(self):
         """창의 칸 -> screenread.Board."""
         import screenread
-        my = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get())}
-              for sl in self.slots]
+        my = []
+        for sl in self.slots:
+            b, bad = sl.build()
+            # 최대 HP(능력치) — 화면의 「145/215」 로 누가 나와 있는지 맞춰 볼 때 쓴다
+            my.append({"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get()),
+                       "maxhp": b.stat("hp") if b is not None and not bad else None})
         opp = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get())}
                for sl in self.opp_slots]
         return screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
@@ -1191,7 +1195,11 @@ class App(object):
             else:
                 if res["lines"]:
                     lines.append("   문구: 「%s」" % " / ".join(res["lines"]))
-                notes = screenread.apply(bd, res["event"], self.dex)
+                # 문구의 일을 먼저 (누가 나왔나가 바뀔 수 있다), 그 다음 HP
+                notes = screenread.apply(bd, res["event"], self.dex) if res.get("event") else []
+                notes += screenread.apply_hp(bd, res)
+                if not notes:
+                    notes = [(False, "문구도 HP 도 못 찾음 — 대전 화면이 맞나요?")]
             for ok, text in notes:
                 lines.append("   %s %s" % ("✓" if ok else "○", text))
         self.set_board(bd)
