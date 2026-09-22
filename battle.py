@@ -561,6 +561,8 @@ ABILITY_NO_EFFECT = {
     "예지몽": "상대 기술을 알려 줄 뿐 — 계산 결과는 안 바뀐다",
     "헤비메탈": "무게 2배 — 무게를 쓰는 기술(풀묶기 등)이 아직 없다 (몸무게 자료 없음)",
     "라이트메탈": "무게 1/2 — 무게를 쓰는 기술이 아직 없다 (몸무게 자료 없음)",
+    "일루전": "다른 포켓몬 모습으로 속일 뿐 — 계산 결과는 안 바뀐다. ! 실전에선 사진 읽기가 "
+              "속을 수 있다 (나온 이름이 진짜가 아닐 수 있다)",
 }
 # 특성 이름으로 붙인 것 (이 파일 안에서 실제로 돈다 — [52] 가 하나하나 시험한다)
 ABILITY_DONE = set()
@@ -688,6 +690,46 @@ ABILITY_RULES = [
      lambda m: {"kind": "early_bird", "mult": int(m.group(1))}),
     (r"같은 편 (\S+?)타입 포켓몬은 능력이 떨어지지 않으며 상태 이상도 되지 않는다",  # 플라워베일
      lambda m: {"kind": "flower_veil", "type": m.group(1)}),
+    # ---- 3차 (2026-09-22) ----
+    (r"기술로 데미지를 입으면 (\d+)% 확률로 (\d)턴 동안 상대를 기술봉인 상태로",   # 저주받은바디
+     lambda m: {"kind": "cursed_body", "chance": int(m.group(1)) / 100.0,
+                "turns": int(m.group(2))}),
+    (r"턴 종료 시 능력 중 하나가 (\d)단계 올라가고 나머지 중 하나가 (\d)단계 떨어진다",  # 변덕쟁이
+     lambda m: {"kind": "moody", "up": int(m.group(1)), "down": int(m.group(2))}),
+    (r"사용한 나무열매를 턴 종료 시 (\d+)% 확률로 만들어 낸다\. (\S+?) 상태일 때는 반드시",  # 수확
+     lambda m: {"kind": "harvest", "chance": int(m.group(1)) / 100.0, "sure": m.group(2)}),
+    (r"^필드에 따라 타입이 바뀐다", lambda m: {"kind": "mimicry"}),               # 의태
+    (r"날씨의 영향을 받아 물타입, 불꽃타입, 얼음타입 중 하나로 변화", lambda m: {"kind": "forecast"}),
+    (r"접촉 기술을 받으면 상대의 특성을 (\S+?)로 만든다",                          # 미라
+     lambda m: {"kind": "mummy", "to": m.group(1)}),
+    (r"접촉 기술을 받으면 상대와 특성을 바꾼다", lambda m: {"kind": "swap_on_contact"}),  # 떠도는영혼
+    (r"지닌 포켓몬으로 돌아오면 (\S+?)폼으로 변화한다",                             # 마이티체인지
+     lambda m: {"kind": "switch_form", "form": m.group(1) + "폼"}),
+    (r"턴 종료 시 배부른 모양과 배고픈 모양을 번갈아", lambda m: {"kind": "hunger_switch"}),
+    (r"눈앞의 포켓몬으로 변신한다", lambda m: {"kind": "imposter"}),              # 괴짜
+    (r"기술로 데미지를 입으면 전기위력업 상태가 된다", lambda m: {"kind": "electromorphosis"}),
+    (r"등장 시 상대의 특성과 같은 특성이 된다", lambda m: {"kind": "trace"}),     # 트레이스
+    (r"나무열매를 먹으면 그 효과와 더불어 최대 HP의 1/(\d+)만큼 회복",              # 볼주머니
+     lambda m: {"kind": "cheek_pouch", "frac": 1.0 / int(m.group(1))}),
+    (r"모든 날씨의 영향을 없앤다", lambda m: {"kind": "cloud_nine"}),              # 날씨부정
+    (r"독, 맹독 상태가 되면 턴 종료 시 HP가 줄어드는 대신 최대 HP의 1/(\d+)만큼 회복",  # 포이즌힐
+     lambda m: {"kind": "poison_heal", "frac": 1.0 / int(m.group(1))}),
+    (r"(\S+?) 상태일 때 상태 이상이 되지 않는다",                                  # 리프가드
+     lambda m: {"kind": "status_immune_when", "when": m.group(1)}),
+    (r"(\S+?) 상태일 때 턴 종료 시 최대 HP의 1/(\d+)만큼 회복",                     # 아이스바디·젖은접시
+     lambda m: {"kind": "weather_heal", "when": m.group(1), "frac": 1.0 / int(m.group(2))}),
+    (r"HP가 1/4일 때 먹는 나무열매를 HP가 1/2일 때", lambda m: {"kind": "gluttony"}),  # 먹보
+    (r"먹는 나무열매의 효과가 (\d)배", lambda m: {"kind": "ripen", "mult": int(m.group(1))}),
+    (r"이성으로부터 접촉 기술을 받으면 (\d+)% 확률로 상대를 헤롱헤롱",              # 헤롱헤롱바디
+     lambda m: {"kind": "cute_charm", "chance": int(m.group(1)) / 100.0}),
+    (r"턴 종료 시 (\d+)% 확률로 상태 이상이 회복",                                 # 탈피
+     lambda m: {"kind": "shed_skin", "chance": int(m.group(1)) / 100.0}),
+    (r"나무열매를 먹으면, 다음 턴 종료 시 같은 나무열매를 한 번 더", lambda m: {"kind": "cud_chew"}),
+    (r"(\S+?) 상태일 때 턴 종료 시 상태 이상이 회복",                               # 촉촉바디
+     lambda m: {"kind": "hydration", "when": m.group(1)}),
+    (r"지니고 있는 도구는 효과가 발생하지 않는다", lambda m: {"kind": "klutz"}),    # 서투름
+    (r"소리 기술이 (\S+?)타입이 된다", lambda m: {"kind": "liquid_voice", "type": m.group(1)}),
+    (r"상대의 능력이 올라가면 자신도 똑같이 능력이 올라간다", lambda m: {"kind": "opportunist"}),
 ]
 _ABILITY_RULES_RX = [(re.compile(p), f) for p, f in ABILITY_RULES]
 
@@ -806,7 +848,12 @@ class Side(object):
             self.ranks.setdefault(k, 0)
         self.status = build.status
         self.item = build.item
+        # 서투름 — "지니고 있는 도구는 효과가 발생하지 않는다" (없는 것으로 친다)
+        if any(r["kind"] == "klutz" for r in ability_rules(dex, self.base.ability)):
+            self.item = None
         self.item_used = False
+        # 미라·떠도는영혼·트레이스·괴짜로 몸(특성·모습)이 바뀌기 전 — 물러나면 돌아간다
+        self.orig_base = None
         self.protecting = False
         # 이 턴에 풀죽었는가 (왕의징표석 등). 턴이 끝나면 지워진다.
         self.flinched = False
@@ -857,6 +904,11 @@ class Side(object):
         self.last_move = None        # 직전에 쓴 기술 (Policy._just_failed — 상대가 본다)
         self.minimized = False       # 작아지기 상태 (교체하면 풀린다)
         self.flash_fire = False      # 타오르는불꽃으로 불꽃 기술을 받아냈나 (교체하면 풀린다)
+        self.disabled = None         # 기술봉인 {"move", "turns"} — 저주받은바디
+        self.charged = False         # 전기위력업 — 전기로바꾸기
+        self.infatuated = None       # 헤롱헤롱 — 건 쪽 Side (그놈이 나와 있는 동안만)
+        self.hangry = False          # 꼬르륵스위치 — 배고픈 모양이면 오라휠이 악타입
+        self.cud = None              # 되새김질 — 다음 턴 끝에 한 번 더 먹을 열매 효과
         # 판 중간에서 시작해 '막 나왔는지' 를 몰라서 막 나왔다고 **가정한** 몸인가.
         # Battle.__init__ 이 켜고, 실제로 교체해 들어오면 여기서 꺼진다.
         self.fresh_guessed = False
@@ -1427,6 +1479,27 @@ class Battle(object):
             if gone:
                 self._say("%s 의 %s — %s 해제" % (side.name, side.base.ability,
                                                  ", ".join(gone)))
+        # 괴짜 — "눈앞의 포켓몬으로 변신한다. HP 이외의 스테이터스도 똑같아진다"
+        # (도구는 자기 것 · 랭크도 따라간다 · 변신한 몸의 등장 효과는 안 난다)
+        if foe.alive and self._rules(side, "imposter"):
+            import copy
+            body = copy.copy(foe.base)
+            body.item = side.base.item
+            who = side.name
+            self._swap_body(side, body, "%s 의 %s — %s 로 변신했다"
+                            % (who, side.base.ability, foe.name))
+            side.ranks = dict(foe.ranks)
+            side.types_override = (list(foe.types_override)
+                                   if foe.types_override is not None else None)
+            return
+        # 트레이스 — "등장 시 상대의 특성과 같은 특성이 된다" (받아 온 특성의 등장 효과도 난다)
+        if foe.alive and self._rules(side, "trace") and foe.base.ability:
+            if not any(r["kind"] in ("trace", "imposter")
+                       for r in ability_rules(self.dex, foe.base.ability)):
+                self._set_ability(side, foe.base.ability, "%s 의 트레이스 — %s 를 받아 왔다"
+                                  % (side.name, foe.base.ability))
+                self._entry_abilities(side)
+                return
         ab = ENTRY_ABILITY.get(side.base.ability)
         if not ab:
             return
@@ -1477,6 +1550,14 @@ class Battle(object):
                     self._say("%s 의 %s — 물러나며 %s 가 나았다"
                               % (old.name, old.base.ability, old.status))
                     old.status, old.status_turns, old.toxic_n = None, 0, 0
+            # (재생력은 **지금** 특성으로 본다 — 미라로 특성을 잃었으면 회복 안 한다)
+            old.disabled, old.charged, old.infatuated = None, False, None
+            old.flash_fire, old.hangry, old.cud = False, False, None
+            if old.orig_base is not None:        # 미라·떠도는영혼·트레이스·괴짜 — 원래 몸으로
+                old.base, old.orig_base = old.orig_base, None
+            for r in ability_rules(self.dex, old.base.ability):
+                if r["kind"] == "switch_form":   # 마이티체인지 — 물러나면 마이티폼 (계속 간다)
+                    self._change_form(old, r["form"])
         party.active_idx = idx
         side = party.active
         side.reset_entry()                       # 방금 나온 것을 이제 안다
@@ -1498,6 +1579,7 @@ class Battle(object):
             self._entry_weather_for(side)
             self._entry_abilities(side)
             self._seed_item(side)
+            self._update_type_forms()            # 의태·기분파 — 날씨·필드가 바뀌었을 수 있다
 
     def _entry_weather_for(self, side):
         w = WEATHER_ABILITY.get(side.base.ability)
@@ -1562,7 +1644,7 @@ class Battle(object):
         mult = 1.0
         d = move.get("description") or ""
         # 모래의힘 — "모래바람 상태일 때 바위, 땅, 강철타입 기술의 위력이 1.3배"
-        if self.field.weather == "모래바람":
+        if self._weather() == "모래바람":
             for r in self._rules(attacker, "sand_force"):
                 if move["type"] in r["types"]:
                     mult *= r["mult"]
@@ -1579,15 +1661,15 @@ class Battle(object):
             self._warn("%s 가 %s 를 반감시킨다고 본 것은 미확인 값입니다"
                        % (self.field.terrain, move["type"]))
         # 날씨도 게임 데이터에 숫자가 없다. 본편 값을 쓰고 경고를 띄운다.
-        if WEATHER_BOOST.get(self.field.weather) == move["type"]:
+        if WEATHER_BOOST.get(self._weather()) == move["type"]:
             mult *= calc.CONFIG["weather_boost"]
             self._warn("%s 의 %s 타입 강화 %.2f배는 게임 데이터에 없는 "
-                       "미확인 값입니다" % (self.field.weather, move["type"],
+                       "미확인 값입니다" % (self._weather(), move["type"],
                                        calc.CONFIG["weather_boost"]))
-        if WEATHER_WEAKEN.get(self.field.weather) == move["type"]:
+        if WEATHER_WEAKEN.get(self._weather()) == move["type"]:
             mult *= calc.CONFIG["weather_weaken"]
             self._warn("%s 가 %s 를 %.2f배로 깎는다고 본 것은 미확인 값입니다"
-                       % (self.field.weather, move["type"],
+                       % (self._weather(), move["type"],
                           calc.CONFIG["weather_weaken"]))
         return mult
 
@@ -1635,6 +1717,73 @@ class Battle(object):
         for r in self._rules(side, "early_bird"):
             turns = max(1, turns // r["mult"])
         return turns
+
+    def _weather(self):
+        """지금 **효과가 있는** 날씨. 날씨부정이 나와 있으면 없는 것으로 본다 (날씨 자체는 남는다)."""
+        if any(s.alive and self._rules(s, "cloud_nine") for s in (self.me, self.opp)):
+            return None
+        return self.field.weather
+
+    def _swap_body(self, side, body, why):
+        """몸(Build)을 갈아 끼운다 — 특성이 바뀌거나 변신할 때. 물러나면 원래대로 돌아간다.
+
+        ! Build 는 **고치지 않고 복사한다** — 탐색은 같은 Build 로 수천 판을 돈다.
+          그리고 `Side.forms` 에 넣는다 — Policy 가 `is` 로 주인을 확인한다 (§5-32).
+        """
+        if side.orig_base is None:
+            side.orig_base = side.base
+        side.forms.append(body)
+        side.base = body
+        self._say(why)
+
+    def _change_form(self, side, form_name):
+        """같은 포켓몬의 다른 폼으로 **계속** 바뀐다 (마이티체인지). 남은 HP 비율은 지킨다."""
+        now = side.base.poke
+        if now.get("formName") == form_name:
+            return
+        to = [p for p in self.dex.pokemon
+              if p["name"] == now["name"] and p.get("formName") == form_name]
+        if not to:
+            self._warn("%s 의 %s 폼을 도감에서 못 찾았습니다" % (side.name, form_name))
+            return
+        body = calc.Build(self.dex, to[0], sp=side.base.sp, nature=side.base.nature,
+                          item=side.base.item, ability=side.base.ability)
+        ratio = side.hp_ratio
+        side.forms.append(body)
+        side.base = body
+        side.max_hp = body.stat("hp")
+        side.hp = max(1, int(round(side.max_hp * ratio))) if side.hp > 0 else 0
+        self._say("%s 는 %s 으로 바뀌었다" % (side.name, form_name))
+
+    def _set_ability(self, side, ability, why):
+        import copy
+        body = copy.copy(side.base)
+        body.ability = ability
+        self._swap_body(side, body, why)
+
+    def _update_type_forms(self):
+        """의태(필드에 따라) · 기분파(날씨에 따라) 타입. 턴 시작마다 맞춘다."""
+        for side in (self.me, self.opp):
+            if not side.alive:
+                continue
+            if self._rules(side, "mimicry"):
+                # (TERRAIN_TYPE 은 필드 강화용이라 미스트필드가 없다 — 의태는 페어리가 된다)
+                t = dict(TERRAIN_TYPE, 미스트필드="페어리").get(self.field.terrain)
+                side.types_override = [t] if t else None
+            if self._rules(side, "forecast"):
+                t = {"쾌청": "불꽃", "비": "물", "눈": "얼음"}.get(self._weather())
+                side.types_override = [t] if t else None
+
+    def _opportunist(self, side, stat, moved):
+        """편승 — 상대(side)가 능력을 올리면 나도 똑같이 올린다."""
+        if moved <= 0:
+            return
+        foe = self.opp if side is self.me else self.me
+        if foe.alive and self._rules(foe, "opportunist"):
+            up = foe.bump(stat, moved)
+            if up:
+                self._say("%s 의 %s — 따라서 %s%+d" % (foe.name, foe.base.ability,
+                                                    STAT_LABEL[stat], up))
 
     def _fainted_allies(self, side):
         return sum(1 for m in self._party_of(side).members if not m.alive)
@@ -1714,6 +1863,9 @@ class Battle(object):
         안 본다. 나머지는 턴 전에도 확실히 알 수 있다.
         """
         d = move.get("description") or ""
+        # 기술봉인 (저주받은바디) — 봉인된 기술은 못 쓴다 (AI 도 턴 전에 안다)
+        if user.disabled and user.disabled["move"] == move["name"]:
+            return "실패 — %s 는 봉인됐다" % move["name"]
         # 습기 — "전원은 폭발 기술을 사용할 수 없다" (양쪽 누구의 특성이든)
         if (calc.attack_effects(move)["self_faint"]
                 and (self._rules(user, "damp") or self._rules(target, "damp"))):
@@ -1794,10 +1946,13 @@ class Battle(object):
             self._say("%s 의 %s — %s" % (atk.name, move["name"], why))
             self._crash(atk, move)
             return 0
+        d_text = move.get("description") or ""
+        if atk.hangry and "폼에 따라 타입이 바뀐다" in d_text:
+            # 오라휠 — 꼬르륵스위치의 배고픈 모양이면 악타입
+            move = dict(move, type="악")
         if not mold and self._absorb(atk, dfn, move):
             self._crash(atk, move)            # 안 통한 것이다 (분함의발구르기가 본다)
             return 0
-        d_text = move.get("description") or ""
         if _NEED_STOCKPILE.search(d_text):
             # 토해내기 — 비축한 만큼 위력이 오른다 (설명문: 100~300)
             move = dict(move, power=100 * atk.stockpile)
@@ -1822,6 +1977,12 @@ class Battle(object):
             bonus = min(r["cap"], r["per"] * self._fainted_allies(atk))
             if bonus:
                 extra *= 1 + bonus
+        if atk.charged and move["type"] == "전기":
+            # 전기로바꾸기의 전기위력업 — 배율은 설명문에 없다 (미확인)
+            extra *= calc.CONFIG["charge_boost"]
+            atk.charged = False
+            self._warn("전기위력업 상태의 전기 기술 %.1f배는 게임 데이터에 없는 미확인 "
+                       "값입니다" % calc.CONFIG["charge_boost"])
         if atk.flash_fire and move["type"] == "불꽃":
             # 타오르는불꽃 상태 — 설명문엔 '상태가 된다' 까지만 있다. 배율은 본편 값 (미확인)
             extra *= calc.CONFIG["flash_fire_boost"]
@@ -1972,7 +2133,7 @@ class Battle(object):
             hit_p *= r["mult"]
         if not self._rules(atk, "mold_breaker"):
             for r in self._rules(dfn, "evasion_when"):      # 눈숨기·모래숨기·갈지자걸음
-                if (r["when"] == self.field.weather
+                if (r["when"] == self._weather()
                         or (r["when"] == "혼란" and dfn.confused)):
                     hit_p /= r["mult"]
         for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
@@ -2165,6 +2326,26 @@ class Battle(object):
                 self._say("%s 의 %s — %s 의 %s 를 훔쳤다"
                           % (dfn.name, dfn.base.ability, atk.name, atk.item))
                 dfn.item, dfn.item_used, atk.item = atk.item, False, None
+            # 미라 — 때린 쪽 특성이 미라가 된다 / 떠도는영혼 — 서로 특성을 바꾼다
+            for r in self._rules(dfn, "mummy"):
+                if atk.alive and atk.base.ability != r["to"]:
+                    self._set_ability(atk, r["to"], "%s 의 %s — %s 의 특성이 %s 가 됐다"
+                                      % (dfn.name, dfn.base.ability, atk.name, r["to"]))
+            if self._rules(dfn, "swap_on_contact") and atk.alive and dfn.alive:
+                mine, theirs = dfn.base.ability, atk.base.ability
+                self._set_ability(dfn, theirs, "%s 의 %s — %s 와 특성을 바꿨다"
+                                  % (dfn.name, mine, atk.name))
+                self._set_ability(atk, mine, "  (%s 는 이제 %s)" % (atk.name, mine))
+            # 헤롱헤롱바디 — "이성으로부터" (성별 자료가 없다 — 이성일 확률은 미확인 가정값)
+            for r in self._rules(dfn, "cute_charm"):
+                if (atk.alive and atk.infatuated is None
+                        and "헤롱헤롱" not in self._immune_abilities.get(atk.base.ability, ())
+                        and rng.random() < r["chance"] * calc.CONFIG["opposite_gender"]):
+                    atk.infatuated = dfn
+                    self._say("%s 의 %s — %s 는 헤롱헤롱해졌다"
+                              % (dfn.name, dfn.base.ability, atk.name))
+                self._warn("헤롱헤롱바디: 성별 자료가 없어 상대가 이성일 확률을 %.0f%% 로 "
+                           "가정했습니다 (미확인)" % (calc.CONFIG["opposite_gender"] * 100))
             # 때린 쪽 — 독수
             for r in self._rules(atk, "poison_touch"):
                 if dfn.alive and rng.random() < r["chance"]:
@@ -2182,6 +2363,16 @@ class Battle(object):
             self._say("%s 의 %s — %s 의 %s 를 빼앗았다"
                       % (atk.name, atk.base.ability, dfn.name, dfn.item))
             atk.item, atk.item_used, dfn.item = dfn.item, False, None
+        # 저주받은바디 — "기술로 데미지를 입으면 30% 확률로 4턴 동안 상대를 기술봉인"
+        for r in self._rules(dfn, "cursed_body"):
+            if atk.alive and atk.disabled is None and rng.random() < r["chance"]:
+                atk.disabled = {"move": move["name"], "turns": r["turns"]}
+                self._say("%s 의 %s — %s 의 %s 가 봉인됐다 (%d턴)"
+                          % (dfn.name, dfn.base.ability, atk.name, move["name"], r["turns"]))
+        # 전기로바꾸기 — "기술로 데미지를 입으면 전기위력업 상태가 된다"
+        if self._rules(dfn, "electromorphosis") and dfn.alive:
+            dfn.charged = True
+            self._say("%s 의 %s — 전기위력업 상태" % (dfn.name, dfn.base.ability))
         # 넘치는씨·모래뿜기 — "기술로 데미지를 입으면 5턴 동안 그래스필드/모래바람"
         for r in self._rules(dfn, "hit_field"):
             now = self.field.terrain if r["field"] in TERRAIN else self.field.weather
@@ -2256,6 +2447,8 @@ class Battle(object):
                                     "%s 의 %s" % (atk.name, move["name"]))
                         continue
                     moved = side.bump(e["stat"], e["step"])
+                    if side is atk:
+                        self._opportunist(atk, e["stat"], moved)      # 편승
                     if moved:
                         self._say("%s 의 %s — %s %s%+d (지금 %s)"
                                   % (atk.name, move["name"], side.name,
@@ -2323,15 +2516,32 @@ class Battle(object):
         if self._unnerved(side):
             return
         ef = item_effect(self.dex, side.item, "heal_pinch")
-        if not ef or side.hp > side.max_hp * ef["at"]:
+        if not ef:
+            return
+        at = ef["at"]
+        if at <= 0.25 and self._rules(side, "gluttony"):   # 먹보 — 1/4 열매를 1/2 에서
+            at = 0.5
+        if side.hp > side.max_hp * at:
             return
         # 자뭉열매는 비율, 오랭열매는 고정값이다. 전에는 비율만 읽어서
         # 고정값 열매가 조용히 안 터졌다.
         amount = (side.max_hp * ef["frac"]) if "frac" in ef else ef["flat"]
+        for r in self._rules(side, "ripen"):               # 숙성 — 열매 효과 2배
+            amount *= r["mult"]
         got = side.heal(amount)
         side.item_used = True
         self._say("%s 의 %s 발동 — %d 회복 (HP %d/%d)"
                   % (side.name, side.item, got, side.hp, side.max_hp))
+        self._after_berry(side, ("heal", amount))
+
+    def _after_berry(self, side, effect):
+        """열매를 먹은 뒤 — 볼주머니(1/3 더 회복) · 되새김질(다음 턴 끝에 한 번 더)."""
+        for r in self._rules(side, "cheek_pouch"):
+            got = side.heal(side.max_hp * r["frac"])
+            if got:
+                self._say("%s 의 %s — %d 더 회복" % (side.name, side.base.ability, got))
+        if self._rules(side, "cud_chew"):
+            side.cud = {"turn": self.turn, "effect": effect}
 
     def _cure_berry(self, side):
         """리샘열매·유루열매처럼 상태를 풀어 주는 열매."""
@@ -2355,6 +2565,7 @@ class Battle(object):
         if hit:
             side.item_used = True
             self._say("%s 의 %s — %s 가 풀렸다" % (side.name, side.item, hit))
+            self._after_berry(side, ("cure", want))
 
     # -- 변화기 -------------------------------------------------------------
     def _use_status(self, user, target, move, bounced=False):
@@ -2406,6 +2617,8 @@ class Battle(object):
                                 "%s 의 %s" % (user.name, move["name"]))
                     continue
                 moved = side.bump(ef["stat"], ef["step"])
+                if side is user:
+                    self._opportunist(user, ef["stat"], moved)       # 편승
                 if moved:
                     self._say("%s 의 %s — %s %s%+d (지금 %s)"
                               % (user.name, move["name"], side.name,
@@ -2625,6 +2838,11 @@ class Battle(object):
 
         by — 건 쪽 (부식: 강철·독에게도 독 / 싱크로: 되돌려 건다). 압정·졸음 등은 None.
         """
+        # 리프가드 — "쾌청 상태일 때 상태 이상이 되지 않는다" (혼란·졸음은 상태 이상이 아니다)
+        if status not in ("혼란", "졸음") and any(
+                r["when"] == self._weather() for r in self._rules(side, "status_immune_when")):
+            self._say("%s 의 %s — %s 에 안 걸린다" % (side.name, side.base.ability, status))
+            return False
         # 플라워베일 — "같은 편 풀타입 포켓몬은 ... 상태 이상도 되지 않는다" (싱글에선 자기)
         if any(r["type"] in side.types for r in self._rules(side, "flower_veil")):
             self._say("%s 의 %s — %s 에 안 걸린다" % (side.name, side.base.ability, status))
@@ -2719,6 +2937,13 @@ class Battle(object):
             self._say("%s 는 몸이 저려 움직이지 못했다" % side.name)
             return False
 
+        # 헤롱헤롱 — 건 쪽이 나와 있는 동안만 (CONFIG infatuation_skip, 미확인)
+        foe = self.opp if side is self.me else self.me
+        if side.infatuated is not None and side.infatuated is foe and foe.alive:
+            if self.rng.random() < calc.CONFIG["infatuation_skip"]:
+                self._say("%s 는 헤롱헤롱해서 움직이지 못했다" % side.name)
+                return False
+
         if side.confused:
             side.confused -= 1
             if self.rng.random() < calc.CONFIG["confuse_self"]:
@@ -2812,6 +3037,7 @@ class Battle(object):
         self.turn += 1
         self.me.protecting = False
         self.opp.protecting = False
+        self._update_type_forms()                # 의태·기분파
 
         # 0) 메가진화 — 순서를 가리기 **전에**
         unwrapped = []
@@ -3092,12 +3318,70 @@ class Battle(object):
                       % (side.name, side.base.ability))
             self.switch_in(party, idx, "위기회피")
 
+    def _end_turn_abilities(self, side):
+        """턴 끝에 도는 특성 (ability_rules). 3차 (2026-09-22)."""
+        if not side.alive:
+            return
+        rng, w = self.rng, self._weather()
+        for r in self._rules(side, "weather_heal"):          # 젖은접시·아이스바디
+            if r["when"] == w:
+                got = side.heal(side.max_hp * r["frac"])
+                if got:
+                    self._say("%s 의 %s — %d 회복" % (side.name, side.base.ability, got))
+        cure = (any(r["when"] == w for r in self._rules(side, "hydration"))        # 촉촉바디
+                or any(rng.random() < r["chance"] for r in self._rules(side, "shed_skin")))  # 탈피
+        if cure and side.status:
+            self._say("%s 의 %s — %s 가 나았다" % (side.name, side.base.ability, side.status))
+            side.status, side.status_turns, side.toxic_n = None, 0, 0
+        for r in self._rules(side, "harvest"):              # 수확
+            if (side.item_used and side.item and side.item.endswith("열매")
+                    and (w == r["sure"] or rng.random() < r["chance"])):
+                side.item_used = False
+                self._say("%s 의 %s — %s 를 다시 만들었다" % (side.name, side.base.ability,
+                                                            side.item))
+        if side.cud and side.cud["turn"] < self.turn:      # 되새김질 — 다음 턴 끝에 한 번 더
+            kind, what = side.cud["effect"]
+            side.cud = None
+            if kind == "heal":
+                got = side.heal(what)
+                self._say("%s 의 되새김질 — 열매를 한 번 더, %d 회복" % (side.name, got))
+            elif kind == "cure" and side.status and (what is None or side.status in what):
+                self._say("%s 의 되새김질 — %s 가 나았다" % (side.name, side.status))
+                side.status, side.status_turns, side.toxic_n = None, 0, 0
+        for r in self._rules(side, "moody"):                # 변덕쟁이
+            stats = ["attack", "defense", "spAtk", "spDef", "speed"]
+            ups = [s for s in stats if side.ranks.get(s, 0) < 6]
+            if ups:
+                u = rng.choice(ups)
+                side.bump(u, r["up"])
+                downs = [s for s in stats if s != u and side.ranks.get(s, 0) > -6]
+                d = rng.choice(downs) if downs else None
+                if d:
+                    side.bump(d, -r["down"])
+                self._say("%s 의 %s — %s+%d%s (지금 %s)"
+                          % (side.name, side.base.ability, STAT_LABEL[u], r["up"],
+                             (" %s-%d" % (STAT_LABEL[d], r["down"])) if d else "",
+                             side.rank_text()))
+        if self._rules(side, "hunger_switch"):              # 꼬르륵스위치
+            side.hangry = not side.hangry
+        if side.disabled:                                   # 기술봉인이 풀려 간다
+            side.disabled["turns"] -= 1
+            if side.disabled["turns"] <= 0:
+                self._say("%s 의 %s 봉인이 풀렸다" % (side.name, side.disabled["move"]))
+                side.disabled = None
+
     def _end_of_turn(self):
         """턴 끝 — 상태이상 · 날씨 칩댐 · 먹다남은음식."""
         for side in (self.me, self.opp):
             if not side.alive:
                 continue
-            if side.status == "화상":
+            ph = self._rules(side, "poison_heal")
+            if ph and side.status in ("독", "맹독"):
+                # 포이즌힐 — "HP가 줄어드는 대신 최대 HP의 1/8만큼 회복"
+                got = side.heal(side.max_hp * ph[0]["frac"])
+                if got:
+                    self._say("%s 의 %s — %d 회복" % (side.name, side.base.ability, got))
+            elif side.status == "화상":
                 if side.chip(max(1, side.max_hp // calc.CONFIG["burn_chip"])):
                     self._say("%s 화상 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
             elif side.status == "독":
@@ -3118,7 +3402,7 @@ class Battle(object):
                 if side.drowsy == 0 and side.alive:
                     self._inflict(side, "잠듦")
 
-            if (self.field.weather == "모래바람"
+            if (self._weather() == "모래바람"
                     and not (set(side.base.types) & SAND_IMMUNE)
                     and not self._rules(side, "sand_immune")):     # 모래숨기·방진
                 if side.chip(max(1, side.max_hp // calc.CONFIG["sand_chip"])):
@@ -3131,6 +3415,7 @@ class Battle(object):
                 got = side.heal(side.max_hp / 16.0)
                 if got:
                     self._say("%s 먹다남은음식 %d 회복" % (side.name, got))
+            self._end_turn_abilities(side)
             self._pinch_berry(side)
             self._cure_berry(side)
             if side.herb():

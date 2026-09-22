@@ -97,6 +97,10 @@ CONFIG = {
     # 타오르는불꽃 — 설명문은 "자신은 타오르는불꽃 상태가 된다" 까지만. 그 상태의 불꽃
     # 기술 배율은 본편 값 — 미확인. 대전이 쓸 때 경고를 띄운다.
     "flash_fire_boost": 1.5,
+    # 전기로바꾸기의 '전기위력업 상태' — 다음 전기 기술 배율. 설명문에 없다 (본편 충전 2배) — 미확인
+    "charge_boost": 2.0,
+    # 헤롱헤롱바디는 "이성으로부터" 만 — 성별 자료가 없어 이성일 확률을 가정한다 — 미확인
+    "opposite_gender": 0.5,
     # --- 형태 추론 (1-A) / 세기는 구축기사 표본으로 맞춤 (1-B) ---
     #
     # 처음에는 넷 다 내가 감으로 잡았다. 그 뒤 구축기사 **개체 1,326마리**로
@@ -891,6 +895,13 @@ def calc_damage(dex, attacker, defender, move, critical=False,
         notes.append("%s: 노말 → %s, 위력 1.2배"
                      % (attacker.ability, a_ab["type"]))
 
+    # 촉촉보이스 — "소리 기술이 물타입이 된다" (2026-09-22)
+    if ("소리" in (move.get("tags") or [])
+            and attacker.ability in _abilities_saying(dex, "_liquid_voice",
+                                                      "소리 기술이 물타입이 된다")):
+        move_type = "물"
+        notes.append("%s: 소리 기술이 물타입" % attacker.ability)
+
     if move["category"] == "물리":
         atk_key, def_key = "attack", "defense"
     else:
@@ -1128,6 +1139,10 @@ def calc_damage(dex, attacker, defender, move, critical=False,
         if (di["kind"] == "resist_berry" and di["type"] == move_type and eff > 1) or            (di["kind"] == "resist_berry_always" and di["type"] == move_type):
             guard *= di["mult"]
             notes.append("%s: 데미지 반감 (1회용)" % defender.item)
+            # 숙성 — "먹는 나무열매의 효과가 2배" (반감 열매는 1/4 로)
+            if defender.ability in _abilities_saying(dex, "_ripen", "먹는 나무열매의 효과가 2배"):
+                guard *= di["mult"]
+                notes.append("%s: 열매 효과 2배" % defender.ability)
 
     # 난수 16단계. **본편처럼 단계마다 버림한다** — 곱을 한 번에 하면
     # 값이 달라진다.

@@ -4718,6 +4718,231 @@ def test_abilities_batch2(dex):
           b.me.ranks["attack"] == 0 and b.me.status is None, (b.me.ranks, b.me.status))
 
 
+def test_abilities_batch3(dex):
+    """특성 3차 (2026-09-22) — 폼·특성이 바뀌는 것 · 턴 끝 · 열매 · 나머지 전부.
+
+    이걸로 **사용률에 나오는 특성 202개 중 안 들어간 것이 0개** 가 된다 (싱글에 효과가
+    없는 것은 이유와 함께 ABILITY_NO_EFFECT 에).
+    """
+    import battle, random, re, json
+    print("\n[54] 특성 3차 — 폼·특성 바뀜 · 턴 끝 · 열매 …")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+
+    def ab(name, ability, item=None):
+        b = P(name)
+        b.ability = ability
+        if item is not None:
+            b.item = item
+        return b
+
+    def mk(me, op, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        return battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    def hit_of(b, who, move):
+        m = re.search(r"%s 의 %s → \S+ 에게 (\d+)" % (re.escape(who), move), " ".join(b.log))
+        return int(m.group(1)) if m else 0
+
+    u = json.load(open(paths.data("usage_single.json"), encoding="utf-8"))
+    names = {a["name"] for p in u["pokemon"] for a in p["abilities"]}
+    left = sorted(names - battle.handled_abilities(dex))
+    check("사용률에 나오는 특성 %d개가 전부 계산에 들어간다 (남은 것 %s)" % (len(names), left),
+          not left, left)
+    kinds = {}
+    for a in dex.abilities:
+        for r in battle.ability_rules(dex, a["name"]):
+            kinds.setdefault(r["kind"], set()).add(a["name"])
+    want = {"cursed_body": {"저주받은바디"}, "moody": {"변덕쟁이"}, "harvest": {"수확"},
+            "mimicry": {"의태"}, "forecast": {"기분파"}, "mummy": {"미라"},
+            "swap_on_contact": {"떠도는영혼"}, "switch_form": {"마이티체인지"},
+            "hunger_switch": {"꼬르륵스위치"}, "imposter": {"괴짜"},
+            "electromorphosis": {"전기로바꾸기"}, "trace": {"트레이스"}, "cheek_pouch": {"볼주머니"},
+            "cloud_nine": {"날씨부정"}, "poison_heal": {"포이즌힐"},
+            "status_immune_when": {"리프가드"}, "weather_heal": {"아이스바디", "젖은접시"},
+            "gluttony": {"먹보"}, "ripen": {"숙성"}, "cute_charm": {"헤롱헤롱바디"},
+            "shed_skin": {"탈피"}, "cud_chew": {"되새김질"}, "hydration": {"촉촉바디"},
+            "klutz": {"서투름"}, "liquid_voice": {"촉촉보이스"}, "opportunist": {"편승"}}
+    for k, ns in want.items():
+        check("규칙 %s 가 %s 만 잡는다" % (k, "·".join(sorted(ns))), kinds.get(k, set()) == ns,
+              kinds.get(k))
+
+    # 몸·특성이 바뀌는 것
+    dol = P("돌핀맨")
+    b = mk([dol, P("하마돈")], P("한카리아스"))
+    a0 = b.me.base.stat("attack")
+    b.step(("교체", 1), iron)
+    b.step(("교체", 0), iron)
+    check("마이티체인지: 물러났다 오면 마이티폼 (공격 %d → %d)" % (a0, b.me.base.stat("attack")),
+          b.me.base.stat("attack") > a0 * 1.5, b.me.base.poke.get("formName"))
+    b = mk(P("한카리아스"), ab("하마돈", "미라"))
+    b.step(M("역린"), iron)
+    check("미라: 접촉한 쪽 특성이 미라가 된다", b.me.base.ability == "미라", b.me.base.ability)
+    b = mk([P("한카리아스"), P("누리레느")], ab("하마돈", "미라"))
+    orig = b.me.base.ability
+    b.step(M("역린"), iron)
+    b.step(("교체", 1), iron)
+    check("미라: 물러나면 원래 특성으로 돌아온다", b.me_party.members[0].base.ability == orig,
+          b.me_party.members[0].base.ability)
+    b = mk(P("한카리아스"), ab("하마돈", "떠도는영혼"))
+    mine = b.me.base.ability
+    b.step(M("역린"), iron)
+    check("떠도는영혼: 서로 특성을 바꾼다", b.me.base.ability == "떠도는영혼"
+          and b.opp.base.ability == mine, (b.me.base.ability, b.opp.base.ability))
+    b = mk(ab("하마돈", "괴짜"), P("한카리아스"))
+    check("괴짜: 나오자마자 상대로 변신 (도구는 자기 것)",
+          b.me.base.poke["name"] == "한카리아스" and b.me.item == P("하마돈").item,
+          (b.me.base.poke["name"], b.me.item))
+    b = mk(ab("누리레느", "트레이스"), P("보만다"))
+    check("트레이스: 위협을 받아 와서 위협도 터진다", b.me.base.ability == "위협"
+          and b.opp.ranks["attack"] == -1, (b.me.base.ability, b.opp.ranks))
+
+    # 타입이 바뀌는 것
+    b = mk(ab("하마돈", "의태"), P("누리레느"))
+    b.field.set("그래스필드")
+    b.step(iron, iron)
+    check("의태: 그래스필드면 풀타입", b.me.types == ["풀"], b.me.types)
+    b = mk(ab("하마돈", "기분파"), P("누리레느"))
+    b.field.set("비")
+    b.step(iron, iron)
+    check("기분파: 비면 물타입", b.me.types == ["물"], b.me.types)
+    b = mk(ab("하마돈", "꼬르륵스위치"), P("누리레느"))
+    b.step(iron, iron)
+    check("꼬르륵스위치: 턴 끝마다 모양이 바뀐다", b.me.hangry, b.me.hangry)
+
+    # 맞았을 때
+    hit = None
+    for seed in range(30):
+        bb = mk(P("한카리아스"), ab("하마돈", "저주받은바디"), seed=seed)
+        bb.step(M("역린"), iron)
+        if bb.me.disabled:
+            hit = bb
+            break
+    check("저주받은바디: 맞으면 그 기술을 봉인한다", hit is not None, None)
+    if hit:
+        n = len(hit.log)
+        hit.step(M("역린"), iron)
+        check("봉인된 기술은 실패한다", any("역린 는 봉인됐다" in l for l in hit.log[n:]),
+              hit.log[n:])
+        for _ in range(4):
+            hit.step(iron, iron)
+        check("4턴 뒤 봉인이 풀린다", hit.me.disabled is None, hit.me.disabled)
+    e1 = mk(P("누리레느"), ab("빠르모트", "전기로바꾸기"))
+    e1.step(M("문포스"), iron)
+    e1.step(iron, M("10만볼트"))
+    e0 = mk(P("누리레느"), ab("빠르모트", "플러스"))
+    e0.step(M("문포스"), iron)
+    e0.step(iron, M("10만볼트"))
+    check("전기로바꾸기: 맞은 다음 전기 기술이 세다 (%d vs 대조 %d)"
+          % (hit_of(e1, "빠르모트", "10만볼트"), hit_of(e0, "빠르모트", "10만볼트")),
+          hit_of(e1, "빠르모트", "10만볼트") > hit_of(e0, "빠르모트", "10만볼트") * 1.6,
+          (e1.log, e0.log))
+    inf = 0
+    for seed in range(300):
+        bb = mk(P("한카리아스"), ab("하마돈", "헤롱헤롱바디"), seed=seed)
+        bb.step(M("역린"), iron)
+        inf += bb.me.infatuated is not None
+    check("헤롱헤롱바디: 30%% × 이성 50%% = 15%% 근처 (%.0f%%)" % (inf / 3.0),
+          8 <= inf / 3.0 <= 23, inf)
+    check("헤롱헤롱바디는 성별 가정을 경고한다",
+          any("성별" in w for w in bb.warnings), bb.warnings)
+
+    # 턴 끝
+    bb = mk(ab("하마돈", "변덕쟁이"), P("누리레느"))
+    bb.step(iron, iron)
+    r = bb.me.ranks
+    five = ("attack", "defense", "spAtk", "spDef", "speed")
+    # 철벽 +2 에 변덕쟁이 +2 · −1 이 더해져 다섯 능력 합이 정확히 +3 이어야 한다
+    check("변덕쟁이: 턴 끝에 하나 +2 · 다른 하나 −1 (합 %+d, 기대 +3)"
+          % sum(r[s] for s in five), sum(r[s] for s in five) == 3, r)
+    bb = mk(ab("하마돈", "포이즌힐"), P("누리레느"), my_hp=[50])
+    bb.me.status = "독"
+    h = bb.me.hp
+    bb.step(iron, iron)
+    check("포이즌힐: 독이면 회복한다", bb.me.hp > h, (h, bb.me.hp))
+    for when, abn in (("비", "젖은접시"), ("눈", "아이스바디")):
+        bb = mk(ab("누리레느", abn), P("하마돈"), my_hp=[50])
+        bb.field.set(when)
+        h = bb.me.hp
+        bb.step(iron, iron)
+        check("%s: %s 에서 회복" % (abn, when), bb.me.hp > h, (h, bb.me.hp))
+    bb = mk(ab("누리레느", "촉촉바디"), P("하마돈"))
+    bb.field.set("비")
+    bb.me.status = "화상"
+    bb.step(iron, iron)
+    check("촉촉바디: 비에서 상태 이상이 낫는다", bb.me.status is None, bb.me.status)
+    cured = 0
+    for seed in range(200):
+        bb = mk(ab("누리레느", "탈피"), P("하마돈"), seed=seed)
+        bb.me.status = "화상"
+        bb.step(iron, iron)
+        cured += bb.me.status is None
+    check("탈피: 30%% 근처로 낫는다 (%.0f%%)" % (cured / 2.0), 18 <= cured / 2.0 <= 42, cured)
+    bb = mk(ab("누리레느", "수확", "자뭉열매"), P("하마돈"))
+    bb.field.set("쾌청")
+    bb.me.item_used = True
+    bb.step(iron, iron)
+    check("수확: 쾌청이면 먹은 열매가 돌아온다", not bb.me.item_used, bb.me.item_used)
+    bb = mk(ab("누리레느", "리프가드"), P("하마돈"))
+    bb.field.set("쾌청")
+    bb._inflict(bb.me, "화상", by=bb.opp)
+    check("리프가드: 쾌청이면 상태 이상에 안 걸린다", bb.me.status is None, bb.me.status)
+
+    # 열매
+    def berry_heal(ability):
+        bb = mk(ab("누리레느", ability, "자뭉열매"), P("하마돈"), my_hp=[40])
+        bb.step(iron, iron)
+        return bb.me.hp
+    # ! 대조군 특성은 **정말 중립** 이어야 한다. 처음엔 모래숨기로 짰는데 하마돈의 모래바람에서
+    #   회피율이 올라 지진을 피해서, 규칙을 꺼도 '보통 121 · 숙성 110' 처럼 갈렸다. 플러스는 싱글에서
+    #   아무 일도 안 한다.
+    base_h, ripe_h, pouch_h = berry_heal("플러스"), berry_heal("숙성"), berry_heal("볼주머니")
+    check("숙성·볼주머니: 자뭉열매 회복이 더 크다 (보통 %d · 숙성 %d · 볼주머니 %d)"
+          % (base_h, ripe_h, pouch_h), ripe_h > base_h and pouch_h > base_h,
+          (base_h, ripe_h, pouch_h))
+    bb = mk(ab("누리레느", "되새김질", "자뭉열매"), P("하마돈"), my_hp=[40])
+    bb.step(iron, iron)
+    h1 = bb.me.hp
+    bb.step(iron, iron)
+    check("되새김질: 다음 턴 끝에 한 번 더 먹는다", said(bb, "되새김질") and bb.me.hp > h1,
+          bb.log[-3:])
+    quarter = [n for n, es in battle.item_behaviors(dex).items() for e in es
+               if e.get("kind") == "heal_pinch" and e["at"] <= 0.25]
+    check("먹보: 챔피언스엔 1/4 에서 먹는 회복 열매가 없다 (생기면 효과가 난다) %s" % quarter,
+          not quarter, quarter)
+    bb = mk(ab("누리레느", "플러스", "자뭉열매"), ab("하마돈", "긴장감"), my_hp=[40])
+    bb.step(iron, iron)
+    check("(대조) 긴장감 상대면 열매를 못 먹는다", not bb.me.item_used, bb.me.item_used)
+
+    # 그 밖
+    k = mk(ab("하마돈", "서투름", "생명의구슬"), P("누리레느"))
+    k.step(M("지진"), iron)
+    c = mk(ab("하마돈", "플러스", "생명의구슬"), P("누리레느"))
+    c.step(M("지진"), iron)
+    check("서투름: 생명의구슬이 아무 일도 안 한다 (%d vs 대조 %d, 반동 없음)"
+          % (hit_of(k, "하마돈", "지진"), hit_of(c, "하마돈", "지진")),
+          hit_of(k, "하마돈", "지진") < hit_of(c, "하마돈", "지진")
+          and not said(k, "생명의구슬 반동"), (k.log, c.log))
+    snd = [m for m in dex.moves if "소리" in (m.get("tags") or []) and m["category"] != "변화"]
+    r = calc.calc_damage(dex, ab("누리레느", "촉촉보이스"), P("하마돈"), snd[0])
+    check("촉촉보이스: 소리 기술(%s)이 물타입" % snd[0]["name"], r.get("moveType") == "물", r)
+    bb = mk(ab("누리레느", "날씨부정"), P("하마돈"))
+    bb.step(iron, iron)
+    check("날씨부정: 모래바람이 불어도 데미지가 없다", bb.me.hp == bb.me.max_hp
+          and bb.field.weather == "모래바람", (bb.me.hp, bb.field.weather))
+    bb = mk(ab("하마돈", "편승"), P("누리레느"))
+    bb.step(iron, M("칼춤"))
+    check("편승: 상대가 칼춤 +2 면 나도 공격 +2", bb.me.ranks["attack"] == 2, bb.me.ranks)
+    bb = mk(P("누리레느"), P("조로아크"))
+    check("일루전은 '계산 결과 영향 없음' 으로 밝혀 경고 안 한다",
+          not any("'일루전'" in w for w in bb.warnings), bb.warnings)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -4775,6 +5000,7 @@ def main():
     test_fixed_ohko_minimize(dex)
     test_abilities_batch1(dex)
     test_abilities_batch2(dex)
+    test_abilities_batch3(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
