@@ -210,10 +210,14 @@ def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None):
 
 
 def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
-            opp_build=None, turns=None, my_moves=None, state=None):
+            opp_build=None, turns=None, my_moves=None, state=None, sink=None):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
+    sink(집합)를 주면 이 판에서 대전이 띄운 경고를 거기 모은다.
+
+    ! 전에는 경고를 **버렸다.** 7단계와 창에는 '미확인 값' · '안 붙은 도구' ·
+      '안 들어간 특성' 경고가 한 줄도 안 보였다 (2026-09-22 에 알았다).
     """
     opp_builds, opp_sets = sample_opp_party(
         dex, opp_pokes, rng, evidence, opp_build)
@@ -242,6 +246,8 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
         res = battle.run_once(dex, my_party, opp, _as_plan(action),
                               opp_plan, rng, my_moves=my_moves, state=state,
                               auto_mega=False)
+        if sink is not None:
+            sink.update(res["warnings"])
         return _score(res)
 
     # 끊어 보기 — run_once 를 못 쓰므로 직접 돈다
@@ -259,6 +265,8 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     #   _position_value 가 HP 로 갈라 주는 것을 건너뛰어서, 얕은 모드의
     #   점수만 '이기면 무조건 만점' 이 된다. 끝까지 본 점수와 자리가
     #   안 맞으면 둘을 나란히 볼 수 없다. 한 군데서만 재게 한다.
+    if sink is not None:
+        sink.update(b.warnings)
     return _position_value(b)
 
 
@@ -279,6 +287,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
       몇 판 보고 접었다" 가 남아야 나중에 지고 나서 되짚을 수 있다.
     """
     rng = random.Random(seed)
+    warned = set()        # 판들에서 대전이 띄운 경고 — 결과에 같이 돌려준다
     party = battle.Party(dex, my_party, (state or {}).get("my_hp"))
     if (state or {}).get("my_active"):
         party.active_idx = state["my_active"]
@@ -301,7 +310,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     for i in range(WARMUP_MAX):
         one = time.time()
         rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
-                opp_build, None, moves, state)
+                opp_build, None, moves, state, sink=warned)
         took = time.time() - one
         fastest = took if fastest is None else min(fastest, took)
         if i >= 2 and took <= fastest * WARMUP_SETTLE:
@@ -315,7 +324,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     for _ in range(PROBE):
         one = time.time()
         rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
-                opp_build, None, moves, state)
+                opp_build, None, moves, state, sink=warned)
         times.append(time.time() - one)
     per = max(1e-5, min(times))
     # ! **예산 시계는 재고 나서 켠다.** 전에는 재기 전에 켰다. 그러면
@@ -337,7 +346,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     # 돌린 후보의 0점은 '나쁘다' 가 아니라 '모른다' 인데, 구별이 안 된다.
     for row in rows:
         row["sum"] += rollout(dex, builds, opp_pokes, row["action"], rng,
-                              evidence, opp_build, turns, moves, state)
+                              evidence, opp_build, turns, moves, state, sink=warned)
         row["n"] += 1
     while live and not out_of_time:
         for row in live:
@@ -347,7 +356,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                     break
                 row["sum"] += rollout(dex, builds, opp_pokes, row["action"],
                                       rng, evidence, opp_build, turns,
-                                      moves, state)
+                                      moves, state, sink=warned)
                 row["n"] += 1
             if out_of_time:
                 break
@@ -363,7 +372,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                         break
                     row["sum"] += rollout(dex, builds, opp_pokes,
                                           row["action"], rng, evidence,
-                                          opp_build, turns, moves, state)
+                                          opp_build, turns, moves, state, sink=warned)
                     row["n"] += 1
             break
         live.sort(key=lambda r: -(r["sum"] / max(1, r["n"])))
@@ -383,7 +392,10 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
             "shallow": shallow, "guessed": guessed,
             "perRollout": per,
             # 예산이 모자라 제대로 못 잰 후보들. 보고서가 이걸 말해야 한다.
-            "thin": thin}
+            "thin": thin,
+            # 대전이 띄운 경고 (미확인 값 · 안 붙은 도구 · 안 들어간 특성 …).
+            # **승률 옆에 같이 보여야 한다** — 이 숫자를 얼마나 믿을지가 여기 있다.
+            "warnings": sorted(warned)}
 
 
 def action_name(dex, party, action):
@@ -479,8 +491,26 @@ def report(dex, my_party, opp_pokes, got, evidence=None, state=None):
                  % SHALLOW_TURNS)
         L.append("    판세 점수는 내가 정한 기준이지 잰 것이 아니다.")
         L.append("    --초 를 늘리면 끝까지 돌린다.")
+    L.extend(warning_lines(got))
     L.append(line)
     return "\n".join(L)
+
+
+def warning_lines(got, limit=8):
+    """탐색 결과의 경고를 사람이 읽을 줄로. 창(gui)과 글자판이 같이 쓴다.
+
+    '안 들어간다' (특성·도구) 를 먼저 — 그게 답을 제일 크게 흔든다.
+    """
+    warns = list(got.get("warnings") or [])
+    if not warns:
+        return []
+    warns.sort(key=lambda w: (0 if "안 들어간다" in w else 1, w))
+    out = ["", "  ! 이 계산에서 나온 경고 %d건 — 승률을 그대로 믿기 전에 볼 것" % len(warns)]
+    for w in warns[:limit]:
+        out.append("    · " + w)
+    if len(warns) > limit:
+        out.append("    · … 그 밖에 %d건" % (len(warns) - limit))
+    return out
 
 
 def main():

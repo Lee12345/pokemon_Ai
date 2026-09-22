@@ -4252,6 +4252,203 @@ def test_fixed_ohko_minimize(dex):
           and b.me_party.members[0].ranks["evasion"] == 0, b.me_party.members[0].ranks)
 
 
+def test_abilities_batch1(dex):
+    """특성 1차 (2026-09-22). 사용률에 나오는 202개 중 105개가 코드에 이름조차 없었다.
+
+    사용자: "빠진 특성들 무조건 넣어야함. 재생력은 핵심 특성중 하나. 판을 뒤집기도함."
+    ① 목록 밖 특성은 대전이 **반드시 경고**하고, 그 경고가 탐색 결과(창)까지 간다.
+    ② 설명문 규칙이 딱 그 특성만 잡는다. ③ 특성마다 답이 뻔한 상황 + 대조군.
+    ! 메가스톤 든 몸에 특성을 덮어쓰면 안 먹는다 (Side 가 기본 폼으로 시작) — 메가가
+      아닌 몸으로만 시험한다.
+    """
+    import battle, search, random, re
+    print("\n[52] 특성 1차 — 재생력·흡수·오기·접촉 계열 …")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+
+    def ab(name, ability, item=None):
+        b = P(name)
+        b.ability = ability
+        if item is not None:
+            b.item = item
+        return b
+
+    # ! 메가스톤을 든 몸은 특성을 덮어써도 안 먹는다 — 여기 쓰는 몸들이 안 들었는지 한 번 본다
+    used = ["하마돈", "누리레느", "빠르모트", "더시마사리", "윈디", "고릴타", "대도각참"]
+    stone = [n for n in used if P(n).item in dex.mega_by_item]
+    check("(전제) 특성을 바꿔 쓰는 몸들이 메가스톤을 안 든다", not stone, stone)
+
+    def duel(me, op, mine, theirs, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+        for a, o in zip(mine, theirs):
+            b.step(a, o)
+        return b
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    def hit_of(b, who, move):
+        m = re.search(r"%s 의 %s → \S+ 에게 (\d+)" % (re.escape(who), move), " ".join(b.log))
+        return int(m.group(1)) if m else 0
+
+    # ① 경고 장치
+    b = battle.Battle(dex, P("하마돈"), P("라이츄"), rng=random.Random(1),
+                      my_fresh=True, opp_fresh=True)
+    check("목록 밖 특성(메가라이츄Y 노가드)은 경고한다",
+          any("'노가드'" in w and "안 들어간다" in w for w in b.warnings), b.warnings)
+    b = battle.Battle(dex, P("하마돈"), P("누리레느"), rng=random.Random(1),
+                      my_fresh=True, opp_fresh=True)
+    check("처리되는 특성끼리면 특성 경고가 없다",
+          not any("특성" in w and "안 들어간다" in w for w in b.warnings), b.warnings)
+    got = search.best_action(dex, [P("하마돈")], [dex.find_pokemon("라이츄")], seconds=1.0)
+    check("탐색 결과에 대전 경고가 담긴다 (전엔 버렸다)",
+          any("'노가드'" in w for w in got.get("warnings") or []), got.get("warnings"))
+    check("창·보고서가 쓰는 경고 줄에 나온다",
+          any("노가드" in l for l in search.warning_lines(got)), search.warning_lines(got))
+
+    # ② 규칙이 딱 그 특성만 잡는다
+    kinds = {}
+    for a in dex.abilities:
+        for r in battle.ability_rules(dex, a["name"]):
+            kinds.setdefault(r["kind"], set()).add(a["name"])
+    want = {
+        "switch_heal": {"재생력"}, "switch_cure": {"자연회복"},
+        "absorb": {"축전", "저수", "타오르는불꽃", "피뢰침", "건조피부", "초식", "흙먹기", "전기엔진"},
+        "defiant": {"오기", "승기"}, "contrary": {"심술꾸러기"}, "simple": {"단순"},
+        "drop_proof": {"괴력집게", "부풀린가슴"},
+        "contact_status": {"정전기", "불꽃몸", "독가시", "포자"},
+        "poison_touch": {"독수"}, "stench": {"악취"}, "contact_drop": {"미끈미끈", "컬리헤어"},
+        "aftermath": {"유폭"}, "long_reach": {"원격"}, "moxie": {"자기과신"},
+        "hit_by_type": {"정의의마음", "열교환", "주눅"}, "berserk": {"발끈"},
+        "steadfast": {"불굴의마음"}, "anger_point": {"분노의경혈"},
+        "pickpocket": {"나쁜손버릇"}, "magician": {"매지션"}, "sticky": {"점착"},
+        "liquid_ooze": {"해감액"}, "damp": {"습기"}, "sand_force": {"모래의힘"},
+    }
+    for k, names in want.items():
+        check("규칙 %s 가 %s 만 잡는다" % (k, "·".join(sorted(names))),
+              kinds.get(k, set()) == names, kinds.get(k))
+    check("조사 '이/가' 를 둘 다 받는다 (전기엔진·부풀린가슴·불굴의마음이 빠질 뻔했다)",
+          {"전기엔진", "부풀린가슴", "불굴의마음", "주눅"}
+          <= set().union(*kinds.values()))
+    for a in dex.abilities:
+        for r in battle.ability_rules(dex, a["name"]):
+            if r["kind"] == "absorb":
+                check("받아내는 %s(%s) 는 한 턴 표의 무효 목록에도 있다" % (a["name"], r["type"]),
+                      r["type"] in calc.DEFENDER_IMMUNE.get(a["name"], []),
+                      calc.DEFENDER_IMMUNE.get(a["name"]))
+
+    # ③ 재생력 · 자연회복
+    b = battle.Battle(dex, [P("더시마사리"), P("누리레느")], P("하마돈"),
+                      rng=random.Random(1), log=True, my_fresh=True, opp_fresh=True,
+                      my_hp=[40, 100])
+    before = b.me_party.members[0].hp
+    b.step(("교체", 1), iron)
+    after = b.me_party.members[0].hp
+    check("재생력: 물러나면 최대 HP 1/3 회복 (%d → %d, 최대 %d)"
+          % (before, after, b.me_party.members[0].max_hp),
+          after - before == b.me_party.members[0].max_hp // 3, (before, after))
+    nc = ab("하마돈", "자연회복")
+    b = battle.Battle(dex, [nc, P("누리레느")], P("한카리아스"), rng=random.Random(1),
+                      log=True, my_fresh=True, opp_fresh=True)
+    b.me.status = "화상"
+    b.step(("교체", 1), iron)
+    check("자연회복: 물러나면 상태 이상이 낫는다", b.me_party.members[0].status is None,
+          b.me_party.members[0].status)
+
+    # ④ 받아내기
+    b = duel(P("빠르모트"), ab("누리레느", "축전"), [M("10만볼트")], [iron], opp_hp=[50])
+    check("축전: 전기 기술을 받아내고 1/4 회복",
+          said(b, "받아내고") and b.opp.hp > b.opp.max_hp // 2, b.log)
+    b = duel(P("빠르모트"), ab("누리레느", "피뢰침"), [M("10만볼트")], [iron])
+    check("피뢰침: 받아내고 특공 +1, 데미지 0",
+          b.opp.ranks["spAtk"] == 1 and b.opp.hp == b.opp.max_hp, b.log)
+    b = duel(P("빠르모트"), ab("누리레느", "전기엔진"), [M("10만볼트")], [iron])
+    check("전기엔진: 받아내고 스피드 +1", b.opp.ranks["speed"] == 1, b.log)
+    b = duel(P("하마돈"), ab("누리레느", "흙먹기"), [M("지진")], [iron], opp_hp=[50])
+    check("흙먹기: 땅 기술을 받아내고 회복", said(b, "받아내고")
+          and b.opp.hp > b.opp.max_hp // 2, b.log)
+    ff = duel(ab("윈디", "타오르는불꽃"), P("하마돈"), [iron, M("화염방사")],
+              [M("화염방사"), iron])
+    ctl = duel(ab("윈디", "위협"), P("하마돈"), [iron, M("화염방사")], [iron, iron])
+    check("타오르는불꽃: 받아낸 뒤 불꽃 기술이 세진다 (%d vs 대조 %d)"
+          % (hit_of(ff, "윈디", "화염방사"), hit_of(ctl, "윈디", "화염방사")),
+          hit_of(ff, "윈디", "화염방사") > hit_of(ctl, "윈디", "화염방사") * 1.3, (ff.log, ctl.log))
+
+    # ⑤ 능력 변화 계열
+    b = duel(P("보만다"), ab("누리레느", "오기"), [iron], [iron])
+    check("오기: 위협을 받으면 공격 +2 (−1 +2 = +1)", b.opp.ranks["attack"] == 1, b.opp.ranks)
+    b = duel(P("보만다"), ab("누리레느", "승기"), [iron], [iron])
+    check("승기: 위협을 받으면 특공 +2", b.opp.ranks["spAtk"] == 2, b.opp.ranks)
+    b = duel(P("보만다"), ab("누리레느", "괴력집게"), [iron], [iron])
+    check("괴력집게: 위협에 공격이 안 깎인다", b.opp.ranks["attack"] == 0, b.opp.ranks)
+    b = duel(ab("누리레느", "심술꾸러기"), P("하마돈"), [M("용성군")], [iron])
+    check("심술꾸러기: 용성군이 특공을 +2 로", b.me.ranks["spAtk"] == 2, b.me.ranks)
+    b = duel(ab("하마돈", "단순"), P("누리레느"), [M("칼춤")], [iron])
+    check("단순: 칼춤이 +4", b.me.ranks["attack"] == 4, b.me.ranks)
+
+    # ⑥ 접촉 계열 (확률은 여러 판으로)
+    def rate(attacker, defender, move, test, n=200):
+        k = 0
+        for seed in range(n):
+            bb = battle.Battle(dex, attacker(), defender(), rng=random.Random(seed),
+                               log=True, my_fresh=True, opp_fresh=True)
+            bb.step(M(move), iron)
+            k += bool(test(bb))
+        return k * 100.0 / n
+    par = rate(lambda: P("한카리아스"), lambda: ab("하마돈", "정전기"), "역린",
+               lambda bb: bb.me.status == "마비")
+    par_eq = rate(lambda: P("한카리아스"), lambda: ab("하마돈", "정전기"), "지진",
+                  lambda bb: bb.me.status == "마비")
+    check("정전기: 접촉기에 30%% 근처 마비 (%.0f%%), 비접촉기(지진)엔 0%% (%.0f%%)"
+          % (par, par_eq), 18 <= par <= 42 and par_eq == 0, (par, par_eq))
+    grass = rate(lambda: P("고릴타"), lambda: ab("하마돈", "포자"), "우드해머",
+                 lambda bb: bb.me.status is not None)
+    check("포자: 풀타입에게는 안 통한다 (%.0f%%)" % grass, grass == 0, grass)
+    helmet = rate(lambda: ab("누리레느", "원격"), lambda: ab("하마돈", "정전기", "울퉁불퉁멧"),
+                  "아쿠아제트", lambda bb: bb.me.hp < bb.me.max_hp or bb.me.status)
+    check("원격: 울퉁불퉁멧·정전기를 안 받는다 (%.0f%%)" % helmet, helmet == 0, helmet)
+    b = duel(P("한카리아스"), ab("하마돈", "미끈미끈"), [M("역린")], [iron])
+    check("미끈미끈: 접촉한 쪽 스피드 −1", b.me.ranks["speed"] == -1, b.me.ranks)
+    b = duel(P("한카리아스"), ab("하마돈", "유폭"), [M("역린")], [iron], opp_hp=[5])
+    check("유폭: 접촉기로 쓰러뜨리면 1/4 을 잃는다",
+          b.me.max_hp - b.me.hp == b.me.max_hp // 4 and not b.opp.alive, b.log)
+    poi = rate(lambda: ab("누리레느", "독수"), lambda: P("하마돈"), "아쿠아제트",
+               lambda bb: bb.opp.status == "독")
+    check("독수: 접촉기로 30%% 근처 독 (%.0f%%)" % poi, 18 <= poi <= 42, poi)
+    b = duel(ab("하마돈", "자기과신"), P("누리레느"), [M("지진")], [iron], opp_hp=[5])
+    check("자기과신: 쓰러뜨리면 공격 +1", b.me.ranks["attack"] == 1 and not b.opp.alive,
+          b.me.ranks)
+    b = duel(P("대도각참"), ab("하마돈", "정의의마음"), [M("깨물어부수기")], [iron])
+    check("정의의마음: 악 기술을 맞으면 공격 +1", b.opp.ranks["attack"] == 1, b.opp.ranks)
+    b = duel(P("한카리아스"), ab("하마돈", "발끈"), [M("역린")], [iron], opp_hp=[60])
+    check("발끈: 반 아래로 떨어지면 특공 +1",
+          b.opp.ranks["spAtk"] == 1 and b.opp.hp <= b.opp.max_hp / 2, (b.opp.hp, b.opp.ranks))
+
+    # ⑦ 그 밖
+    b = duel(P("빠르모트"), ab("하마돈", "해감액"), [M("드레인펀치")], [iron], my_hp=[50])
+    check("해감액: 흡수하려던 쪽이 오히려 잃는다", said(b, "흡수하려다")
+          and b.me.hp < int(round(b.me.max_hp * 0.5)), b.log)
+    b = duel(P("하마돈"), ab("누리레느", "습기"), [M("대폭발")], [iron])
+    check("습기: 폭발 기술이 안 나가고 쓴 쪽도 안 쓰러진다", b.me.alive
+          and said(b, "습기"), b.log)
+    b = duel(P("대도각참"), ab("하마돈", "점착"), [M("탁쳐서떨구기")], [iron])
+    check("점착: 탁쳐서떨구기로 도구가 안 떨어진다", b.opp.item == "자뭉열매", b.opp.item)
+    # (하마돈 특성을 모래의힘으로 바꾸면 모래날림이 없어져 모래바람이 안 분다 — 직접 깐다.
+    #  처음에 그걸 몰라서 40 대 40 이 나왔다)
+    def sand_hit(ability):
+        bb = battle.Battle(dex, ab("하마돈", ability), P("누리레느"), rng=random.Random(1),
+                           log=True, my_fresh=True, opp_fresh=True)
+        bb.field.set("모래바람")
+        bb.step(M("지진"), iron)
+        return hit_of(bb, "하마돈", "지진")
+    sf, ctl = sand_hit("모래의힘"), sand_hit("모래숨기")      # 대조: 위력과 상관없는 특성
+    check("모래의힘: 모래바람에서 땅 기술 1.3배 (%d vs 대조 %d)" % (sf, ctl),
+          sf >= ctl * 1.2, (sf, ctl))
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -4307,6 +4504,7 @@ def main():
     test_attack_effects(dex)
     test_zoom_lens(dex)
     test_fixed_ohko_minimize(dex)
+    test_abilities_batch1(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

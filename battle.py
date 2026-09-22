@@ -534,6 +534,171 @@ def skill_link_abilities(dex):
 _MINIMIZE_SELF = re.compile(r"자신은 작아지기 상태가 된다")
 _MINIMIZE_PUNISH = re.compile(r"작아지기 상태인 상대에게는 위력이 (\d+)배가 되며 반드시 명중")
 
+# ---------------------------------------------------------------------------
+# 특성 — 어느 것이 계산에 들어가 있나 (2026-09-22)
+#
+# ! 전에는 목록에 없는 특성이 **경고 없이 조용히** 빠졌다. 사용률에 나오는 202개 중
+#   105개가 코드에 이름조차 없었다 (재생력 574 · 정전기 320 · 오기 · 승기 · 우격다짐 ...
+#   숫자는 사용률 합). 사용자: "빠진 특성들 무조건 넣어야함. 재생력은 핵심 특성".
+#   이제 대전은 **목록 밖 특성을 보면 반드시 경고한다** (Battle._warn_dead_abilities).
+# ---------------------------------------------------------------------------
+# 싱글 대전 계산에는 효과가 없는 것 — 경고할 일이 아니다 (이유를 같이 적는다).
+ABILITY_NO_EFFECT = {
+    "텔레파시": "같은 편의 공격을 피한다 — 더블 전용",
+    "프렌드가드": "같은 편이 받는 데미지를 줄인다 — 더블 전용",
+    "대접": "같은 편을 회복한다 — 더블 전용",
+    "치유의마음": "같은 편의 상태 이상을 고친다 — 더블 전용",
+    "공생": "같은 편에게 도구를 넘긴다 — 더블 전용",
+    "리시버": "쓰러진 같은 편의 특성을 받는다 — 더블 전용",
+    "굳건한신념": "기술을 끌어모으는 특성을 무시한다 — 더블 전용",
+    "기묘한약": "같은 편의 능력 변화를 되돌린다 — 더블 전용",
+    "플러스": "같은 편이 있어야 발동 — 더블 전용",
+    "마이너스": "같은 편이 있어야 발동 — 더블 전용",
+    "도주": "야생 배틀에서 도망친다 — 대전에 영향 없음",
+    "픽업": "대전 뒤에 도구를 줍는다 — 대전 계산에 영향 없음",
+    "통찰": "상대 도구를 알려 줄 뿐 — 계산 결과는 안 바뀐다 (창의 사진 읽기가 쓸 정보)",
+    "위험예지": "상대 기술을 알려 줄 뿐 — 계산 결과는 안 바뀐다",
+    "예지몽": "상대 기술을 알려 줄 뿐 — 계산 결과는 안 바뀐다",
+    "헤비메탈": "무게 2배 — 무게를 쓰는 기술(풀묶기 등)이 아직 없다 (몸무게 자료 없음)",
+    "라이트메탈": "무게 1/2 — 무게를 쓰는 기술이 아직 없다 (몸무게 자료 없음)",
+}
+# 특성 이름으로 붙인 것 (이 파일 안에서 실제로 돈다 — [52] 가 하나하나 시험한다)
+ABILITY_DONE = set()
+
+# 특성 설명문을 규칙으로 읽는다 — 도구(`item_behaviors`)와 같은 방식이다.
+# 이름을 박지 않는다. 규칙이 잡힌 특성은 `handled_abilities` 에 저절로 들어간다.
+# ! 넓게 잡으면 엉뚱한 특성이 걸린다 — [52] 가 규칙마다 걸리는 특성을 전부 센다.
+_ST = r"(공격|방어|특수공격|특수방어|스피드|명중률|회피율)"
+
+
+def _absorb_rule(m):
+    t = m.group(1)
+    if m.group(2):
+        return {"kind": "absorb", "type": t, "heal": 1.0 / int(m.group(2))}
+    if m.group(3):
+        return {"kind": "absorb", "type": t, "stat": STAT_WORD[m.group(3)],
+                "step": int(m.group(4))}
+    return {"kind": "absorb", "type": t, "flash": True}
+
+
+ABILITY_RULES = [
+    # 재생력 · 자연회복 — 물러날 때
+    (r"지닌 포켓몬으로 돌아오면 최대 HP의 1/(\d+)만큼 회복",
+     lambda m: {"kind": "switch_heal", "frac": 1.0 / int(m.group(1))}),
+    (r"지닌 포켓몬으로 돌아오면 상태 이상이 회복",
+     lambda m: {"kind": "switch_cure"}),
+    # 축전 · 저수 · 건조피부 · 흙먹기 (회복) / 전기엔진 · 초식 (랭크) / 타오르는불꽃
+    (r"(\S+?)타입 기술의 효과를 받지 않으며 (?:최대 HP의 1/(\d+)만큼 (?:HP를 )?회복|"
+     + _ST + r"[이가] (\d)단계 올라간다|자신은 타오르는불꽃 상태)", _absorb_rule),
+    # 피뢰침 — "전기타입 기술을 자신에게 끌어모은다. 그 기술의 효과를 받지 않고 특수공격이 1단계"
+    (r"(\S+?)타입 기술을 자신에게 끌어모은다\. 그 기술의 효과를 받지 않고 " + _ST
+     + r"[이가] (\d)단계 올라간다",
+     lambda m: {"kind": "absorb", "type": m.group(1), "stat": STAT_WORD[m.group(2)],
+                "step": int(m.group(3))}),
+    # 오기 · 승기
+    (r"상대에 의해 능력이 떨어지면 " + _ST + r"[이가] (\d)단계 올라간다",
+     lambda m: {"kind": "defiant", "stat": STAT_WORD[m.group(1)], "step": int(m.group(2))}),
+    (r"능력 변화가 역전해서", lambda m: {"kind": "contrary"}),               # 심술꾸러기
+    (r"능력 변화가 평소의 (\d)배", lambda m: {"kind": "simple", "mult": int(m.group(1))}),
+    # 괴력집게 · 부풀린가슴
+    (r"상대의 기술이나 특성에 의해 " + _ST + r"[이가] 떨어지지 않는다",
+     lambda m: {"kind": "drop_proof", "stat": STAT_WORD[m.group(1)]}),
+    # 정전기 · 불꽃몸 · 독가시 · 포자 (맞은 쪽)
+    (r"^접촉 기술을 받으면 (\d+)% 확률로 상대를 ([가-힣]+(?:, [가-힣]+)*)(?: 중 하나의)? 상태로 만든다",
+     lambda m: {"kind": "contact_status", "chance": int(m.group(1)) / 100.0,
+                "options": [x.strip() for x in m.group(2).split(",")],
+                "no_grass": "풀타입 포켓몬에게는 효과가 없다" in m.string}),
+    # 독수 (때린 쪽)
+    (r"상대에게 접촉 기술을 맞히면 (\d+)% 확률로 ([가-힣]+) 상태로 만든다",
+     lambda m: {"kind": "poison_touch", "chance": int(m.group(1)) / 100.0,
+                "status": m.group(2)}),
+    (r"기술로 데미지를 주었을 때 (\d+)% 확률로 상대를 풀죽게",                  # 악취
+     lambda m: {"kind": "stench", "chance": int(m.group(1)) / 100.0}),
+    (r"접촉 기술을 받으면 상대의 " + _ST + r"[을를] (\d)단계 떨어뜨린다",           # 미끈미끈
+     lambda m: {"kind": "contact_drop", "stat": STAT_WORD[m.group(1)],
+                "step": int(m.group(2))}),
+    (r"접촉 기술을 받아 기절하면 상대 최대 HP의 1/(\d+)만큼 데미지",           # 유폭
+     lambda m: {"kind": "aftermath", "frac": 1.0 / int(m.group(1))}),
+    (r"사용하는 기술이 접촉 기술이 아니게", lambda m: {"kind": "long_reach"}),  # 원격
+    (r"공격으로 상대를 쓰러뜨리면 " + _ST + r"[이가] (\d)단계 올라간다",           # 자기과신
+     lambda m: {"kind": "moxie", "stat": STAT_WORD[m.group(1)], "step": int(m.group(2))}),
+    (r"^([가-힣]+)타입 기술로 데미지를 입으면 " + _ST + r"[이가] (\d)단계 올라간다",  # 정의의마음
+     lambda m: {"kind": "hit_by_type", "types": [m.group(1)],
+                "stat": STAT_WORD[m.group(2)], "step": int(m.group(3))}),
+    (r"^([가-힣]+(?:, [가-힣]+)*)타입 기술의 데미지를 입거나 위협을 받으면 " + _ST
+     + r"[이가] (\d)단계 올라간다",                                                  # 주눅
+     lambda m: {"kind": "hit_by_type", "types": [x.strip() for x in m.group(1).split(",")],
+                "stat": STAT_WORD[m.group(2)], "step": int(m.group(3)),
+                "on_intimidate": True}),
+    (r"상대의 공격에 HP가 1/2 이하가 되면 " + _ST + r"[이가] (\d)단계 올라간다",       # 발끈
+     lambda m: {"kind": "berserk", "stat": STAT_WORD[m.group(1)], "step": int(m.group(2))}),
+    (r"풀이 죽으면 " + _ST + r"[이가] (\d)단계 올라간다",                            # 불굴의마음
+     lambda m: {"kind": "steadfast", "stat": STAT_WORD[m.group(1)], "step": int(m.group(2))}),
+    (r"급소에 맞으면 자신의 " + _ST + r"[이가] 6단계까지",                           # 분노의경혈
+     lambda m: {"kind": "anger_point", "stat": STAT_WORD[m.group(1)]}),
+    (r"도구를 지니고 있지 않을 때 접촉 기술을 받으면 상대의 도구를 훔친다",       # 나쁜손버릇
+     lambda m: {"kind": "pickpocket"}),
+    (r"도구를 지니고 있지 않을 때 기술로 데미지를 준 상대의 도구를 빼앗는다",     # 매지션
+     lambda m: {"kind": "magician"}),
+    (r"지니고 있는 도구를 상대에게 빼앗기거나 잃어버리지 않는다",                # 점착
+     lambda m: {"kind": "sticky"}),
+    (r"HP를 흡수하는 기술을 받으면 상대를 회복시키는 대신",                      # 해감액
+     lambda m: {"kind": "liquid_ooze"}),
+    (r"폭발 기술을 사용할 수 없", lambda m: {"kind": "damp"}),                  # 습기
+    (r"모래바람 상태일 때 ([가-힣]+(?:, [가-힣]+)*)타입 기술의 위력이 ([\d.]+)배",  # 모래의힘
+     lambda m: {"kind": "sand_force", "types": [x.strip() for x in m.group(1).split(",")],
+                "mult": float(m.group(2))}),
+]
+_ABILITY_RULES_RX = [(re.compile(p), f) for p, f in ABILITY_RULES]
+
+
+def ability_rules(dex, name):
+    """이 특성의 규칙들 (설명문에서 읽은 것). 없으면 []. dex 에 외운다."""
+    table = getattr(dex, "_ability_rules", None)
+    if table is None:
+        table = {}
+        for a in dex.abilities:
+            d = a.get("description") or ""
+            got = []
+            for rx, build in _ABILITY_RULES_RX:
+                m = rx.search(d)
+                if m:
+                    got.append(build(m))
+            table[a["name"]] = got
+        dex._ability_rules = table
+    return table.get(name) or []
+
+
+def handled_abilities(dex):
+    """계산에 들어가 있는 특성 (또는 싱글에서 효과가 없다고 밝힌 특성). dex 에 외운다.
+
+    ! 새로 특성을 붙이면 여기 합쳐지는 목록 중 하나에 들어가야 한다. 안 들어가면
+      대전이 '안 들어갔다' 고 경고한다 — 그게 맞는 기본값이다 (조용한 것보다 낫다).
+    """
+    got = getattr(dex, "_handled_abilities", None)
+    if got is not None:
+        return got
+    got = set()
+    for s in (calc.ATTACKER_ABILITY, calc.DEFENDER_ABILITY, calc.DEFENDER_IMMUNE,
+              calc.DEFENDER_IMMUNE_TAG, calc.IGNORE_IMMUNE, calc.UNSUPPORTED_ABILITY,
+              WEATHER_ABILITY, ON_HIT_ABILITY, ENTRY_ABILITY, INTIMIDATE_PROOF,
+              PHAZE_PROOF, TRAP_ABILITY, STATUS_MOVE_PROOF, STAT_DROP_PROOF,
+              GROUNDED_IMMUNE_ABILITY, EMERGENCY_EXIT, HAZARD_ON_HIT,
+              best.SPEED_ABILITY, best.SPEED_ABILITY_UNSUPPORTED,
+              best.PRIORITY_ABILITY, best.RANDOM_FIRST_ABILITY, best.ALWAYS_LAST,
+              ABILITY_NO_EFFECT, ABILITY_DONE):
+        got |= set(s)
+    got |= {MIRROR_ARMOR, DISGUISE, ENDURE_FULL}
+    got |= set(status_immune_abilities(dex))
+    got |= flinch_proof_abilities(dex) | shield_dust_abilities(dex)
+    got |= skill_link_abilities(dex) | set(calc.ohko_proof_abilities(dex))
+    calc.sheer_force_mult(dex, None)
+    got |= set(dex._sheer_force)
+    got |= {a["name"] for a in dex.abilities if ability_rules(dex, a["name"])}
+    dex._handled_abilities = got
+    return got
+
+
 # 거대해머 — "이 기술은 2회 연속으로 사용할 수 없다." (설명문에 '실패' 가 없어서 따로 둔다)
 _NO_REPEAT = re.compile(r"이 기술은 2회 연속으로 사용할 수 없다")
 
@@ -651,6 +816,7 @@ class Side(object):
         self.last_failed = False     # 직전 행동이 실패했나 (분함의발구르기·열불내기)
         self.last_move = None        # 직전에 쓴 기술 (Policy._just_failed — 상대가 본다)
         self.minimized = False       # 작아지기 상태 (교체하면 풀린다)
+        self.flash_fire = False      # 타오르는불꽃으로 불꽃 기술을 받아냈나 (교체하면 풀린다)
         # 판 중간에서 시작해 '막 나왔는지' 를 몰라서 막 나왔다고 **가정한** 몸인가.
         # Battle.__init__ 이 켜고, 실제로 교체해 들어오면 여기서 꺼진다.
         self.fresh_guessed = False
@@ -719,7 +885,15 @@ class Side(object):
             hp_ratio=self.hp_ratio)
 
     def bump(self, stat, step):
-        """랭크 변화. 위아래로 6이 한계다."""
+        """랭크 변화. 위아래로 6이 한계다.
+
+        심술꾸러기(거꾸로) · 단순(2배) 은 여기서 — 누가 바꾸든 이 몸의 특성이 정한다.
+        """
+        for r in ability_rules(self.dex, self.base.ability):
+            if r["kind"] == "contrary":
+                step = -step
+            elif r["kind"] == "simple":
+                step *= r["mult"]
         before = self.ranks.get(stat, 0)
         after = max(-6, min(6, before + step))
         self.ranks[stat] = after
@@ -1023,6 +1197,7 @@ class Battle(object):
                 party.active.acted = True
         self._immune_abilities = status_immune_abilities(dex)
         self._warn_dead_items()
+        self._warn_dead_abilities()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
         self._entry_weather()
@@ -1090,6 +1265,27 @@ class Battle(object):
                 self._warn("%s %s 의 %s 는 **계산에 안 들어간다** (%s). "
                            "이 승률은 그 도구가 없다고 치고 나온 값이다."
                            % (who, side.name, it, why))
+
+    def _warn_dead_abilities(self):
+        """**계산에 안 들어간 특성을 가진 놈이 싸우면 큰 소리로 말한다.** (도구와 같다)
+
+        메가 폼 특성도 본다 — 메가하면 특성이 바뀐다.
+        """
+        ok = handled_abilities(self.dex)
+        descs = getattr(self.dex, "_ability_desc", None)
+        if descs is None:                    # 한 번만 만든다 (탐색은 대전을 수천 번 만든다)
+            descs = {a["name"]: a.get("description") or "" for a in self.dex.abilities}
+            self.dex._ability_desc = descs
+        for party, who in ((self.me_party, "나"), (self.opp_party, "상대")):
+            for side in party.members:
+                for form in side.forms:
+                    ab = form.ability
+                    if not ab or ab in ok:
+                        continue
+                    desc = descs.get(ab, "")
+                    self._warn("%s %s 의 특성 '%s' 는 **계산에 안 들어간다** (%s). "
+                               "이 승률은 그 특성이 없다고 치고 나온 값이다."
+                               % (who, form.name, ab, desc[:40]))
 
     # -- 교체 ---------------------------------------------------------------
     def _grounded(self, side):
@@ -1167,19 +1363,20 @@ class Battle(object):
             return
         if ab["kind"] == "foe_rank":
             foe = self.opp if side is self.me else self.me
-            if foe.base.ability in INTIMIDATE_PROOF or foe.blocks_drop():
-                if foe.base.ability == MIRROR_ARMOR:
-                    if side.bump(ab["stat"], ab["step"]):
-                        self._say("%s 의 미러아머 — %s 의 위협을 되돌렸다"
-                                  % (foe.name, side.name))
-                else:
-                    self._say("%s 의 %s — %s 에게는 안 통한다"
-                              % (side.name, side.base.ability, foe.name))
-                return
-            if foe.bump(ab["stat"], ab["step"]):
-                self._say("%s 의 %s — %s %s%+d"
-                          % (side.name, side.base.ability, foe.name,
-                             STAT_LABEL[ab["stat"]], ab["step"]))
+            if foe.base.ability in INTIMIDATE_PROOF:
+                self._say("%s 의 %s — %s 에게는 안 통한다"
+                          % (side.name, side.base.ability, foe.name))
+            else:
+                # 막는 특성(미러아머 포함)·괴력집게·오기·승기는 _lower 가 본다
+                self._lower(foe, ab["stat"], ab["step"], side,
+                            "%s 의 %s" % (side.name, side.base.ability))
+            # 주눅 — "위협을 받으면 스피드가 1단계 올라간다" (막혔어도 '받은' 것이다)
+            for r in self._rules(foe, "hit_by_type"):
+                if r.get("on_intimidate") and foe.alive:
+                    up = foe.bump(r["stat"], r["step"])
+                    if up:
+                        self._say("%s 의 %s — %s%+d" % (foe.name, foe.base.ability,
+                                                        STAT_LABEL[r["stat"]], up))
         elif ab["kind"] == "self_rank":
             if side.bump(ab["stat"], ab["step"]):
                 self._say("%s 의 %s — 공격%+d" % (side.name, side.base.ability,
@@ -1200,6 +1397,17 @@ class Battle(object):
             old.drowsy = 0
             old.protecting = False
             old.minimized = False                # 작아지기도 물러나면 풀린다
+            # 재생력 · 자연회복 — 물러날 때 (설명문: "지닌 포켓몬으로 돌아오면 ...")
+            # ! 전에는 없었다. 재생력은 사용자가 "핵심 특성, 판을 뒤집기도 함" 이라고 했다.
+            for r in ability_rules(self.dex, old.base.ability):
+                if r["kind"] == "switch_heal" and old.hp < old.max_hp:
+                    got = old.heal(old.max_hp * r["frac"])
+                    self._say("%s 의 %s — 물러나며 %d 회복 (HP %d/%d)"
+                              % (old.name, old.base.ability, got, old.hp, old.max_hp))
+                elif r["kind"] == "switch_cure" and old.status:
+                    self._say("%s 의 %s — 물러나며 %s 가 나았다"
+                              % (old.name, old.base.ability, old.status))
+                    old.status, old.status_turns, old.toxic_n = None, 0, 0
         party.active_idx = idx
         side = party.active
         side.reset_entry()                       # 방금 나온 것을 이제 안다
@@ -1284,6 +1492,11 @@ class Battle(object):
         """날씨·필드가 위력에 주는 배율. 데이터에 적혀 있는 것만 본다."""
         mult = 1.0
         d = move.get("description") or ""
+        # 모래의힘 — "모래바람 상태일 때 바위, 땅, 강철타입 기술의 위력이 1.3배"
+        if self.field.weather == "모래바람":
+            for r in self._rules(attacker, "sand_force"):
+                if move["type"] in r["types"]:
+                    mult *= r["mult"]
         if self.field.terrain == "그래스필드" and "그래스필드 상태일 때 위력이 1/2" in d:
             mult *= 0.5
         # 필드의 타입 강화·반감은 게임 데이터에 없다. 본편 값을 쓰고 경고를 띄운다.
@@ -1309,6 +1522,74 @@ class Battle(object):
                           calc.CONFIG["weather_weaken"]))
         return mult
 
+    # -- 특성 규칙 (ability_rules) 을 쓰는 자리 -------------------------------
+    def _rules(self, side, kind):
+        return [r for r in ability_rules(self.dex, side.base.ability)
+                if r["kind"] == kind]
+
+    def _lower(self, target, stat, step, by, why):
+        """상대(by)가 target 의 능력을 깎는다 (step<0). 막는 특성과 오기·승기를 한 곳에서.
+
+        ! 전에는 깎는 자리(변화기 · 추가 효과 · 위협)마다 따로 bump 했다. 그래서 오기·승기를
+          붙일 자리가 셋이었다 — 한 곳으로 모았다.
+        """
+        if target.blocks_drop():
+            if target.base.ability == MIRROR_ARMOR and by is not None and by.alive:
+                if by.bump(stat, step):
+                    self._say("%s 의 미러아머 — %s 에게 %s%+d 로 되돌렸다"
+                              % (target.name, by.name, STAT_LABEL[stat], step))
+            else:
+                self._say("%s 의 %s — 능력이 안 깎인다"
+                          % (target.name, target.base.ability))
+            return 0
+        if any(r["stat"] == stat for r in self._rules(target, "drop_proof")):
+            self._say("%s 의 %s — %s 가 안 깎인다"
+                      % (target.name, target.base.ability, STAT_LABEL[stat]))
+            return 0
+        moved = target.bump(stat, step)
+        if moved:
+            self._say("%s — %s %s%+d (지금 %s)"
+                      % (why, target.name, STAT_LABEL[stat], moved, target.rank_text()))
+        else:
+            self._say("%s — %s 의 %s 는 더 이상 안 변한다"
+                      % (why, target.name, STAT_LABEL[stat]))
+        if moved < 0:           # 심술꾸러기면 올라가서(moved>0) 안 터진다 — 본편과 같다
+            for r in self._rules(target, "defiant"):
+                up = target.bump(r["stat"], r["step"])
+                if up:
+                    self._say("%s 의 %s — %s%+d (지금 %s)"
+                              % (target.name, target.base.ability,
+                                 STAT_LABEL[r["stat"]], up, target.rank_text()))
+        return moved
+
+    def _absorb(self, atk, dfn, move):
+        """축전·저수·피뢰침·타오르는불꽃 등 — 그 타입 기술을 받아내면 True.
+
+        ! 전에는 calc.DEFENDER_IMMUNE 로 '안 맞는다' 까지만 했다. 축전은 회복을,
+          피뢰침은 특공 상승을, 초식은 공격 상승을 **안 받고 있었다** (반만 붙은 것).
+        """
+        mtype = move["type"]
+        ab = calc.ATTACKER_ABILITY.get(atk.base.ability)
+        if ab and ab["kind"] == "skin" and mtype == "노말":
+            mtype = ab["type"]                # 스카이스킨 등 — 바뀐 타입으로 본다
+        for r in self._rules(dfn, "absorb"):
+            if r["type"] != mtype:
+                continue
+            what = "받아냈다"
+            if r.get("heal"):
+                got = dfn.heal(dfn.max_hp * r["heal"])
+                what = "받아내고 %d 회복 (HP %d/%d)" % (got, dfn.hp, dfn.max_hp)
+            elif r.get("stat"):
+                up = dfn.bump(r["stat"], r["step"])
+                what = "받아내고 %s%+d" % (STAT_LABEL[r["stat"]], up)
+            elif r.get("flash"):
+                dfn.flash_fire = True
+                what = "받아내고 불꽃 기술이 세졌다"
+            self._say("%s 의 %s — %s 의 %s 를 %s"
+                      % (dfn.name, dfn.base.ability, atk.name, move["name"], what))
+            return True
+        return False
+
     def move_blocked(self, user, target, move, foresee=False):
         """이 기술이 지금 실패하면 그 까닭을, 아니면 None. 설명문의 조건을 본다.
 
@@ -1317,6 +1598,10 @@ class Battle(object):
         안 본다. 나머지는 턴 전에도 확실히 알 수 있다.
         """
         d = move.get("description") or ""
+        # 습기 — "전원은 폭발 기술을 사용할 수 없다" (양쪽 누구의 특성이든)
+        if (calc.attack_effects(move)["self_faint"]
+                and (self._rules(user, "damp") or self._rules(target, "damp"))):
+            return "실패 — 습기 때문에 폭발 기술을 쓸 수 없다"
         # ! 막혀서 실패한 시도는 '쓴' 것이 아니다. 안 그러면 한 번 막힌 뒤로 영영
         #   못 쓴다 (실패한 시도도 last_move 에 남아서 — [49] 가 잡았다).
         if (_NO_REPEAT.search(d) and user.last_move is not None
@@ -1382,6 +1667,9 @@ class Battle(object):
             self._say("%s 의 %s — %s" % (atk.name, move["name"], why))
             self._crash(atk, move)
             return 0
+        if self._absorb(atk, dfn, move):
+            self._crash(atk, move)            # 안 통한 것이다 (분함의발구르기가 본다)
+            return 0
         d_text = move.get("description") or ""
         if _NEED_STOCKPILE.search(d_text):
             # 토해내기 — 비축한 만큼 위력이 오른다 (설명문: 100~300)
@@ -1402,6 +1690,11 @@ class Battle(object):
             stage += ef["step"]
         crit = self.rng.random() < calc.crit_chance(move, stage)
         extra = self._power_scale(move, atk)
+        if atk.flash_fire and move["type"] == "불꽃":
+            # 타오르는불꽃 상태 — 설명문엔 '상태가 된다' 까지만 있다. 배율은 본편 값 (미확인)
+            extra *= calc.CONFIG["flash_fire_boost"]
+            self._warn("타오르는불꽃 상태의 불꽃 기술 %.1f배는 게임 데이터에 없는 "
+                       "미확인 값입니다" % calc.CONFIG["flash_fire_boost"])
         mm = _MINIMIZE_PUNISH.search(d_text)
         if mm and dfn.minimized:
             extra *= int(mm.group(1))
@@ -1461,6 +1754,13 @@ class Battle(object):
             self._say("%s 의 %s — %d번 맞았다 (합계 %d)"
                       % (atk.name, move["name"], landed, total))
         dmg = total
+        # 자기과신 — "공격으로 상대를 쓰러뜨리면 공격이 1단계 올라간다"
+        if dmg and not dfn.alive and atk.alive:
+            for r in self._rules(atk, "moxie"):
+                up = atk.bump(r["stat"], r["step"])
+                if up:
+                    self._say("%s 의 %s — %s%+d" % (atk.name, atk.base.ability,
+                                                    STAT_LABEL[r["stat"]], up))
 
         # 우격다짐 — 추가 효과가 없어지는 대신 1.3배 (calc 가 올렸다).
         # 본편처럼 **생명의구슬 반동도 없다** — 추가 효과가 있는 기술일 때만.
@@ -1498,6 +1798,8 @@ class Battle(object):
                 continue          # 연속기 — 위에서 실제로 여러 번 때렸다
             if "고정 데미지" in c and res.get("fixed"):
                 continue          # 나이트헤드 등 — calc 가 정해진 양으로 실제로 넣었다
+            if "자신도 받는다" in c and move_recoil(move):
+                continue          # 반동 — 위에서 실제로 넣었다 (전엔 넣으면서도 경고했다)
             self._warn("%s: %s" % (move["name"], c))
 
         self._secondaries(atk, dfn, move, fx, dmg, connected, sheer)
@@ -1568,6 +1870,9 @@ class Battle(object):
 
     def _land(self, atk, dfn, move, res, crit):
         """한 방. (몸에 들어간 데미지, 닿았나) — 대타·탈에 막혀도 '닿은' 것이다."""
+        # 원격 — "사용하는 기술이 접촉 기술이 아니게 된다" (울퉁불퉁멧·정전기 등을 안 받는다)
+        contact = bool(move["isContact"]) and not self._rules(atk, "long_reach")
+        hp_before = dfn.hp
         dmg = self.rng.choice(res["rolls"])
         # 스크린 — 급소에는 안 통한다 (본편 규칙). 죽기살기 같은 고정 데미지도 안 깎인다.
         if not crit and not res.get("fixed"):
@@ -1621,12 +1926,14 @@ class Battle(object):
                     self._say("%s 의 %s — %s 쪽에 %s (지금 %s)"
                               % (dfn.name, dfn.base.ability, atk.name,
                                  ab["hazard"], foe_party.hazard_text()))
-            elif ab["kind"] == "contact_recoil" and move["isContact"]:
+            elif ab["kind"] == "contact_recoil" and contact:
                 back = max(1, int(atk.max_hp * ab["frac"]))
                 atk.damage(back, direct=False)
                 self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
                           % (dfn.name, dfn.base.ability, atk.name, back,
                              atk.hp, atk.max_hp))
+
+        self._ability_on_hit(atk, dfn, move, res, crit, dmg, contact, hp_before)
 
         # 길동무 — 이 기술로 쓰러졌다면 때린 쪽도 데려간다
         if (dmg and not dfn.alive and atk.alive
@@ -1639,7 +1946,7 @@ class Battle(object):
         # 도구가 반응한다 (맞은 쪽)
         if dmg and dfn.alive:
             ef = item_effect(self.dex, dfn.item, "contact_chip")
-            if ef and move["isContact"]:
+            if ef and contact:
                 back = max(1, int(atk.max_hp * ef["frac"]))
                 atk.damage(back, direct=False)
                 self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
@@ -1679,6 +1986,85 @@ class Battle(object):
                     self._force_switch(self._party_of(dfn), dfn.item)
         return dmg, True
 
+    def _ability_on_hit(self, atk, dfn, move, res, crit, dmg, contact, hp_before):
+        """한 방이 몸에 들어갔을 때 양쪽 특성이 반응한다 (ability_rules).
+
+        ! 2026-09-22 전에는 정전기(320)·불꽃몸·독가시·포자·미끈미끈·정의의마음 등이
+          전부 없었다 — 접촉기로 때려도 아무 일도 없었다. 경고도 없었다.
+        """
+        if not dmg:
+            return
+        rng = self.rng
+        if contact:
+            # 맞은 쪽 — 쓰러져도 반응한다 (본편과 같다)
+            for r in self._rules(dfn, "contact_status"):
+                if not atk.alive or (r["no_grass"] and "풀" in atk.types):
+                    continue
+                if rng.random() < r["chance"]:
+                    st = r["options"][0] if len(r["options"]) == 1 else rng.choice(r["options"])
+                    self._say("%s 의 %s —" % (dfn.name, dfn.base.ability))
+                    self._inflict(atk, st)
+            for r in self._rules(dfn, "contact_drop"):
+                if atk.alive:
+                    self._lower(atk, r["stat"], -r["step"], dfn,
+                                "%s 의 %s" % (dfn.name, dfn.base.ability))
+            if not dfn.alive and atk.alive:
+                for r in self._rules(dfn, "aftermath"):
+                    lost = max(1, int(atk.max_hp * r["frac"]))
+                    atk.damage(lost, direct=False)
+                    self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
+                              % (dfn.name, dfn.base.ability, atk.name, lost,
+                                 atk.hp, atk.max_hp))
+            if (dfn.alive and self._rules(dfn, "pickpocket") and self._can_take(atk)
+                    and (not dfn.item or dfn.item_used)):
+                self._say("%s 의 %s — %s 의 %s 를 훔쳤다"
+                          % (dfn.name, dfn.base.ability, atk.name, atk.item))
+                dfn.item, dfn.item_used, atk.item = atk.item, False, None
+            # 때린 쪽 — 독수
+            for r in self._rules(atk, "poison_touch"):
+                if dfn.alive and rng.random() < r["chance"]:
+                    self._say("%s 의 %s —" % (atk.name, atk.base.ability))
+                    self._inflict(dfn, r["status"])
+        # 악취 — 10% 풀죽음 (이미 움직인 상대에겐 소용없다)
+        for r in self._rules(atk, "stench"):
+            if (dfn.alive and not dfn.moved and rng.random() < r["chance"]
+                    and dfn.base.ability not in flinch_proof_abilities(self.dex)):
+                dfn.flinched = True
+                self._say("%s 의 %s — %s 는 풀죽었다" % (atk.name, atk.base.ability, dfn.name))
+        # 매지션 — 도구가 없으면 때린 상대의 도구를 뺏는다
+        if (atk.alive and self._rules(atk, "magician") and self._can_take(dfn)
+                and (not atk.item or atk.item_used)):
+            self._say("%s 의 %s — %s 의 %s 를 빼앗았다"
+                      % (atk.name, atk.base.ability, dfn.name, dfn.item))
+            atk.item, atk.item_used, dfn.item = dfn.item, False, None
+        if not dfn.alive:
+            return
+        # 맞은 쪽이 오르는 것
+        mtype = res.get("moveType") or move["type"]
+        for r in self._rules(dfn, "hit_by_type"):
+            if mtype in r["types"] and dfn.base.ability not in ON_HIT_ABILITY:
+                up = dfn.bump(r["stat"], r["step"])        # (열교환은 ON_HIT 가 이미 한다)
+                if up:
+                    self._say("%s 의 %s — %s%+d" % (dfn.name, dfn.base.ability,
+                                                    STAT_LABEL[r["stat"]], up))
+        for r in self._rules(dfn, "berserk"):
+            if hp_before > dfn.max_hp / 2.0 >= dfn.hp:
+                up = dfn.bump(r["stat"], r["step"])
+                if up:
+                    self._say("%s 의 %s — %s%+d" % (dfn.name, dfn.base.ability,
+                                                    STAT_LABEL[r["stat"]], up))
+        if crit:
+            for r in self._rules(dfn, "anger_point"):
+                dfn.ranks[r["stat"]] = 6
+                self._say("%s 의 %s — 급소를 맞고 %s 최대 (+6)"
+                          % (dfn.name, dfn.base.ability, STAT_LABEL[r["stat"]]))
+
+    def _can_take(self, holder):
+        """holder 의 도구를 빼앗거나 떨어뜨릴 수 있나 (점착·메가스톤·이미 쓴 도구는 안 된다)."""
+        return bool(holder.item and not holder.item_used
+                    and holder.item not in self.dex.mega_by_item
+                    and not self._rules(holder, "sticky"))
+
     def _secondaries(self, atk, dfn, move, fx, dealt, connected, sheer):
         """공격기의 추가 효과·뒤처리 (calc.attack_effects 가 설명문에서 읽은 것).
 
@@ -1714,9 +2100,9 @@ class Battle(object):
                     side = atk if e["who"] == "self" else dfn
                     if not side.alive:
                         continue
-                    if side is dfn and e["step"] < 0 and dfn.blocks_drop():
-                        self._say("%s 의 %s — 능력이 안 깎인다"
-                                  % (dfn.name, dfn.base.ability))
+                    if side is dfn and e["step"] < 0:
+                        self._lower(dfn, e["stat"], e["step"], atk,
+                                    "%s 의 %s" % (atk.name, move["name"]))
                         continue
                     moved = side.bump(e["stat"], e["step"])
                     if moved:
@@ -1741,7 +2127,13 @@ class Battle(object):
                     self._warn("%s 의 '%s' 효과는 아직 계산에 없습니다"
                                % (move["name"], e["name"]))
         # 흡수 — 큰뿌리를 들면 더 회복한다 (설명문 배율)
-        if fx["drain"] and dealt and atk.alive:
+        if fx["drain"] and dealt and atk.alive and self._rules(dfn, "liquid_ooze"):
+            # 해감액 — "상대를 회복시키는 대신 그만큼 데미지를 준다"
+            lost = max(1, int(dealt * fx["drain"]))
+            atk.damage(lost, direct=False)
+            self._say("%s 의 %s — %s 가 흡수하려다 %d 를 잃었다 (HP %d/%d)"
+                      % (dfn.name, dfn.base.ability, atk.name, lost, atk.hp, atk.max_hp))
+        elif fx["drain"] and dealt and atk.alive:
             mult = 1.0
             ef = item_effect(self.dex, atk.item, "drain_boost")
             if ef:
@@ -1756,8 +2148,7 @@ class Battle(object):
             dfn.status = None
             self._say("%s 의 얼음이 녹았다" % dfn.name)
         # 탁쳐서떨구기 — 도구를 없앤다 (메가스톤은 못 떨어뜨린다)
-        if (fx["knock_off"] and dealt and dfn.item and not dfn.item_used
-                and dfn.item not in self.dex.mega_by_item):
+        if fx["knock_off"] and dealt and self._can_take(dfn):     # 점착이면 못 떨어뜨린다
             self._say("%s 의 %s — %s 의 %s 를 떨어뜨렸다"
                       % (atk.name, move["name"], dfn.name, dfn.item))
             dfn.item = None
@@ -1840,16 +2231,11 @@ class Battle(object):
                 side = user if ef["who"] == "self" else target
                 if side is target and target.protecting:
                     continue
-                # 남이 내 능력을 깎으려 할 때만 막힌다 (내가 스스로 깎는 건 통과)
-                if side is target and ef["step"] < 0 and target.blocks_drop():
-                    if target.base.ability == MIRROR_ARMOR:
-                        if user.bump(ef["stat"], ef["step"]):
-                            self._say("%s 의 미러아머 — %s 에게 %s%+d 로 되돌렸다"
-                                      % (target.name, user.name,
-                                         STAT_LABEL[ef["stat"]], ef["step"]))
-                    else:
-                        self._say("%s 의 %s — 능력이 안 깎인다"
-                                  % (target.name, target.base.ability))
+                # 남이 내 능력을 깎을 때 — 막는 특성·오기·승기는 _lower 가 본다
+                # (내가 스스로 깎는 건 그냥 통과)
+                if side is target and ef["step"] < 0:
+                    self._lower(target, ef["stat"], ef["step"], user,
+                                "%s 의 %s" % (user.name, move["name"]))
                     continue
                 moved = side.bump(ef["stat"], ef["step"])
                 if moved:
@@ -1938,6 +2324,9 @@ class Battle(object):
                 a, b = user.item, target.item
                 if user.item_used or target.item_used:
                     self._say("%s 의 %s — 실패 (이미 쓴 도구)" % (user.name, move["name"]))
+                    user.move_failed = True
+                elif self._rules(target, "sticky") or self._rules(user, "sticky"):
+                    self._say("%s 의 %s — 실패 (점착)" % (user.name, move["name"]))
                     user.move_failed = True
                 else:
                     user.item, target.item = b, a
@@ -2183,7 +2572,9 @@ class Battle(object):
             #   경고도 없었다. 상대가 이 턴에 이미 움직였으면(교체 포함) 내가 늦은 것이다.
             self._hit(actor, target, move, "후공" if target.moved else "선공")
             # 자폭·대폭발·미스트버스트 — 막히거나 빗나가도 쓴 쪽은 쓰러진다 (본편 규칙)
-            if calc.attack_effects(move)["self_faint"] and actor.alive:
+            # 단 습기로 아예 못 쓴 경우는 안 쓰러진다
+            if (calc.attack_effects(move)["self_faint"] and actor.alive
+                    and not (self._rules(actor, "damp") or self._rules(target, "damp"))):
                 actor.hp = 0
                 self._say("%s 는 %s 로 쓰러졌다" % (actor.name, move["name"]))
         # 나온 뒤의 기록 — **쓰고 난 뒤에** 남긴다. 먼저 남기면 속이기가 자기 자신
@@ -2304,6 +2695,11 @@ class Battle(object):
                 self._say("%s 는 풀죽어서 움직이지 못했다" % actor.name)
                 actor.last_failed = True      # 행동하지 못했다 (분함의발구르기가 본다)
                 actor.moved = True
+                for r in self._rules(actor, "steadfast"):       # 불굴의마음
+                    up = actor.bump(r["stat"], r["step"])
+                    if up:
+                        self._say("%s 의 %s — %s%+d" % (actor.name, actor.base.ability,
+                                                        STAT_LABEL[r["stat"]], up))
                 continue
             self._act(actor, target, move)
             actor.moved = True

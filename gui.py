@@ -1176,6 +1176,8 @@ class App(object):
             L.append("! 내 쪽 「냈다」 를 하나도 안 켜서 **채운 자리 전부**를 내")
             L.append("  팀으로 봤습니다. 실제로는 3마리만 나갑니다 — 그대로 두면")
             L.append("  이기는 쪽으로 크게 틀어집니다 (한 대면에서 약 80점 대 40점)")
+        # 대전이 띄운 경고 — 전에는 창에 한 줄도 안 보였다 (2026-09-22)
+        L.extend(search.warning_lines(got))
         return "\n".join(L)
 
     def run(self):
