@@ -44,10 +44,12 @@ CONFIG = {
     # --- 아래는 턴을 넘겨야 의미가 생기는 값들 (battle.py 가 쓴다) ---
     # 전부 본편 값을 가져다 쓴 것이고 챔피언스에서 확인한 적이 없다.
     # 실전에서 어긋나면 여기부터 의심할 것.
-    "crit_rate": 1 / 24.0,      # 급소가 뜰 확률 — 미확인
-    # 급소업 단계별 확률. 0단계가 위의 crit_rate 다. 전부 미확인 (본편 7세대 이후 값).
+    # 급소 — **사용자가 확인해 줌** (나무위키 '포켓몬스터/랭크' 2.1.3, 7세대 이후, 2026-09-22):
+    #   0단계 1/24 · +1 1/8 · +2 1/2 · +3 이상 100%. 처음엔 같은 값을 '미확인' 으로 뒀다.
+    "crit_rate": 1 / 24.0,      # 급소가 뜰 확률 — 사용자가 확인해 줌
+    # 급소업 단계별 확률. 0단계가 위의 crit_rate 다.
     # '반드시 급소' 기술은 단계와 상관없이 무조건 뜬다.
-    "crit_stage_rates": [1 / 24.0, 1 / 8.0, 0.5, 1.0],
+    "crit_stage_rates": [1 / 24.0, 1 / 8.0, 0.5, 1.0],   # 사용자가 확인해 줌
     "paralysis_skip": 0.25,     # 마비로 그 턴 행동을 못 할 확률 — 미확인
     "burn_chip": 16,            # 화상: 턴 끝에 최대 HP의 1/N — 미확인
     "poison_chip": 8,           # 독: 턴 끝에 최대 HP의 1/N — 미확인
@@ -878,7 +880,8 @@ def calc_damage(dex, attacker, defender, move, critical=False,
         notes.append("속임수: 상대의 공격으로 계산")
     ignore_def_rank = bool(_IGNORE_FOE_RANKS.search(d_text))
 
-    # 급소는 자신에게 불리한 랭크를 무시한다 (본편 규칙, 챔피언스 미확인)
+    # 급소는 자신에게 불리한 랭크를 무시한다 — 사용자가 확인해 줌 (나무위키 랭크 2.1.3:
+    # "유리한 랭크변화는 적용되고, 불리한 랭크변화는 무시한다")
     a_rank = src.ranks.get(atk_key, 0)
     d_rank = defender.ranks.get(def_key, 0)
     a = src.stat(atk_key, with_rank=not (critical and a_rank < 0))

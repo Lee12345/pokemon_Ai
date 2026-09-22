@@ -2275,6 +2275,12 @@ def test_crit_rules(dex):
           > calc.crit_chance(by_name["지진"]))
     check("아무 표기 없으면 기본 확률",
           calc.crit_chance(by_name["지진"]) == calc.CONFIG["crit_rate"])
+    # 사용자가 확인해 줌 (나무위키 '포켓몬스터/랭크' 2.1.3, 7세대 이후 — 2026-09-22)
+    check("급소 단계별 확률이 확인된 값이다 (0단계 1/24 · +1 1/8 · +2 1/2 · +3 100%)",
+          calc.CONFIG["crit_stage_rates"] == [1 / 24.0, 1 / 8.0, 0.5, 1.0]
+          and calc.CONFIG["crit_rate"] == 1 / 24.0, calc.CONFIG["crit_stage_rates"])
+    check("급소업 +3 넘게 쌓아도 100%",
+          calc.crit_chance(by_name["지진"], 5) == 1.0, calc.crit_chance(by_name["지진"], 5))
 
     # 자속과 급소가 같이 걸리면 곱해진다 — 따로 확인해 둔 자리다.
     mas = calc.Build(dex, dex.find_pokemon("마스카나"))
