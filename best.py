@@ -358,6 +358,8 @@ MOVE_CAVEAT_RULES = [
      CONDITIONAL + "빗나가거나 실패하면 자신이 최대 HP의 1/{0} 를 잃는다"),
     (r"직전 턴에 자신이 행동하지 못했거나 기술이 빗나가거나 실패한 경우 위력이 (\d+)배",
      CONDITIONAL + "직전 턴에 실패·행동 불능이었으면 위력 {0}배"),
+    (r"이 기술은 2회 연속으로 사용할 수 없다",
+     CONDITIONAL + "두 번 연달아 쓸 수 없다"),
 ]
 
 
@@ -491,6 +493,29 @@ def rate_moves(dex, attacker, defender, moves):
     return rows
 
 
+def expected_hits(move, hit=1.0):
+    """연속기가 평균 몇 방 분량인가 (1회분 데미지에 곱할 값). 연속기가 아니면 1.
+
+    2~5회는 calc.CONFIG 의 확률(사용자가 확인해 줌 — 평균 3.0회), 찍찍베기처럼 '도중에 빗나가면 끝' 은
+    두 번째부터 매번 명중을 곱한다. 트리플악셀은 방마다 위력이 달라서 위력 비로 센다.
+    """
+    fx = calc.attack_effects(move)
+    if not fx["hits"]:
+        return 1.0
+    lo, hi = fx["hits"]
+    if fx["powers"]:
+        base = float(fx["powers"][0])
+        return sum(p / base * (hit ** i if fx["stop_on_miss"] else 1.0)
+                   for i, p in enumerate(fx["powers"]))
+    if lo == hi:
+        return float(lo)
+    if fx["stop_on_miss"]:
+        return sum(hit ** i for i in range(hi))
+    if (lo, hi) == (2, 5):
+        return sum(n * p for n, p in zip(range(2, 6), calc.CONFIG["multi_hit_2to5"]))
+    return (lo + hi) / 2.0
+
+
 def _rate_moves_raw(dex, attacker, defender, moves):
     rows = []
     for move, pct in moves:
@@ -520,10 +545,17 @@ def _rate_moves_raw(dex, attacker, defender, moves):
         rolls = res["rolls"]
         row["kind"] = "damage"
         row["res"] = res
+        # 연속기는 평균 몇 번 때리는 만큼 곱한다 (대전은 실제로 여러 번 때린다).
+        # ! 전에는 1회분이라 AI 가 스케일샷·록블라스트를 실제보다 약하게 봤다.
+        times = expected_hits(move, row["hit"])
+        if times != 1.0:
+            row["timesHit"] = times
         # 넘치는 데미지는 값어치가 없으므로 HP 에서 자른다
-        row["expected"] = (sum(min(r, hp) for r in rolls) / float(len(rolls))
-                           * row["hit"])
-        row["koNow"] = res["ohkoChance"] * row["hit"]
+        row["expected"] = (sum(min(r * times, hp) for r in rolls)
+                           / float(len(rolls)) * row["hit"])
+        row["koNow"] = (sum(1 for r in rolls if r * times >= hp)
+                        / float(len(rolls)) * row["hit"]
+                        if times != 1.0 else res["ohkoChance"] * row["hit"])
         rows.append(row)
     return rows
 

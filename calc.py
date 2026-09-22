@@ -79,6 +79,12 @@ CONFIG = {
     "spike_layers": [8, 6, 4],  # 압정뿌리기: 1겹 1/8, 2겹 1/6, 3겹 1/4
     "max_spike_layers": 3,
     "max_toxic_layers": 2,      # 독압정: 1겹 독, 2겹 맹독
+    # --- 연속기 (2026-09-22) ---
+    # 설명문은 '2~5회 연속으로 공격한다' 까지만 적는다.
+    # ! 처음엔 본편 5세대 이후 값(35/35/15/15)을 가져다 썼는데 **틀렸다.**
+    #   사용자가 확인해 줌 (2026-09-22): 2회 37.5% · 3회 37.5% · 4회 12.5% · 5회 12.5%.
+    #   평균 3.1회 → 3.0회.
+    "multi_hit_2to5": [0.375, 0.375, 0.125, 0.125],   # 2·3·4·5회 — 사용자가 확인해 줌
     # --- 형태 추론 (1-A) / 세기는 구축기사 표본으로 맞춤 (1-B) ---
     #
     # 처음에는 넷 다 내가 감으로 잡았다. 그 뒤 구축기사 **개체 1,326마리**로
@@ -646,6 +652,145 @@ def move_fails(move, attacker, defender):
     return None
 
 
+# ---------------------------------------------------------------------------
+# 공격기의 추가 효과 (2026-09-22)
+#
+# ! 전에는 **공격기에 붙은 효과를 하나도 안 읽었다.** 반동과 급소 단계만 있었다.
+#   용성군이 특공을 안 깎고, 인파이트가 방어를 안 깎고, 유턴이 교체를 안 하고,
+#   화염방사가 화상을 안 걸고, 스케일샷(한카리아스 17%)이 한 번만 때렸다.
+#   바디프레스·속임수는 **데미지부터** 틀렸다 (자기 공격으로 계산). 경고도 없었다.
+# 문장 하나에 주사위 한 번이다 — 원시의힘은 10% 한 번에 다섯 능력이 같이 오른다.
+# 설명문에서 읽는다. 걸리는 기술은 tests.py [49] 가 센다.
+# ---------------------------------------------------------------------------
+_ATK_SENT = re.compile(r"(?<=다)\.\s*")
+_ATK_CHANCE = re.compile(r"^(\d+)% 확률로 ")
+# battle._RANK 와 같은 모양이어야 한다 ([49] 가 대조한다)
+_ATK_RANK = re.compile(
+    r"((?:자신|상대)의 )?([가-힣]+(?:, ?[가-힣]+)*)[를을] (\d)단계 "
+    r"(올린|떨어뜨린|올리고|떨어뜨리고)")
+_ATK_STAT_WORD = {"공격": "attack", "방어": "defense", "특수공격": "spAtk",
+                  "특수방어": "spDef", "스피드": "speed"}
+_ATK_STATUS = re.compile(r"상대를 ([가-힣]+(?:, [가-힣]+)*)(?: 중 하나의)? 상태로 만든다")
+_ATK_FLINCH = re.compile(r"상대를 풀죽게 한다")
+_ATK_DRAIN = re.compile(r"준 데미지의 (\d+)/(\d+)만큼 자신의 HP를 회복")
+_ATK_SWITCH = re.compile(r"공격한 다음 다른 지닌 포켓몬과 교체한다")
+_KNOCK_OFF = re.compile(r"상대의 도구를 없앤다")
+_KNOCK_BOOST = re.compile(r"상대가 도구를 지니고 있으면 위력이 ([\d.]+)배")
+_THAW_FOE = re.compile(r"상대의 얼음 상태를 회복")
+_SELF_FAINT = re.compile(r"사용하면 자신은 기절하게 된다")
+_MULTI_RANGE = re.compile(r"(\d+)~(\d+)회 연속으로 공격")
+_MULTI_FIXED = re.compile(r"(\d+)회 연속 ?(?:으로 )?공격")
+_MULTI_POWERS = re.compile(r"첫 번째는 위력 (\d+), 두 번째는 위력 (\d+), 세 번째는 위력 (\d+)")
+_MULTI_STOP = re.compile(r"도중에 빗나가면 공격이 끝난다")
+_BODY_PRESS = re.compile(r"공격이 아닌 방어 수치에 따라 데미지")
+_FOUL_PLAY = re.compile(r"상대의 공격 수치에 따라 데미지")
+_ALSO_SUPER = re.compile(r"(\S+?)타입인 상대에게도 효과가 굉장해진다")
+_IGNORE_FOE_RANKS = re.compile(r"상대의 능력 변화를 무시하고 데미지를 준다")
+_VS_STATUS = re.compile(r"상대가 ((?:[가-힣]+, )*[가-힣]+) 상태인 경우 위력이 (\d+)배")
+_VS_ANY_STATUS = re.compile(r"상대가 상태 이상인 경우 위력이 (\d+)배")
+# 대전이 실제로 거는 상태. 나머지(바인드·소금절이·지옥찌르기 ...)는 **안 건다** —
+# 걸면 화상 같은 상태 이상 자리를 차지해서 틀린다. 대신 경고를 띄운다.
+ATTACK_STATUS_KNOWN = {"화상", "얼음", "마비", "독", "맹독", "잠듦", "혼란"}
+_ATK_EFFECT_CACHE = {}
+
+
+def attack_effects(move):
+    """공격기의 추가 효과. 기술 번호로 외운다 (기술 자료는 판 동안 안 바뀐다).
+
+    groups — 문장마다 {chance, cond, secondary, effects}. 주사위는 문장당 한 번.
+      effects: {"kind": "rank", "who", "stat", "step"} / {"kind": "status", "options"}
+               / {"kind": "flinch"} / {"kind": "unknown_status", "name"}
+      secondary — 우격다짐이 지우고 인분이 막는 '추가 효과' 인가.
+                  (자기 능력을 **깎는** 문장은 대가라서 추가 효과가 아니다 — 인파이트·용성군)
+      cond — '...한 경우' 가 붙은 조건부 문장 (질투의불꽃 등). 대전은 아직 안 건다.
+    """
+    key = move.get("id") or move.get("name")
+    got = _ATK_EFFECT_CACHE.get(key)
+    if got is not None:
+        return got
+    d = move.get("description") or ""
+    groups = []
+    for s in _ATK_SENT.split(d):
+        s = s.strip()
+        if not s:
+            continue
+        m = _ATK_CHANCE.match(s)
+        chance = int(m.group(1)) / 100.0 if m else 1.0
+        eff = []
+        who = None
+        for prefix, names, step, verb in _ATK_RANK.findall(s):
+            if prefix:
+                who = "self" if prefix.startswith("자신") else "foe"
+            if who is None:
+                continue
+            sign = 1 if verb[0] == "올" else -1
+            for n in names.split(","):
+                stat = _ATK_STAT_WORD.get(n.strip())
+                if stat:
+                    eff.append({"kind": "rank", "who": who, "stat": stat,
+                                "step": sign * int(step)})
+        m = _ATK_STATUS.search(s)
+        if m:
+            opts = [x.strip() for x in m.group(1).split(",")]
+            if all(o in ATTACK_STATUS_KNOWN for o in opts):
+                eff.append({"kind": "status", "options": opts})
+            else:
+                eff.append({"kind": "unknown_status", "name": "/".join(opts)})
+        if _ATK_FLINCH.search(s):
+            eff.append({"kind": "flinch"})
+        if not eff:
+            continue
+        self_drop = any(e["kind"] == "rank" and e["who"] == "self" and e["step"] < 0
+                        for e in eff)
+        groups.append({"chance": chance, "cond": "경우" in s, "effects": eff,
+                       "secondary": not self_drop})
+    m = _ATK_DRAIN.search(d)
+    hits = None
+    mr, mf = _MULTI_RANGE.search(d), _MULTI_FIXED.search(d)
+    if mr:
+        hits = (int(mr.group(1)), int(mr.group(2)))
+    elif mf:
+        hits = (int(mf.group(1)), int(mf.group(1)))
+    mp = _MULTI_POWERS.search(d)
+    got = {
+        "groups": groups,
+        "drain": int(m.group(1)) / float(m.group(2)) if m else 0.0,
+        "self_switch": bool(_ATK_SWITCH.search(d)),
+        "knock_off": bool(_KNOCK_OFF.search(d)),
+        "thaw_foe": bool(_THAW_FOE.search(d)),
+        "self_faint": bool(_SELF_FAINT.search(d)),
+        "hits": hits,
+        "powers": [int(x) for x in mp.groups()] if mp else None,
+        "stop_on_miss": bool(_MULTI_STOP.search(d)),
+    }
+    _ATK_EFFECT_CACHE[key] = got
+    return got
+
+
+def has_secondary(move):
+    """우격다짐이 세게 해 주는 기술인가 — 추가 효과가 있는가."""
+    return any(g["secondary"] for g in attack_effects(move)["groups"])
+
+
+def sheer_force_mult(dex, ability):
+    """'공격의 추가 효과가 없어지지만 1.3배' (우격다짐). 아니면 None. dex 에 외운다."""
+    table = getattr(dex, "_sheer_force", None)
+    if table is None:
+        table = {}
+        for a in dex.abilities:
+            m = re.search(r"공격의 추가 효과가 없어지지만 ([\d.]+)배의 위력",
+                          a.get("description") or "")
+            if m:
+                table[a["name"]] = float(m.group(1))
+        dex._sheer_force = table
+    return table.get(ability)
+
+
+def sheer_force_on(dex, attacker, move):
+    """이 공격에 우격다짐이 걸리는가 (위력 1.3배 · 추가 효과 없음 · 생명의구슬 반동 없음)."""
+    return bool(sheer_force_mult(dex, attacker.ability) and has_secondary(move))
+
+
 def calc_damage(dex, attacker, defender, move, critical=False,
                 stab=None, extra=1.0):
     """한 번 때렸을 때의 데미지를 계산한다.
@@ -691,11 +836,26 @@ def calc_damage(dex, attacker, defender, move, critical=False,
     else:
         atk_key, def_key = "spAtk", "spDef"
 
+    # 누구의 어떤 능력치로 때리는가 — 설명문에 적혀 있다.
+    #   바디프레스: 자기 **방어** 로 / 속임수: **상대의** 공격으로
+    # ! 전에는 둘 다 자기 공격으로 계산했다. 바디프레스를 쓰는 방어형은 공격이
+    #   낮아서 조용히 아주 약한 기술이 됐다.
+    d_text = move.get("description") or ""
+    src = attacker
+    if _BODY_PRESS.search(d_text):
+        atk_key = "defense"
+        notes.append("바디프레스: 자신의 방어로 계산")
+    elif _FOUL_PLAY.search(d_text):
+        src = defender
+        notes.append("속임수: 상대의 공격으로 계산")
+    ignore_def_rank = bool(_IGNORE_FOE_RANKS.search(d_text))
+
     # 급소는 자신에게 불리한 랭크를 무시한다 (본편 규칙, 챔피언스 미확인)
-    a_rank = attacker.ranks.get(atk_key, 0)
+    a_rank = src.ranks.get(atk_key, 0)
     d_rank = defender.ranks.get(def_key, 0)
-    a = attacker.stat(atk_key, with_rank=not (critical and a_rank < 0))
-    if a_ab and a_ab["kind"] == "attack_stat" and move["category"] == "물리":
+    a = src.stat(atk_key, with_rank=not (critical and a_rank < 0))
+    if (a_ab and a_ab["kind"] == "attack_stat" and move["category"] == "물리"
+            and src is attacker and atk_key == "attack"):
         a = int(a * a_ab["mult"])
         notes.append("%s: 공격 %.1f배 (명중률은 0.8배)"
                      % (attacker.ability, a_ab["mult"]))
@@ -704,8 +864,30 @@ def calc_damage(dex, attacker, defender, move, critical=False,
         a = int(a * a_ab["mult"])
         notes.append("%s: 상태 이상이라 공격 %.1f배"
                      % (attacker.ability, a_ab["mult"]))
-    d = defender.stat(def_key, with_rank=not (critical and d_rank > 0))
+    d = defender.stat(def_key, with_rank=not (ignore_def_rank
+                                              or (critical and d_rank > 0)))
+    if ignore_def_rank and d_rank:
+        notes.append("%s: 상대의 능력 변화를 무시" % move["name"])
     hp = defender.stat("hp")
+
+    # 위력이 상황에 따라 바뀌는 것 (설명문)
+    m = _KNOCK_BOOST.search(d_text)
+    if m and defender.item and defender.item not in dex.mega_by_item:
+        power *= float(m.group(1))
+        notes.append("%s: 상대가 도구를 들어 위력 %s배" % (move["name"], m.group(1)))
+    m = _VS_ANY_STATUS.search(d_text)
+    if m and defender.status:
+        power *= int(m.group(1))
+        notes.append("%s: 상대가 상태 이상이라 위력 %s배" % (move["name"], m.group(1)))
+    m = _VS_STATUS.search(d_text)
+    if m and defender.status in [x.strip() for x in m.group(1).split(",")]:
+        power *= int(m.group(2))
+        notes.append("%s: 상대가 %s 라 위력 %s배"
+                     % (move["name"], defender.status, m.group(2)))
+    sf = sheer_force_mult(dex, attacker.ability)
+    if sf and has_secondary(move):
+        power *= sf
+        notes.append("%s: 추가 효과를 없애고 위력 %.1f배" % (attacker.ability, sf))
 
     # --- 위력에 붙는 보정들 ---
     if a_ab:
@@ -751,6 +933,13 @@ def calc_damage(dex, attacker, defender, move, critical=False,
                          "않습니다." % (defender.name, defender.item)}
 
     eff = dex.effectiveness(move_type, defender.types)
+    # 프리즈드라이 — "물타입인 상대에게도 효과가 굉장해진다" (그 타입 몫만 2배로 바꿔 끼운다)
+    m = _ALSO_SUPER.search(move.get("description") or "")
+    if m and m.group(1) in defender.types:
+        base_vs = dex.chart.get(move_type, {}).get(m.group(1), 1.0)
+        if base_vs:
+            eff = eff / base_vs * 2.0
+            notes.append("%s: %s타입에게도 효과가 굉장하다" % (move["name"], m.group(1)))
     if eff == 0:
         bypass = IGNORE_IMMUNE.get(attacker.ability)
         if (bypass and move_type in bypass["move_types"]

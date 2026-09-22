@@ -889,8 +889,16 @@ def test_search(dex):
     # ! 벤치(누리레느)가 어차피 이기는 자리라 점수가 다닥다닥 붙는다.
     #   그래서 **벤치를 빼고 1대1 로** 재서 답을 또렷하게 만든다 —
     #   때릴 수단이 없으면 이 판은 못 이긴다.
-    top, got = pick(["한카리아스", "누리레느"], "아머까오",
-                    ["지진", "대지의힘", "칼춤", "스텔스록"], 5.0)
+    # ! 2026-09-22 벤치를 누리레느 → **브리두라스** 로 바꿨다 (사용자 승인).
+    #   공격기 추가 효과를 붙이자 누리레느 판이 '뻔한 답' 이 아니게 됐다 —
+    #   아머까오(더 빠름)의 아이언헤드가 누리레느(페어리, 2배)를 20% 로 풀죽이고,
+    #   바디프레스가 방어로 제대로 세졌다. 교체 0.849 → 0.791 로 1등을 내줬다.
+    #   원래도 0.849 대 0.834 로 아슬아슬했다. 느슨하게 만들지 않고 **답이 다시
+    #   뻔한 판** 을 찾았다: 브리두라스(전기·드래곤 — 비행·강철 반감, 전기 2배).
+    #   씨앗 1~5 전부 교체 1등, 2등과 0.10~0.12 차이. 그래서 차이도 같이 본다.
+    #   기술에서 대지의힘은 뺐다 — 지진과 같이 들 이유가 없는 구성이었다.
+    top, got = pick(["한카리아스", "브리두라스"], "아머까오",
+                    ["지진", "칼춤", "스텔스록"], 5.0)
     ground_only = [r for r in got["rows"] if "교체" not in r["name"]]
     check("때릴 수단이 없으면 공격수들이 전부 바닥이다 (최고 %.2f)"
           % max(r["score"] for r in ground_only),
@@ -899,6 +907,9 @@ def test_search(dex):
     check("때릴 수단이 없으면 교체를 고른다 (%s)" % top["name"],
           "교체" in top["name"], [(r["name"], round(r["score"], 3))
                                  for r in got["rows"][:3]])
+    gap = top["score"] - max(r["score"] for r in ground_only)
+    check("교체가 **넉넉하게** 1등이다 (2등과 %.3f 차이 — 아슬아슬하면 뻔한 판이 아니다)"
+          % gap, gap >= 0.05, gap)
 
     # ② 통하는 기술이 있으면 그걸 고른다 -------------------------------------
     top2, got2 = pick(["한카리아스", "누리레느"], "아머까오",
@@ -922,7 +933,7 @@ def test_search(dex):
                                 my_moves=moves)
             w += (r["result"] == "이김")
         return w * 100.0 / n
-    ground = [dex.find_move(x) for x in ("지진", "대지의힘", "칼춤", "스텔스록")]
+    ground = [dex.find_move(x) for x in ("지진", "칼춤", "스텔스록")]
     mixed = [dex.find_move(x) for x in ("지진", "화염방사", "칼춤", "스텔스록")]
     a, b = win_rate(ground), win_rate(mixed)
     check("땅 기술만 주면 비행 상대에게 못 이긴다 (%.0f%%)" % a, a == 0.0, a)
@@ -3798,6 +3809,268 @@ def test_fail_conditions(dex):
           % (worst, unended), worst <= 1 and unended == 0, (worst, unended))
 
 
+def test_attack_effects(dex):
+    """공격기의 추가 효과 (2026-09-22). 전에는 **하나도** 안 읽었다.
+
+    용성군이 특공을 안 깎고, 유턴이 교체를 안 하고, 화염방사가 화상을 안 걸고,
+    스케일샷이 한 번만 때렸고, 바디프레스·속임수는 데미지부터 틀렸다.
+    기술마다 답이 뻔한 상황과 대조군을 둔다. 데미지는 **로그에서** 읽는다
+    ([48] 에서 HP 차이로 쟀다가 모래 칩이 섞여 저절로 통과한 적이 있다).
+    """
+    import battle, best, random, re
+    print("\n[49] 공격기의 추가 효과")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+    fx = calc.attack_effects
+
+    def duel(me, op, mine, theirs, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+        for a, o in zip(mine, theirs):
+            b.step(a, o)
+        return b
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    def dealt(b, who):
+        pat = re.compile(r"^\s*\d+턴  %s 의 \S+ → \S+ 에게 (\d+)" % re.escape(who))
+        return sum(int(m.group(1)) for line in b.log for m in [pat.search(line)] if m)
+
+    # ① 설명문 읽기 — 대표 기술을 못 박는다
+    check("rank 규칙이 battle 과 같은 모양이다",
+          calc._ATK_RANK.pattern == battle._RANK.pattern)
+    g = fx(M("화염방사"))["groups"]
+    check("화염방사: 10% 화상", len(g) == 1 and g[0]["chance"] == 0.1
+          and g[0]["effects"] == [{"kind": "status", "options": ["화상"]}], g)
+    g = fx(M("원시의힘"))["groups"]
+    check("원시의힘: 10% **한 번에** 다섯 능력 (주사위 한 번)",
+          len(g) == 1 and len(g[0]["effects"]) == 5 and g[0]["chance"] == 0.1, g)
+    g = fx(M("인파이트"))["groups"]
+    check("인파이트: 자기 방어·특방 -1 은 추가 효과가 아니다 (우격다짐이 안 지운다)",
+          len(g) == 1 and g[0]["chance"] == 1.0 and not g[0]["secondary"], g)
+    check("섀도볼은 추가 효과가 있다 / 인파이트·지진은 없다",
+          calc.has_secondary(M("섀도볼")) and not calc.has_secondary(M("인파이트"))
+          and not calc.has_secondary(M("지진")))
+    check("트라이어택: 셋 중 하나", fx(M("트라이어택"))["groups"][0]["effects"][0]
+          ["options"] == ["마비", "화상", "얼음"])
+    check("소금절이처럼 모르는 상태는 안 건다 (자리를 차지해서 틀린다)",
+          fx(M("소금절이"))["groups"][0]["effects"][0]["kind"] == "unknown_status")
+    check("질투의불꽃은 '...한 경우' 라 조건부다", fx(M("질투의불꽃"))["groups"][0]["cond"])
+    names = lambda key: {m["name"] for m in dex.moves
+                         if m["category"] != "변화" and fx(m)[key]}
+    check("공격 후 교체: 유턴·볼트체인지·퀵턴", names("self_switch")
+          == {"유턴", "볼트체인지", "퀵턴"}, names("self_switch"))
+    check("스스로 기절: 자폭·대폭발·미스트버스트", names("self_faint")
+          == {"자폭", "대폭발", "미스트버스트"}, names("self_faint"))
+    check("흡수 8개 (드레인키스 3/4)", len(names("drain")) == 8
+          and fx(M("드레인키스"))["drain"] == 0.75, names("drain"))
+    check("스케일샷 2~5회 / 트리플악셀 위력 20·40·60 / 찍찍베기 빗나가면 끝",
+          fx(M("스케일샷"))["hits"] == (2, 5)
+          and fx(M("트리플악셀"))["powers"] == [20, 40, 60]
+          and fx(M("찍찍베기"))["stop_on_miss"])
+    check("연속기 14개가 여러 번 때린다 (거대해머는 연속 '사용' 금지일 뿐이라 빠진다)",
+          len(names("hits")) == 14 and "거대해머" not in names("hits"), names("hits"))
+
+    # ② 데미지 계산부터 달라지는 것
+    def dmg(a, b, move, **kw):
+        A, B = P(a), P(b)
+        for k, v in kw.items():
+            if k.startswith("a_"):
+                setattr(A, k[2:], v)
+            else:
+                setattr(B, k, v)
+        return calc.calc_damage(dex, A, B, M(move))
+
+    base = dmg("아머까오", "하마돈", "바디프레스")["max"]
+    up_def = dmg("아머까오", "하마돈", "바디프레스",
+                 a_ranks={"defense": 2, "attack": 0})["max"]
+    up_atk = dmg("아머까오", "하마돈", "바디프레스",
+                 a_ranks={"attack": 2, "defense": 0})["max"]
+    check("바디프레스: 자기 방어가 오르면 세지고 공격은 상관없다 (%d / 방어+2 %d / 공격+2 %d)"
+          % (base, up_def, up_atk), up_def > base * 1.8 and up_atk == base)
+    base = dmg("다크펫", "한카리아스", "속임수")["max"]
+    foe_up = dmg("다크펫", "한카리아스", "속임수", ranks={"attack": 2, "defense": 0})["max"]
+    me_up = dmg("다크펫", "한카리아스", "속임수", a_ranks={"attack": 2})["max"]
+    check("속임수: 상대 공격이 오르면 세지고 내 공격은 상관없다 (%d / %d / %d)"
+          % (base, foe_up, me_up), foe_up > base * 1.8 and me_up == base)
+    r = dmg("나인테일", "누리레느", "프리즈드라이")
+    check("프리즈드라이: 물·페어리 누리레느에게 2배 (%.1f)" % r["effectiveness"],
+          r["effectiveness"] == 2.0)
+    a1 = dmg("갑주무사", "하마돈", "성스러운칼")["max"]
+    a2 = dmg("갑주무사", "하마돈", "성스러운칼", ranks={"defense": 2})["max"]
+    check("성스러운칼: 상대 방어 +2 를 무시한다 (%d / %d)" % (a1, a2), a1 == a2)
+    k1 = dmg("갑주무사", "하마돈", "탁쳐서떨구기")["max"]
+    k0 = dmg("갑주무사", "하마돈", "탁쳐서떨구기", item=None)["max"]
+    km = dmg("갑주무사", "보만다", "탁쳐서떨구기")["max"]
+    km0 = dmg("갑주무사", "보만다", "탁쳐서떨구기", item=None)["max"]
+    check("탁쳐서떨구기: 도구가 있으면 1.5배, 메가스톤은 아니다 (%d/%d, 메가 %d/%d)"
+          % (k1, k0, km, km0), k1 > k0 * 1.4 and km == km0)
+    h0 = dmg("다크펫", "하마돈", "병상첨병")["max"]
+    h1 = dmg("다크펫", "하마돈", "병상첨병", status="화상")["max"]
+    v1 = dmg("다크펫", "하마돈", "베놈쇼크", status="화상")["max"]
+    v2 = dmg("다크펫", "하마돈", "베놈쇼크", status="독")["max"]
+    check("병상첨병은 상태 이상이면 2배, 베놈쇼크는 독일 때만 (%d/%d, %d/%d)"
+          % (h0, h1, v1, v2), h1 > h0 * 1.8 and v2 > v1 * 1.8)
+    # (숫자가 작으면 버림 때문에 1.3배가 1.25배로 보인다 — 크게 들어가는 상대로 잰다)
+    f0 = dmg("하마돈", "아머까오", "화염방사")["max"]
+    f1 = dmg("하마돈", "아머까오", "화염방사", a_ability="우격다짐")["max"]
+    c0 = dmg("하마돈", "누리레느", "인파이트")["max"]
+    c1 = dmg("하마돈", "누리레느", "인파이트", a_ability="우격다짐")["max"]
+    check("우격다짐: 추가 효과가 있는 기술만 1.3배 (화염방사 %d→%d, 인파이트 %d→%d)"
+          % (f0, f1, c0, c1), f1 >= f0 * 1.25 and c1 == c0)
+
+    # ③ 대전에서 실제로 걸리는가
+    b = duel(P("보만다"), P("하마돈"), [M("용성군")], [iron])
+    check("용성군: 쓰고 나면 특공 -2", b.me.ranks["spAtk"] == -2, b.me.ranks)
+    b = duel(P("빠르모트"), P("하마돈"), [M("인파이트")], [iron])
+    check("인파이트: 방어·특방 -1", b.me.ranks["defense"] == -1
+          and b.me.ranks["spDef"] == -1, b.me.ranks)
+    b = duel([P("갑주무사"), P("하마돈")], P("누리레느"), [M("유턴")], [iron])
+    check("유턴: 때리고 교체한다", b.me.name == "하마돈" and dealt(b, "갑주무사") > 0,
+          b.log)
+    b = duel(P("갑주무사"), P("누리레느"), [M("유턴")], [iron])
+    check("유턴: 바꿀 놈이 없으면 그대로", b.me.name.endswith("갑주무사"), b.me.name)
+    b = duel(P("빠르모트"), P("하마돈"), [M("드레인펀치")], [iron], my_hp=[50])
+    hit = dealt(b, "빠르모트")
+    healed = [int(x) for x in re.findall(r"드레인펀치 — (\d+) 흡수", " ".join(b.log))]
+    check("드레인펀치: 준 데미지의 절반을 회복 (%d → %s)" % (hit, healed),
+          healed == [hit // 2], b.log)
+    me = P("빠르모트")
+    me.item = "큰뿌리"
+    b = duel(me, P("하마돈"), [M("드레인펀치")], [iron], my_hp=[50])
+    healed2 = [int(x) for x in re.findall(r"드레인펀치 — (\d+) 흡수", " ".join(b.log))]
+    check("큰뿌리: 흡수가 더 많다 (%s vs %s)" % (healed2, healed),
+          healed2 and healed2[0] > healed[0], b.log)
+    b = duel(P("갑주무사"), P("하마돈"), [M("탁쳐서떨구기")], [iron])
+    check("탁쳐서떨구기: 도구가 없어진다 (%s)" % b.opp.item, b.opp.item is None, b.log)
+    b = duel([P("하마돈"), P("누리레느")], P("한카리아스"), [M("대폭발")], [M("방어")])
+    check("대폭발: 막혀도 쓴 쪽은 쓰러진다", not b.me_party.members[0].alive, b.log)
+    b = duel(P("하마돈"), P("누리레느"), [M("거대해머")] * 3, [iron] * 3)
+    check("거대해머: 두 번 연달아는 실패, 한 턴 쉬면 다시 된다",
+          said(b, "두 번 연달아") and len([l for l in b.log if "거대해머 →" in l]) == 2,
+          b.log)
+    hits = []
+    for seed in range(40):
+        b = duel(P("한카리아스"), P("하마돈"), [M("스케일샷")], [iron], seed=seed)
+        m = re.search(r"(\d)번 맞았다", " ".join(b.log))
+        if m:
+            hits.append(int(m.group(1)))
+    check("스케일샷이 여러 번 때린다 (2~5회: %s)" % sorted(set(hits)),
+          hits and min(hits) >= 2 and max(hits) <= 5 and len(set(hits)) >= 3, hits)
+    # 사용자가 확인해 줌 (2026-09-22): '2~5회' 기술은 맞으면 **반드시 2회까지는** 맞는다.
+    # (두 번째부터 명중을 다시 굴리는 것은 '도중에 빗나가면 끝' 이 적힌 기술뿐)
+    short = 0
+    for seed in range(200):
+        b = duel(P("하마돈"), P("아머까오"), [M("록블라스트")], [iron], seed=seed)
+        m = re.search(r"(\d+)번 맞았다", " ".join(b.log))
+        if said(b, "록블라스트 →") and b.opp.alive and (not m or int(m.group(1)) < 2):
+            short += 1
+    check("2~5회 기술은 맞으면 반드시 2회 이상 (200판 중 1회로 끝난 판 %d)" % short,
+          short == 0, short)
+    b = duel(P("한카리아스"), P("하마돈"), [M("스케일샷")], [iron], seed=3)
+    check("스케일샷: 다 때린 뒤 방어 -1 · 스피드 +1 (한 번만)",
+          b.me.ranks["defense"] == -1 and b.me.ranks["speed"] == 1, b.me.ranks)
+    # ! 메가스톤을 든 몸(한카리아스)에 특성을 덮어쓰면 **안 먹는다** — Side 가 기본 폼
+    #   Build 를 따로 만들어 시작하기 때문이다. 처음에 그렇게 짜서 '3번' 이 나왔다.
+    #   메가가 아닌 하마돈으로 잰다.
+    counts = []
+    for seed in range(20):
+        me = P("하마돈")
+        me.ability = "스킬링크"
+        b = duel(me, P("아머까오"), [M("록블라스트")], [iron], seed=seed)
+        m = re.search(r"(\d)번 맞았다", " ".join(b.log))
+        if m:
+            counts.append(int(m.group(1)))
+    check("스킬링크: 맞으면 언제나 5번 (%s)" % sorted(set(counts)),
+          counts and set(counts) == {5}, counts)
+    # 기합의띠는 연속기의 **첫 방만** 버틴다 (합쳐서 한 번에 넣으면 끝까지 버틴다 — 틀림)
+    held = 0
+    for seed in range(20):
+        me = P("하마돈")
+        me.ability = "스킬링크"
+        me.ranks = dict(me.ranks, attack=6)   # 첫 방이 확실히 한 방 거리가 되게
+        frail = P("파이어로")                 # 불꽃·비행 — 바위 4배
+        frail.item = "기합의띠"
+        # (상대가 철벽을 먼저 쓰면 한 방 거리가 아니게 된다 — 처음에 그래서 재현이 안 됐다)
+        b = duel(me, frail, [M("록블라스트")], [M("칼춤")], seed=seed)
+        if said(b, "기합의띠 로 HP 1"):
+            held += 1
+            check("기합의띠는 연속기의 첫 방만 버티고 다음 방에 쓰러진다",
+                  not b.opp.alive, b.log)
+            break
+    check("기합의띠 장면을 재현했다", held == 1, held)
+    # 확률 — 400번 쏴서 화상 10% 근처인가
+    burns = 0
+    for seed in range(400):
+        b = battle.Battle(dex, P("보만다"), P("하마돈"), rng=random.Random(seed),
+                          my_fresh=True, opp_fresh=True)
+        b.step(M("화염방사"), iron)
+        burns += b.opp.status == "화상"
+    check("화염방사 화상은 400번 중 10%% 근처 (%d번)" % burns, 20 <= burns <= 60, burns)
+    both = only_one = 0
+    for seed in range(300):
+        b = battle.Battle(dex, P("하마돈"), P("누리레느"), rng=random.Random(seed),
+                          my_fresh=True, opp_fresh=True)
+        b.step(M("원시의힘"), iron)
+        up = [b.me.ranks[s] > 0 for s in ("attack", "defense", "spAtk", "spDef", "speed")]
+        both += all(up)
+        only_one += any(up) and not all(up)
+    check("원시의힘: 오를 때는 다섯이 같이 오른다 (다 %d번 / 일부만 %d번)"
+          % (both, only_one), both > 10 and only_one == 0, (both, only_one))
+    blocked = 0
+    for seed in range(100):
+        tough = P("누리레느")
+        tough.ability = "인분"
+        b = battle.Battle(dex, P("다크펫"), tough, rng=random.Random(seed),
+                          my_fresh=True, opp_fresh=True)
+        b.step(M("섀도볼"), iron)
+        blocked += b.opp.ranks["spDef"] < 0
+    check("인분: 섀도볼 특방 하락을 100번 중 한 번도 안 받는다 (%d)" % blocked,
+          blocked == 0, blocked)
+    burned = recoil = 0
+    for seed in range(100):
+        sf = P("하마돈")
+        sf.ability, sf.item = "우격다짐", "생명의구슬"
+        b = battle.Battle(dex, sf, P("누리레느"), rng=random.Random(seed), log=True,
+                          my_fresh=True, opp_fresh=True)
+        b.step(M("화염방사"), iron)
+        burned += b.opp.status == "화상"
+        recoil += said(b, "생명의구슬 반동")
+    check("우격다짐: 추가 효과도 생명의구슬 반동도 없다 (화상 %d · 반동 %d)"
+          % (burned, recoil), burned == 0 and recoil == 0, (burned, recoil))
+    b = battle.Battle(dex, P("누리레느"), P("하마돈"), rng=random.Random(1), log=True,
+                      my_fresh=True, opp_fresh=True)
+    b.opp.status = "얼음"
+    b.step(M("열탕"), iron)
+    check("열탕: 맞은 쪽의 얼음이 녹는다", b.opp.status != "얼음", b.log)
+    # 풀죽음은 상대가 **아직 안 움직였을 때만** 소용있다
+    flinched = 0
+    for seed in range(100):
+        b = battle.Battle(dex, P("하마돈"), P("보만다"), rng=random.Random(seed),
+                          log=True, my_fresh=True, opp_fresh=True)
+        b.step(M("악의파동"), iron)          # 하마돈이 보만다보다 느리다
+        flinched += said(b, "풀죽")
+    check("느린 쪽의 악의파동은 풀죽이지 못한다 (%d)" % flinched, flinched == 0, flinched)
+
+    # ④ 한 턴 표도 연속기를 여러 번으로 본다
+    e = best.expected_hits(M("스케일샷"))
+    t = best.expected_hits(M("트리플악셀"), 0.9)
+    # 2~5회 확률은 사용자가 확인해 준 값: 37.5 / 37.5 / 12.5 / 12.5 → 평균 3.0회.
+    # (처음엔 본편 5세대 값 35/35/15/15 = 평균 3.1회를 썼다 — 틀렸다)
+    check("연속기 2~5회 확률이 사용자가 확인해 준 값이다 (%s)"
+          % calc.CONFIG["multi_hit_2to5"],
+          calc.CONFIG["multi_hit_2to5"] == [0.375, 0.375, 0.125, 0.125])
+    check("한 턴 표: 스케일샷 평균 %.2f방 · 트리플악셀(명중 90%%) %.2f배" % (e, t),
+          abs(e - 3.0) < 1e-9 and abs(t - (1 + 0.9 * 2 + 0.81 * 3)) < 1e-9, (e, t))
+    one = best.rate_moves(dex, P("한카리아스"), P("하마돈"), [(M("스케일샷"), None)])[0]
+    check("한 턴 표의 기대 데미지가 1회분의 약 3배다 (%.1f / 1회 %.1f)"
+          % (one["expected"], one["res"]["max"]),
+          one["expected"] > one["res"]["min"] * 2.5, one)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -3850,6 +4123,7 @@ def main():
     test_party_file(dex)
     test_poltergeist(dex)
     test_fail_conditions(dex)
+    test_attack_effects(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

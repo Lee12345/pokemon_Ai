@@ -359,6 +359,8 @@ APPLIED_ITEM_KINDS = {
     "accuracy", "evasion", "accuracy_slow",
     "drain_hit", "flinch", "force_switch_foe", "self_switch",
     "extend", "seed",
+    # 큰뿌리 — 2026-09-22 흡수 기술(드레인펀치 등)을 붙이면서 같이 붙었다 (_secondaries)
+    "drain_boost",
 }
 
 # ★ **반만 붙은 것.** 위 집합에 들어 있어서 경고가 안 뜨는데,
@@ -378,7 +380,6 @@ APPLIED_ITEM_KINDS = {
 PARTIAL_ITEM_KINDS = {}
 # 아직 못 붙인 것 — 모델에 그 개념 자체가 없다. 붙이면 위로 옮긴다.
 #   quick      : 우선도가 같을 때 끼어드는 것 (best.turn_order 를 고쳐야 한다)
-#   drain_boost: HP 흡수 기술의 회복이 아직 없다
 #   pp         : PP 를 안 세고 있다
 #   bind_chip  : 바인드(조르기) 상태가 없다
 #   metronome  : 같은 기술 연속 횟수를 안 세고 있다
@@ -486,14 +487,33 @@ _FLINCH_ALWAYS = re.compile(r"(?:^|[.]\s*)상대를 풀죽게 한다")
 _THAW_SELF = re.compile(r"자신의 얼음 상태를 회복")                        # 불꽃 기술 5개
 
 
-def flinch_proof_abilities(dex):
-    """'풀죽지 않는다' 고 적힌 특성 (정신력). dex 에 붙여 외운다 (§7 — id 열쇠 금지)."""
-    got = getattr(dex, "_flinch_proof", None)
+def _abilities_saying(dex, attr, phrase):
+    """설명문에 phrase 가 있는 특성들. dex 에 붙여 외운다 (§7 — id 열쇠 금지)."""
+    got = getattr(dex, attr, None)
     if got is None:
         got = {a["name"] for a in dex.abilities
-               if "풀죽지 않" in (a.get("description") or "")}
-        dex._flinch_proof = got
+               if phrase in (a.get("description") or "")}
+        setattr(dex, attr, got)
     return got
+
+
+def flinch_proof_abilities(dex):
+    """'풀죽지 않는다' 고 적힌 특성 (정신력)."""
+    return _abilities_saying(dex, "_flinch_proof", "풀죽지 않")
+
+
+def shield_dust_abilities(dex):
+    """'공격의 추가 효과를 받지 않는다' (인분)."""
+    return _abilities_saying(dex, "_shield_dust", "공격의 추가 효과를 받지 않는다")
+
+
+def skill_link_abilities(dex):
+    """'연속 기술을 사용하면 최고 횟수로' (스킬링크)."""
+    return _abilities_saying(dex, "_skill_link", "연속 기술을 사용하면 최고 횟수로")
+
+
+# 거대해머 — "이 기술은 2회 연속으로 사용할 수 없다." (설명문에 '실패' 가 없어서 따로 둔다)
+_NO_REPEAT = re.compile(r"이 기술은 2회 연속으로 사용할 수 없다")
 
 
 # ---------------------------------------------------------------------------
@@ -1271,6 +1291,11 @@ class Battle(object):
         안 본다. 나머지는 턴 전에도 확실히 알 수 있다.
         """
         d = move.get("description") or ""
+        # ! 막혀서 실패한 시도는 '쓴' 것이 아니다. 안 그러면 한 번 막힌 뒤로 영영
+        #   못 쓴다 (실패한 시도도 last_move 에 남아서 — [49] 가 잡았다).
+        if (_NO_REPEAT.search(d) and user.last_move is not None
+                and user.last_move["name"] == move["name"] and not user.last_failed):
+            return "실패 — 두 번 연달아 쓸 수 없다"
         if "실패" not in d:
             return None
         if _FIRST_ONLY.search(d) and user.acted:
@@ -1340,21 +1365,9 @@ class Battle(object):
                        "통하게 했습니다 (나온 첫 턴만 되는 기술)"
                        % (atk.name, move["name"]))
 
-        acc = move.get("accuracy")
-        if acc is not None and acc <= 100:
-            hit_p = acc / 100.0
-            for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
-                ef = item_effect(self.dex, src.item, kind)
-                if ef:
-                    hit_p *= ef["mult"]
-            ef = item_effect(self.dex, atk.item, "accuracy_slow")
-            if ef and who == "후공":
-                hit_p *= ef["mult"]
-            if self.rng.random() > min(1.0, hit_p):
-                self._say("%s 의 %s — 빗나감 (명중 %.0f%%)"
-                          % (atk.name, move["name"], min(1.0, hit_p) * 100))
-                self._crash(atk, move)
-                return 0
+        if not self._accuracy_roll(atk, dfn, move, who):
+            self._crash(atk, move)
+            return 0
 
         # 기술마다 급소 확률이 다르다. '반드시 급소' 도 있다 (트릭플라워 등).
         stage = atk.crit_stage
@@ -1375,13 +1388,133 @@ class Battle(object):
             atk.item_used = True
             self._say("%s 의 %s — %s 기술 위력 %.1f배 (한 번뿐)"
                       % (atk.name, atk.item, jw["type"], jw["mult"]))
-        res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(), move,
+        fx = calc.attack_effects(move)
+        first = (dict(move, power=fx["powers"][0]) if fx["powers"] else move)
+        res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(), first,
                                critical=crit, extra=extra)
         if "error" in res:
             self._say("%s 의 %s — %s" % (atk.name, move["name"], res["error"]))
             self._crash(atk, move)        # 고스트에게 무릎차기 — 안 통해도 다친다
             return 0
 
+        # 연속기 — 한 방씩 따로 맞힌다. 기합의띠·옹골참은 **한 방만** 버티고,
+        # 울퉁불퉁멧·까칠한피부는 **매 방** 반응한다. 합쳐서 한 번에 넣으면 둘 다 틀린다.
+        # ! 전에는 스케일샷(한카리아스 17%)·록블라스트가 **한 번만** 때렸다.
+        n_hits = self._hit_count(atk, move, fx)
+        my_party, foe_party = self._party_of(atk), self._party_of(dfn)
+        total, landed, connected = 0, 0, False
+        for i in range(n_hits):
+            if i > 0:
+                # 레드카드·탈출버튼으로 누가 빠졌거나 쓰러졌으면 멈춘다
+                if not (atk.alive and dfn.alive) or foe_party.active is not dfn \
+                        or my_party.active is not atk:
+                    break
+                if (fx["stop_on_miss"]
+                        and atk.base.ability not in skill_link_abilities(self.dex)
+                        and not self._accuracy_roll(atk, dfn, move, who, quiet=True)):
+                    self._say("%s 의 %s — %d번째가 빗나가 끝났다"
+                              % (atk.name, move["name"], i + 1))
+                    break
+                crit = self.rng.random() < calc.crit_chance(move, stage)
+                mv_i = (dict(move, power=fx["powers"][i])
+                        if fx["powers"] and i < len(fx["powers"]) else move)
+                res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(),
+                                       mv_i, critical=crit, extra=extra)
+                if "error" in res:
+                    break
+            got, touched = self._land(atk, dfn, move, res, crit)
+            total += got
+            landed += 1
+            connected = connected or touched
+        if n_hits > 1:
+            self._say("%s 의 %s — %d번 맞았다 (합계 %d)"
+                      % (atk.name, move["name"], landed, total))
+        dmg = total
+
+        # 우격다짐 — 추가 효과가 없어지는 대신 1.3배 (calc 가 올렸다).
+        # 본편처럼 **생명의구슬 반동도 없다** — 추가 효과가 있는 기술일 때만.
+        sheer = calc.sheer_force_on(self.dex, atk.as_build(), move)
+
+        # 반동
+        rec = move_recoil(move)
+        if rec and dmg:
+            back = max(1, int(dmg * rec))
+            atk.damage(back, direct=False)
+            self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
+        # 생명의구슬
+        # 죽기살기 같은 고정 데미지는 생명의구슬이 세게 하지도, 반동을 주지도 않는다
+        if (dmg and atk.item == "생명의구슬" and not atk.item_used
+                and not res.get("fixed") and not sheer):
+            atk.damage(max(1, atk.max_hp // 10), direct=False)
+            self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
+
+        # 데미지 계산기가 '이 특성은 못 넣었다' 고 한 것들을 올린다.
+        # 다만 여기서 이미 다루는 것(탈·지구력·까칠한피부·열교환·옹골참)은 뺀다.
+        handled = set(ON_HIT_ABILITY) | {DISGUISE, ENDURE_FULL}
+        for w in res.get("warnings") or []:
+            if any(("'%s'" % h) in w for h in handled):
+                continue
+            self._warn(w)
+
+        # 기술에 붙은 특수 규칙은 경고로만.
+        # 날씨·필드는 여기서 실제로 계산하므로 그 경고는 뺀다.
+        for c in best.move_caveats(move):
+            if "날씨·필드" in c or c.startswith(best.CONDITIONAL):
+                continue          # 여기서 실제로 판정하는 것들이다
+            if "위력이" in c and _NEED_STOCKPILE.search(d_text):
+                continue          # 토해내기 — 비축한 만큼 위력을 위에서 실제로 넣었다
+            if "회 연속" in c:
+                continue          # 연속기 — 위에서 실제로 여러 번 때렸다
+            self._warn("%s: %s" % (move["name"], c))
+
+        self._secondaries(atk, dfn, move, fx, dmg, connected, sheer)
+        self._pinch_berry(dfn)
+        return dmg
+
+    def _accuracy_roll(self, atk, dfn, move, who, quiet=False):
+        """명중 판정. 맞으면 True. (연속기의 두 번째부터도 이걸 쓴다)"""
+        acc = move.get("accuracy")
+        if acc is None or acc > 100:
+            return True
+        hit_p = acc / 100.0
+        for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
+            ef = item_effect(self.dex, src.item, kind)
+            if ef:
+                hit_p *= ef["mult"]
+        ef = item_effect(self.dex, atk.item, "accuracy_slow")
+        if ef and who == "후공":
+            hit_p *= ef["mult"]
+        if self.rng.random() > min(1.0, hit_p):
+            if not quiet:
+                self._say("%s 의 %s — 빗나감 (명중 %.0f%%)"
+                          % (atk.name, move["name"], min(1.0, hit_p) * 100))
+            return False
+        return True
+
+    def _hit_count(self, atk, move, fx):
+        """이번에 몇 번 때리나. 설명문의 'N~M회 연속' 을 읽는다."""
+        if not fx["hits"]:
+            return 1
+        lo, hi = fx["hits"]
+        if lo == hi:
+            return lo
+        if atk.base.ability in skill_link_abilities(self.dex):
+            return hi                     # 스킬링크 — "최고 횟수로 사용한다"
+        if fx["stop_on_miss"]:
+            return hi                     # 찍찍베기 — 매번 명중을 따로 굴려서 멈춘다
+        if (lo, hi) == (2, 5):
+            # 설명문엔 '2~5회' 까지만 있다. 횟수 확률은 사용자가 확인해 준 값
+            # (37.5/37.5/12.5/12.5 — calc.CONFIG). 확인된 값이라 경고하지 않는다.
+            r, acc = self.rng.random(), 0.0
+            for n, p in zip(range(2, 6), calc.CONFIG["multi_hit_2to5"]):
+                acc += p
+                if r < acc:
+                    return n
+            return 5
+        return self.rng.randint(lo, hi)
+
+    def _land(self, atk, dfn, move, res, crit):
+        """한 방. (몸에 들어간 데미지, 닿았나) — 대타·탈에 막혀도 '닿은' 것이다."""
         dmg = self.rng.choice(res["rolls"])
         # 스크린 — 급소에는 안 통한다 (본편 규칙). 죽기살기 같은 고정 데미지도 안 깎인다.
         if not crit and not res.get("fixed"):
@@ -1397,7 +1530,7 @@ class Battle(object):
             self._say("%s 의 탈이 벗겨졌다 — 데미지 무효, %d 만 잃음 (HP %d/%d)"
                       % (dfn.name, lost, dfn.hp, dfn.max_hp))
             self._pinch_berry(dfn)
-            return 0
+            return 0, True
 
         if dfn.substitute > 0:
             took = min(dfn.substitute, dmg)
@@ -1409,7 +1542,7 @@ class Battle(object):
                          " (대타 %d 남음)" % dfn.substitute))
             if gone:
                 dfn.substitute = 0
-            return 0
+            return 0, True
 
         note = dfn.damage(dmg)
         self._say("%s 의 %s → %s 에게 %d (HP %d/%d)%s%s"
@@ -1418,14 +1551,6 @@ class Battle(object):
                      "  · " + note if note else ""))
         if dmg:
             dfn.hit_this_turn = True           # 힘껏펀치가 본다
-        # 속이기·기선제압 — 풀죽게 하는 것이 기술 그 자체다 (확률이 아니다).
-        # 정신력처럼 '풀죽지 않는다' 고 적힌 특성은 설명문에서 읽는다.
-        if dmg and dfn.alive and _FLINCH_ALWAYS.search(d_text):
-            if dfn.base.ability in flinch_proof_abilities(self.dex):
-                self._say("%s 의 %s — 풀죽지 않는다" % (dfn.name, dfn.base.ability))
-            else:
-                dfn.flinched = True
-                self._say("%s 는 풀죽었다" % dfn.name)
 
         # 맞은 쪽 특성이 반응한다
         ab = ON_HIT_ABILITY.get(dfn.base.ability)
@@ -1499,37 +1624,93 @@ class Battle(object):
                     self._say("%s 의 %s — 스스로 물러난다"
                               % (dfn.name, dfn.item))
                     self._force_switch(self._party_of(dfn), dfn.item)
+        return dmg, True
 
-        # 반동
-        rec = move_recoil(move)
-        if rec and dmg:
-            back = max(1, int(dmg * rec))
-            atk.damage(back, direct=False)
-            self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
-        # 생명의구슬
-        # 죽기살기 같은 고정 데미지는 생명의구슬이 세게 하지도, 반동을 주지도 않는다
-        if atk.item == "생명의구슬" and not atk.item_used and not res.get("fixed"):
-            atk.damage(max(1, atk.max_hp // 10), direct=False)
-            self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
+    def _secondaries(self, atk, dfn, move, fx, dealt, connected, sheer):
+        """공격기의 추가 효과·뒤처리 (calc.attack_effects 가 설명문에서 읽은 것).
 
-        # 데미지 계산기가 '이 특성은 못 넣었다' 고 한 것들을 올린다.
-        # 다만 여기서 이미 다루는 것(탈·지구력·까칠한피부·열교환·옹골참)은 뺀다.
-        handled = set(ON_HIT_ABILITY) | {DISGUISE, ENDURE_FULL}
-        for w in res.get("warnings") or []:
-            if any(("'%s'" % h) in w for h in handled):
+        상대에게 거는 것은 **몸에 데미지가 들어갔을 때만** (대타에 막히면 안 걸린다),
+        자기에게 거는 것(인파이트·용성군·니트로차지)은 닿기만 하면 된다.
+        """
+        if not connected:
+            return
+        shield = dfn.base.ability in shield_dust_abilities(self.dex)
+        for g in fx["groups"]:
+            if g["cond"]:
+                self._warn("%s: '...한 경우' 에만 걸리는 추가 효과는 아직 계산에 "
+                           "없습니다" % move["name"])
                 continue
-            self._warn(w)
-
-        # 기술에 붙은 특수 규칙은 경고로만.
-        # 날씨·필드는 여기서 실제로 계산하므로 그 경고는 뺀다.
-        for c in best.move_caveats(move):
-            if "날씨·필드" in c or c.startswith(best.CONDITIONAL):
-                continue          # 여기서 실제로 판정하는 것들이다
-            if "위력이" in c and _NEED_STOCKPILE.search(d_text):
-                continue          # 토해내기 — 비축한 만큼 위력을 위에서 실제로 넣었다
-            self._warn("%s: %s" % (move["name"], c))
-        self._pinch_berry(dfn)
-        return dmg
+            if sheer and g["secondary"]:
+                continue                  # 우격다짐 — 추가 효과가 없어진다
+            on_foe = any(e.get("who") == "foe" or e["kind"] != "rank"
+                         for e in g["effects"])
+            if on_foe and (not dealt or not dfn.alive):
+                continue
+            if g["chance"] < 1.0 and self.rng.random() >= g["chance"]:
+                continue
+            if on_foe and shield and g["secondary"]:
+                self._say("%s 의 %s — 추가 효과를 받지 않는다"
+                          % (dfn.name, dfn.base.ability))
+                continue
+            for e in g["effects"]:
+                k = e["kind"]
+                if k == "rank":
+                    side = atk if e["who"] == "self" else dfn
+                    if not side.alive:
+                        continue
+                    if side is dfn and e["step"] < 0 and dfn.blocks_drop():
+                        self._say("%s 의 %s — 능력이 안 깎인다"
+                                  % (dfn.name, dfn.base.ability))
+                        continue
+                    moved = side.bump(e["stat"], e["step"])
+                    if moved:
+                        self._say("%s 의 %s — %s %s%+d (지금 %s)"
+                                  % (atk.name, move["name"], side.name,
+                                     calc.STAT_KO[e["stat"]], moved,
+                                     side.rank_text()))
+                elif k == "status":
+                    opts = e["options"]
+                    self._inflict(dfn, opts[0] if len(opts) == 1
+                                  else self.rng.choice(opts))
+                elif k == "flinch":
+                    if dfn.moved:
+                        continue          # 이미 움직였으면 풀죽어도 소용없다
+                    if dfn.base.ability in flinch_proof_abilities(self.dex):
+                        self._say("%s 의 %s — 풀죽지 않는다"
+                                  % (dfn.name, dfn.base.ability))
+                    else:
+                        dfn.flinched = True
+                        self._say("%s 는 풀죽었다" % dfn.name)
+                else:
+                    self._warn("%s 의 '%s' 효과는 아직 계산에 없습니다"
+                               % (move["name"], e["name"]))
+        # 흡수 — 큰뿌리를 들면 더 회복한다 (설명문 배율)
+        if fx["drain"] and dealt and atk.alive:
+            mult = 1.0
+            ef = item_effect(self.dex, atk.item, "drain_boost")
+            if ef:
+                mult = ef["mult"]
+            got = atk.heal(max(1, int(dealt * fx["drain"] * mult)))
+            if got:
+                self._say("%s 의 %s — %d 흡수 (HP %d/%d)%s"
+                          % (atk.name, move["name"], got, atk.hp, atk.max_hp,
+                             " · %s" % atk.item if ef else ""))
+        # 열탕·열사의대지 — 맞은 쪽의 얼음을 녹인다
+        if fx["thaw_foe"] and dealt and dfn.alive and dfn.status == "얼음":
+            dfn.status = None
+            self._say("%s 의 얼음이 녹았다" % dfn.name)
+        # 탁쳐서떨구기 — 도구를 없앤다 (메가스톤은 못 떨어뜨린다)
+        if (fx["knock_off"] and dealt and dfn.item and not dfn.item_used
+                and dfn.item not in self.dex.mega_by_item):
+            self._say("%s 의 %s — %s 의 %s 를 떨어뜨렸다"
+                      % (atk.name, move["name"], dfn.name, dfn.item))
+            dfn.item = None
+        # 유턴·볼트체인지·퀵턴 — 때리고 나서 교체한다
+        if fx["self_switch"] and atk.alive:
+            party = self._party_of(atk)
+            if party.bench():
+                idx = self.choose_replacement(party)
+                self.switch_in(party, idx, "%s 로" % move["name"])
 
     def _pinch_berry(self, side):
         """자뭉열매처럼 반피에서 터지는 열매. 상위권 1위 도구가 이거다."""
@@ -1939,6 +2120,10 @@ class Battle(object):
             self._use_status(actor, target, move)
         else:
             self._hit(actor, target, move, None)
+            # 자폭·대폭발·미스트버스트 — 막히거나 빗나가도 쓴 쪽은 쓰러진다 (본편 규칙)
+            if calc.attack_effects(move)["self_faint"] and actor.alive:
+                actor.hp = 0
+                self._say("%s 는 %s 로 쓰러졌다" % (actor.name, move["name"]))
         # 나온 뒤의 기록 — **쓰고 난 뒤에** 남긴다. 먼저 남기면 속이기가 자기 자신
         # 때문에 '첫 기술이 아니다' 로 실패한다.
         actor.acted = True
