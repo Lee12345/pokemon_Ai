@@ -4294,20 +4294,27 @@ def test_abilities_batch1(dex):
         m = re.search(r"%s 의 %s → \S+ 에게 (\d+)" % (re.escape(who), move), " ".join(b.log))
         return int(m.group(1)) if m else 0
 
-    # ① 경고 장치
-    b = battle.Battle(dex, P("하마돈"), P("라이츄"), rng=random.Random(1),
+    # ① 경고 장치 — '지금 안 들어간 특성' 을 하나 골라 쓴다 (특성을 붙일수록 바뀌므로
+    #    이름을 박지 않는다. 처음엔 노가드로 짰다가 2차에서 노가드를 붙이자 깨졌다)
+    left = sorted(a["name"] for a in dex.abilities
+                  if a["name"] not in battle.handled_abilities(dex))
+    check("(전제) 아직 안 들어간 특성이 남아 있다 (%d개)" % len(left), left, len(left))
+    odd = left[0] if left else None
+    strange = P("하마돈")
+    strange.ability = odd
+    b = battle.Battle(dex, P("누리레느"), strange, rng=random.Random(1),
                       my_fresh=True, opp_fresh=True)
-    check("목록 밖 특성(메가라이츄Y 노가드)은 경고한다",
-          any("'노가드'" in w and "안 들어간다" in w for w in b.warnings), b.warnings)
+    check("목록 밖 특성('%s')은 경고한다" % odd,
+          any("'%s'" % odd in w and "안 들어간다" in w for w in b.warnings), b.warnings)
     b = battle.Battle(dex, P("하마돈"), P("누리레느"), rng=random.Random(1),
                       my_fresh=True, opp_fresh=True)
     check("처리되는 특성끼리면 특성 경고가 없다",
           not any("특성" in w and "안 들어간다" in w for w in b.warnings), b.warnings)
-    got = search.best_action(dex, [P("하마돈")], [dex.find_pokemon("라이츄")], seconds=1.0)
+    got = search.best_action(dex, [strange], [dex.find_pokemon("누리레느")], seconds=1.0)
     check("탐색 결과에 대전 경고가 담긴다 (전엔 버렸다)",
-          any("'노가드'" in w for w in got.get("warnings") or []), got.get("warnings"))
+          any("'%s'" % odd in w for w in got.get("warnings") or []), got.get("warnings"))
     check("창·보고서가 쓰는 경고 줄에 나온다",
-          any("노가드" in l for l in search.warning_lines(got)), search.warning_lines(got))
+          any(odd in l for l in search.warning_lines(got)), search.warning_lines(got))
 
     # ② 규칙이 딱 그 특성만 잡는다
     kinds = {}
@@ -4449,6 +4456,268 @@ def test_abilities_batch1(dex):
           sf >= ctl * 1.2, (sf, ctl))
 
 
+def test_abilities_batch2(dex):
+    """특성 2차 (2026-09-22) — 명중·급소·랭크 무시 · 틀깨기 · 매직가드 · 매직미러 …"""
+    import battle, random, re
+    print("\n[53] 특성 2차 — 틀깨기·매직가드·노가드·천진 …")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+
+    def ab(name, ability, item=None):
+        b = P(name)
+        b.ability = ability
+        if item is not None:
+            b.item = item
+        return b
+
+    def duel(me, op, mine, theirs, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+        for a, o in zip(mine, theirs):
+            b.step(a, o)
+        return b
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    def hit_of(b, who, move):
+        m = re.search(r"%s 의 %s → \S+ 에게 (\d+)" % (re.escape(who), move), " ".join(b.log))
+        return int(m.group(1)) if m else 0
+
+    def rate(make, move, test, n=300, opp_move=None, setup=None):
+        k = 0
+        for seed in range(n):
+            me, op = make()
+            bb = battle.Battle(dex, me, op, rng=random.Random(seed), log=True,
+                               my_fresh=True, opp_fresh=True)
+            if setup:
+                setup(bb)
+            bb.step(M(move), opp_move or iron)
+            k += bool(test(bb))
+        return k * 100.0 / n
+
+    missed = lambda mv: (lambda bb: not any((mv + " — 빗나감") in l for l in bb.log))
+
+    kinds = {}
+    for a in dex.abilities:
+        for r in battle.ability_rules(dex, a["name"]):
+            kinds.setdefault(r["kind"], set()).add(a["name"])
+    want = {"magic_guard": {"매직가드"}, "mold_breaker": {"틀깨기"}, "infiltrator": {"틈새포착"},
+            "magic_bounce": {"매직미러"}, "no_guard": {"노가드"}, "rock_head": {"돌머리"},
+            "unaware": {"천진"}, "no_crit": {"조가비갑옷", "전투무장"}, "acc_mult": {"복안"},
+            "keen_eye": {"날카로운눈", "발광"}, "block_priority": {"여왕의위엄", "테일아머"},
+            "crit_up": {"대운"}, "crit_vs_status": {"무도한행동"},
+            "evasion_when": {"눈숨기", "모래숨기", "갈지자걸음"}, "sand_immune": {"모래숨기", "방진"},
+            "entry_drop": {"위협", "감미로운꿀"}, "unnerve": {"긴장감"}, "corrosion": {"부식"},
+            "synchronize": {"싱크로"}, "supreme": {"총대장"}, "screen_cleaner": {"배리어프리"},
+            "hit_field": {"넘치는씨", "모래뿜기"}, "early_bird": {"일찍기상"},
+            "flower_veil": {"플라워베일"}}
+    for k, names in want.items():
+        check("규칙 %s 가 %s 만 잡는다" % (k, "·".join(sorted(names))),
+              kinds.get(k, set()) == names, kinds.get(k))
+    check("calc 의 틀깨기·천진 문장이 battle 규칙과 같은 특성을 잡는다",
+          calc.mold_breaker_abilities(dex) == kinds.get("mold_breaker", set())
+          and calc.unaware_abilities(dex) == kinds.get("unaware", set()))
+
+    # 매직가드
+    b = duel(ab("하마돈", "매직가드", "생명의구슬"), P("누리레느"), [M("지진")], [iron])
+    check("매직가드: 생명의구슬 반동이 없다", b.me.hp == b.me.max_hp
+          and not said(b, "생명의구슬 반동"), b.log)
+    mg = ab("하마돈", "매직가드")
+    bb = battle.Battle(dex, mg, P("누리레느"), rng=random.Random(1), my_fresh=True, opp_fresh=True)
+    bb.me.status = "독"
+    bb.step(iron, iron)
+    check("매직가드: 독 데미지를 안 받는다", bb.me.hp == bb.me.max_hp, bb.me.hp)
+    b = duel(P("누리레느"), ab("하마돈", "매직가드"), [M("문포스")], [iron])
+    check("매직가드: 공격 기술 데미지는 받는다", b.opp.hp < b.opp.max_hp, b.opp.hp)
+
+    # 틀깨기
+    r0 = calc.calc_damage(dex, P("하마돈"), ab("누리레느", "부유"), M("지진"))
+    r1 = calc.calc_damage(dex, ab("하마돈", "틀깨기"), ab("누리레느", "부유"), M("지진"))
+    check("틀깨기: 부유에게도 땅 기술이 맞는다", "error" in r0 and "error" not in r1, (r0, r1))
+    m0 = calc.calc_damage(dex, P("하마돈"), ab("누리레느", "멀티스케일"), M("지진"))["max"]
+    m1 = calc.calc_damage(dex, ab("하마돈", "틀깨기"), ab("누리레느", "멀티스케일"),
+                          M("지진"))["max"]
+    check("틀깨기: 멀티스케일을 무시한다 (%d → %d)" % (m0, m1), m1 > m0 * 1.8, (m0, m1))
+    b = duel(ab("빠르모트", "틀깨기"), ab("누리레느", "축전"), [M("10만볼트")], [iron])
+    check("틀깨기: 축전을 뚫고 맞힌다", hit_of(b, "빠르모트", "10만볼트") > 0, b.log)
+    # (한 방 거리여야 옹골참이 발동한다 — 처음엔 +6 지진으로도 누리레느를 못 잡아서
+    #  시험이 안 됐다. 바위 4배인 파이어로에게 +6 스톤에지로 잰다)
+    def sturdy_left(ability):
+        bb = battle.Battle(dex, ab("하마돈", ability), ab("파이어로", "옹골참"),
+                           rng=random.Random(2), log=True, my_fresh=True, opp_fresh=True)
+        bb.me.ranks["attack"] = 6
+        bb.me.ranks["accuracy"] = 6
+        bb.step(M("스톤에지"), M("칼춤"))
+        return bb.opp.hp
+    mb_hp, ctl_hp = sturdy_left("틀깨기"), sturdy_left("모래숨기")
+    check("틀깨기: 옹골참을 뚫고 한 방에 쓰러뜨린다 (대조: 옹골참은 HP 1) — %d / %d"
+          % (mb_hp, ctl_hp), mb_hp == 0 and ctl_hp == 1, (mb_hp, ctl_hp))
+
+    # 틈새포착 — 리플렉터·대타를 무시
+    def with_screen(ability):
+        bb = battle.Battle(dex, ab("하마돈", ability), P("누리레느"), rng=random.Random(1),
+                           log=True, my_fresh=True, opp_fresh=True)
+        bb.opp_party.screens["리플렉터"] = 5
+        bb.step(M("지진"), iron)
+        return hit_of(bb, "하마돈", "지진")
+    s0, s1 = with_screen("모래숨기"), with_screen("틈새포착")
+    check("틈새포착: 리플렉터를 무시한다 (%d → %d)" % (s0, s1), s1 > s0 * 1.8, (s0, s1))
+    bb = battle.Battle(dex, ab("하마돈", "틈새포착"), P("누리레느"), rng=random.Random(1),
+                       log=True, my_fresh=True, opp_fresh=True)
+    bb.opp.substitute = 40
+    bb.step(M("지진"), iron)
+    check("틈새포착: 대타를 무시하고 몸에 넣는다", bb.opp.hp < bb.opp.max_hp
+          and bb.opp.substitute == 40, (bb.opp.hp, bb.opp.substitute))
+
+    # 매직미러 — 도깨비불을 되받아친다
+    b = duel(P("하마돈"), ab("누리레느", "매직미러"), [M("도깨비불")], [iron])
+    check("매직미러: 도깨비불을 되받아쳐 쓴 쪽이 화상", b.me.status == "화상"
+          and b.opp.status is None, (b.me.status, b.opp.status))
+    b = duel(P("하마돈"), ab("누리레느", "매직미러"), [M("스텔스록")], [iron])
+    check("매직미러: 스텔스록도 되받아쳐 쓴 쪽 필드에 깔린다",
+          b.me_party.hazards.get("스텔스록") and not b.opp_party.hazards.get("스텔스록"),
+          (b.me_party.hazards, b.opp_party.hazards))
+    b = duel(P("하마돈"), ab("누리레느", "매직미러"), [M("칼춤")], [iron])
+    check("매직미러: 자기에게 쓰는 칼춤은 그대로", b.me.ranks["attack"] == 2, b.me.ranks)
+
+    # 명중 계열 (스톤에지 80%)
+    base = rate(lambda: (P("하마돈"), P("누리레느")), "스톤에지", missed("스톤에지"))
+    ng = rate(lambda: (ab("하마돈", "노가드"), P("누리레느")), "스톤에지", missed("스톤에지"))
+    ng2 = rate(lambda: (P("하마돈"), ab("누리레느", "노가드")), "스톤에지", missed("스톤에지"))
+    check("노가드: 양쪽 누구든 100%% (기본 %.0f%% / 내 쪽 %.0f%% / 상대 쪽 %.0f%%)"
+          % (base, ng, ng2), ng == 100 and ng2 == 100 and base < 90, (base, ng, ng2))
+    ohko = rate(lambda: (ab("잠만보", "노가드"), P("누리레느")), "땅가르기",
+                lambda bb: not bb.opp.alive, n=50)
+    check("노가드: 일격필살도 맞는다 (%.0f%%)" % ohko, ohko == 100, ohko)
+    ce = rate(lambda: (ab("하마돈", "복안"), P("누리레느")), "스톤에지", missed("스톤에지"))
+    check("복안: 80 × 1.3 → 100%% (%.0f%%)" % ce, ce == 100, ce)
+    def eva2(bb):
+        bb.opp.ranks["evasion"] = 2
+    ke = rate(lambda: (ab("하마돈", "날카로운눈"), P("누리레느")), "스톤에지",
+              missed("스톤에지"), setup=eva2)
+    plain = rate(lambda: (P("하마돈"), P("누리레느")), "스톤에지", missed("스톤에지"), setup=eva2)
+    check("날카로운눈: 상대 회피율 +2 를 무시 (%.0f%% vs 무시 안 하면 %.0f%%)" % (ke, plain),
+          72 <= ke <= 88 and 40 <= plain <= 56, (ke, plain))
+    bb = battle.Battle(dex, ab("하마돈", "날카로운눈"), P("누리레느"), rng=random.Random(1),
+                       my_fresh=True, opp_fresh=True)
+    bb._lower(bb.me, "accuracy", -1, bb.opp, "시험")
+    check("날카로운눈: 명중률이 안 깎인다", bb.me.ranks["accuracy"] == 0, bb.me.ranks)
+    def snow(bb):
+        bb.field.set("눈")
+    sc = rate(lambda: (P("하마돈"), ab("누리레느", "눈숨기")), "스톤에지", missed("스톤에지"),
+              setup=snow)
+    check("눈숨기: 눈에서 명중 80/1.25 = 64%% 근처 (%.0f%%)" % sc, 56 <= sc <= 72, sc)
+
+    # 급소 계열
+    crit = rate(lambda: (P("하마돈"), ab("누리레느", "조가비갑옷")), "트릭플라워",
+                lambda bb: any("급소!" in l for l in bb.log), n=30)
+    crit_mb = rate(lambda: (ab("하마돈", "틀깨기"), ab("누리레느", "조가비갑옷")), "트릭플라워",
+                   lambda bb: any("급소!" in l for l in bb.log), n=30)
+    check("조가비갑옷: '반드시 급소' 도 급소가 아니다, 틀깨기면 급소 (%.0f%% / %.0f%%)"
+          % (crit, crit_mb), crit == 0 and crit_mb == 100, (crit, crit_mb))
+    def poison(bb):
+        bb.opp.status = "독"
+    mc = rate(lambda: (ab("하마돈", "무도한행동"), P("누리레느")), "지진",
+              lambda bb: any("급소!" in l for l in bb.log), n=30, setup=poison)
+    check("무도한행동: 독 상대에게 반드시 급소 (%.0f%%)" % mc, mc == 100, mc)
+    sl = rate(lambda: (ab("하마돈", "대운"), P("누리레느")), "지진",
+              lambda bb: any("급소!" in l for l in bb.log), n=800)
+    check("대운: 급소 1/8 근처 (%.1f%%, 기본은 1/24≈4.2%%)" % sl, 8 <= sl <= 17, sl)
+
+    # 천진 — 받는 쪽이 천진이면 칼춤 +2 가 안 먹는다 / 때리는 쪽이 천진이면 철벽 +2 무시
+    sd = P("하마돈")
+    sd.ranks = dict(sd.ranks, attack=2)
+    u0 = calc.calc_damage(dex, sd, P("누리레느"), M("지진"))["max"]
+    u1 = calc.calc_damage(dex, sd, ab("누리레느", "천진"), M("지진"))["max"]
+    u2 = calc.calc_damage(dex, P("하마돈"), P("누리레느"), M("지진"))["max"]
+    check("천진(받는 쪽): 상대 칼춤 +2 를 무시 (%d → %d = 기본 %d)" % (u0, u1, u2),
+          u1 == u2 < u0, (u0, u1, u2))
+    df = P("누리레느")
+    df.ranks = dict(df.ranks, defense=2)
+    v0 = calc.calc_damage(dex, P("하마돈"), df, M("지진"))["max"]
+    v1 = calc.calc_damage(dex, ab("하마돈", "천진"), df, M("지진"))["max"]
+    check("천진(때리는 쪽): 상대 철벽 +2 를 무시 (%d → %d)" % (v0, v1), v1 == u2 > v0,
+          (v0, v1, u2))
+
+    # 돌머리 — 반동 없음
+    b = duel(ab("하마돈", "돌머리"), P("누리레느"), [M("이판사판태클")], [iron])
+    check("돌머리: 이판사판태클 반동이 없다", b.me.hp == b.me.max_hp and not said(b, "반동"),
+          b.log)
+
+    # 여왕의위엄 — 선제기를 막는다 (나를 겨냥한 것만)
+    b = duel(P("누리레느"), ab("하마돈", "여왕의위엄"), [M("아쿠아제트")], [iron])
+    check("여왕의위엄: 아쿠아제트가 실패한다", said(b, "선제 기술을 쓸 수 없다")
+          and b.opp.hp == b.opp.max_hp, b.log)
+    b = duel(P("누리레느"), ab("하마돈", "여왕의위엄"), [M("문포스")], [iron])
+    check("여왕의위엄: 선제기가 아니면 맞는다", b.opp.hp < b.opp.max_hp, b.log)
+
+    # 그 밖
+    b = duel(ab("하마돈", "모래숨기"), P("누리레느"), [iron], [iron])
+    bb = battle.Battle(dex, ab("하마돈", "방진"), P("누리레느"), rng=random.Random(1),
+                       my_fresh=True, opp_fresh=True)
+    bb.field.set("모래바람")
+    bb.opp.types_override = ["노말"]
+    bb.me.types_override = ["노말"]
+    bb.step(iron, iron)
+    check("방진: 모래바람 데미지를 안 받는다 (상대는 받는다)", bb.me.hp == bb.me.max_hp
+          and bb.opp.hp < bb.opp.max_hp, (bb.me.hp, bb.opp.hp))
+    b = duel(ab("누리레느", "감미로운꿀"), P("하마돈"), [iron], [iron])
+    check("감미로운꿀: 나오면 상대 회피율 −1", b.opp.ranks["evasion"] == -1, b.opp.ranks)
+    b = duel(ab("하마돈", "배리어프리"), P("누리레느"), [iron], [iron])
+    bb = battle.Battle(dex, [P("하마돈"), ab("누리레느", "배리어프리")], P("누리레느"),
+                       rng=random.Random(1), log=True, my_fresh=True, opp_fresh=True)
+    bb.opp_party.screens["리플렉터"] = 5
+    bb.step(("교체", 1), iron)
+    check("배리어프리: 나오면 벽이 사라진다", not bb.opp_party.screens, bb.opp_party.screens)
+    b = duel(P("하마돈"), ab("누리레느", "넘치는씨"), [M("지진")], [iron])
+    check("넘치는씨: 맞으면 그래스필드", b.field.terrain == "그래스필드", b.field.terrain)
+    b = duel(P("누리레느"), ab("하마돈", "모래뿜기"), [M("문포스")], [iron])
+    check("모래뿜기: 맞으면 모래바람", b.field.weather == "모래바람", b.field.weather)
+    # 반 아래로 떨어졌는데도 자뭉열매가 안 터져야 한다 (대조: 긴장감이 없으면 터진다)
+    def berry_after(ability):
+        me = P("누리레느")
+        me.item = "자뭉열매"
+        bb = duel(me, ab("하마돈", ability), [iron], [M("지진")], my_hp=[55])
+        return bb.me.hp <= bb.me.max_hp // 2 or bb.me.item_used, bb.me.item_used
+    dropped_un, ate_un = berry_after("긴장감")
+    dropped_ctl, ate_ctl = berry_after("모래숨기")
+    check("긴장감: 반 아래로 떨어져도 나무열매를 못 먹는다 (대조는 먹는다)",
+          dropped_un and not ate_un and ate_ctl, (dropped_un, ate_un, ate_ctl))
+    b = duel(ab("하마돈", "부식"), P("아머까오"), [M("맹독")], [iron])
+    check("부식: 강철타입도 맹독에 걸린다", b.opp.status == "맹독", b.opp.status)
+    b = duel(P("하마돈"), ab("누리레느", "싱크로"), [M("도깨비불")], [iron])
+    check("싱크로: 화상을 건 쪽도 화상", b.opp.status == "화상" and b.me.status == "화상",
+          (b.me.status, b.opp.status))
+    def supreme(n_down):
+        team = [ab("대도각참", "총대장")] + [P("누리레느")] * 3
+        bb = battle.Battle(dex, team, P("하마돈"), rng=random.Random(1), log=True,
+                           my_fresh=True, opp_fresh=True,
+                           my_hp=[100] + [0.0001 if i < n_down else 100 for i in range(3)])
+        for i in range(n_down):
+            bb.me_party.members[i + 1].hp = 0
+        bb.step(M("아이언헤드"), iron)
+        return hit_of(bb, "대도각참", "아이언헤드")
+    s0, s3 = supreme(0), supreme(3)
+    check("총대장: 쓰러진 우리 편 3마리면 30%% 세다 (%d → %d)" % (s0, s3),
+          s3 >= s0 * 1.25, (s0, s3))
+    eb = ab("하마돈", "일찍기상")
+    bb = battle.Battle(dex, eb, P("누리레느"), rng=random.Random(1), my_fresh=True, opp_fresh=True)
+    bb._inflict(bb.me, "잠듦")
+    t_eb = bb.me.status_turns
+    bb2 = battle.Battle(dex, P("하마돈"), P("누리레느"), rng=random.Random(1),
+                        my_fresh=True, opp_fresh=True)
+    bb2._inflict(bb2.me, "잠듦")
+    check("일찍기상: 잠드는 턴이 절반 (%d vs 대조 %d)" % (t_eb, bb2.me.status_turns),
+          t_eb == max(1, bb2.me.status_turns // 2), (t_eb, bb2.me.status_turns))
+    fv = ab("고릴타", "플라워베일")
+    b = duel(fv, P("보만다"), [iron], [M("도깨비불")])
+    check("플라워베일: 풀타입 자신은 위협에도 안 깎이고 화상도 안 걸린다",
+          b.me.ranks["attack"] == 0 and b.me.status is None, (b.me.ranks, b.me.status))
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -4505,6 +4774,7 @@ def main():
     test_zoom_lens(dex)
     test_fixed_ohko_minimize(dex)
     test_abilities_batch1(dex)
+    test_abilities_batch2(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

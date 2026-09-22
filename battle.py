@@ -648,6 +648,46 @@ ABILITY_RULES = [
     (r"모래바람 상태일 때 ([가-힣]+(?:, [가-힣]+)*)타입 기술의 위력이 ([\d.]+)배",  # 모래의힘
      lambda m: {"kind": "sand_force", "types": [x.strip() for x in m.group(1).split(",")],
                 "mult": float(m.group(2))}),
+    # ---- 2차 (2026-09-22) ----
+    (r"공격 기술 외에는 데미지를 입지 않는다", lambda m: {"kind": "magic_guard"}),   # 매직가드
+    (r"상대의 특성에 상관없이 기술을 사용할 수 있다", lambda m: {"kind": "mold_breaker"}),  # 틀깨기
+    (r"대타출동을 무시하고 기술을 사용할 수 있다", lambda m: {"kind": "infiltrator"}),  # 틈새포착
+    (r"상대의 변화 기술에 효과를 받지 않고 상대에게 되받아친다",                   # 매직미러
+     lambda m: {"kind": "magic_bounce"}),
+    (r"서로가 사용하는 기술의 명중률이 100%", lambda m: {"kind": "no_guard"}),     # 노가드
+    (r"자신까지 데미지를 입는 기술을 사용해도 HP가 줄지 않는다",                   # 돌머리
+     lambda m: {"kind": "rock_head"}),
+    (r"상대의 능력 변화를 무시하고 공격할 수 있다", lambda m: {"kind": "unaware"}),  # 천진
+    (r"^상대의 공격이 급소에 맞지 않는다", lambda m: {"kind": "no_crit"}),         # 조가비갑옷·전투무장
+    (r"^기술의 명중률이 ([\d.]+)배", lambda m: {"kind": "acc_mult", "mult": float(m.group(1))}),  # 복안
+    (r"상대의 회피율 변화를 무시하고 명중률도 떨어지지 않는다",                    # 날카로운눈·발광
+     lambda m: {"kind": "keen_eye"}),
+    (r"상대는 선제 기술을 사용할 수 없다", lambda m: {"kind": "block_priority"}),  # 여왕의위엄·테일아머
+    (r"^급소업\+(\d)[이가] 된다", lambda m: {"kind": "crit_up", "step": int(m.group(1))}),  # 대운
+    (r"([가-힣]+(?:, [가-힣]+)*) 상태인 상대를 공격하면 반드시 급소",               # 무도한행동
+     lambda m: {"kind": "crit_vs_status",
+                "statuses": [x.strip() for x in m.group(1).split(",")]}),
+    (r"(\S+?) 상태일 때 회피율이 ([\d.]+)배",                                      # 눈숨기·모래숨기·갈지자걸음
+     lambda m: {"kind": "evasion_when", "when": m.group(1), "mult": float(m.group(2))}),
+    (r"모래바람 상태의 데미지를 입지 않는다", lambda m: {"kind": "sand_immune"}),  # 모래숨기·방진
+    (r"등장 시 상대의 " + _ST + r"[을를] (\d)단계 떨어뜨린다",                     # 감미로운꿀
+     lambda m: {"kind": "entry_drop", "stat": STAT_WORD[m.group(1)], "step": int(m.group(2))}),
+    (r"상대가 나무열매를 먹지 못하게", lambda m: {"kind": "unnerve"}),             # 긴장감
+    (r"강철타입, 독타입 포켓몬도 독, 맹독 상태로 만들 수 있다",                     # 부식
+     lambda m: {"kind": "corrosion"}),
+    (r"상대의 기술이나 특성에 의해 ([가-힣]+(?:, [가-힣]+)*) 상태가 되면 상대도 같은 상태",  # 싱크로
+     lambda m: {"kind": "synchronize",
+                "statuses": [x.strip() for x in m.group(1).split(",")]}),
+    (r"쓰러진 지닌 포켓몬 1마리당 기술의 위력이 (\d+)%씩 올라간다\. 최대 (\d+)%",   # 총대장
+     lambda m: {"kind": "supreme", "per": int(m.group(1)) / 100.0,
+                "cap": int(m.group(2)) / 100.0}),
+    (r"등장 시 빛의장막, 리플렉터, 오로라베일 상태를 해제", lambda m: {"kind": "screen_cleaner"}),
+    (r"기술로 데미지를 입으면 (\d)턴 동안 (?:전체 필드를 )?(\S+?) 상태로 만든다",   # 넘치는씨·모래뿜기
+     lambda m: {"kind": "hit_field", "turns": int(m.group(1)), "field": m.group(2)}),
+    (r"잠듦 상태가 되어도 (\d)배 빠르게 깨어난다",                                # 일찍기상
+     lambda m: {"kind": "early_bird", "mult": int(m.group(1))}),
+    (r"같은 편 (\S+?)타입 포켓몬은 능력이 떨어지지 않으며 상태 이상도 되지 않는다",  # 플라워베일
+     lambda m: {"kind": "flower_veil", "type": m.group(1)}),
 ]
 _ABILITY_RULES_RX = [(re.compile(p), f) for p, f in ABILITY_RULES]
 
@@ -917,7 +957,7 @@ class Side(object):
         return (self.base.ability in STAT_DROP_PROOF
                 or self.base.ability == MIRROR_ARMOR)
 
-    def damage(self, amount, direct=True, rng=None):
+    def damage(self, amount, direct=True, rng=None, ignore_ability=False):
         """데미지를 넣는다. 기합의띠·옹골참이 있으면 여기서 버틴다.
 
         direct=False 는 반동·칩 데미지처럼 '기술로 맞은 것' 이 아닌 경우다.
@@ -928,7 +968,7 @@ class Side(object):
             self.hp = 1
             return "버티기로 HP 1 남김"
         if direct and amount >= self.hp and self.hp == self.max_hp:
-            if self.base.ability == ENDURE_FULL:
+            if self.base.ability == ENDURE_FULL and not ignore_ability:   # 틀깨기면 옹골참 무시
                 amount = self.hp - 1
                 note = "옹골참으로 HP 1 남기고 버팀"
             else:
@@ -946,6 +986,19 @@ class Side(object):
                         note = "%s 로 HP 1 남기고 버팀" % self.item
         self.hp = max(0, self.hp - amount)
         return note
+
+    def chip(self, amount):
+        """**간접 데미지** (반동·생명의구슬·울퉁불퉁멧·독·날씨·압정 …). 실제로 잃은 양을 돌려준다.
+
+        매직가드("공격 기술 외에는 데미지를 입지 않는다")면 0 — 부르는 쪽은 0 이면 로그를
+        안 찍는다. 스스로 쓰는 HP(배북·대타출동)나 혼란 자해는 이걸 쓰지 않는다.
+        """
+        if any(r["kind"] == "magic_guard"
+               for r in ability_rules(self.dex, self.base.ability)):
+            return 0
+        before = self.hp
+        self.damage(amount, direct=False)
+        return before - self.hp
 
     def heal(self, amount):
         amount = int(amount)
@@ -1326,10 +1379,11 @@ class Battle(object):
             # 스텔스록만 떠 있어도 맞고, 바위 상성을 그대로 탄다
             eff = self.dex.effectiveness("바위", side.base.types)
             hurt = max(1, int(side.max_hp * eff / calc.CONFIG["rock_hazard"]))
-            side.damage(hurt, direct=False)
-            self._say("%s 가 스텔스록을 밟았다 — %d (상성 x%g, HP %d/%d)"
-                      % (side.name, hurt, eff, side.hp, side.max_hp))
-            self._pinch_berry(side)
+            # (매직가드면 0 — 로그만 안 찍고 아래 압정·독압정은 그대로 본다)
+            if side.chip(hurt):
+                self._say("%s 가 스텔스록을 밟았다 — %d (상성 x%g, HP %d/%d)"
+                          % (side.name, hurt, eff, side.hp, side.max_hp))
+                self._pinch_berry(side)
         if not side.alive or not self._grounded(side):
             return
 
@@ -1337,10 +1391,10 @@ class Battle(object):
         if n:
             frac = calc.CONFIG["spike_layers"][min(n, 3) - 1]
             hurt = max(1, side.max_hp // frac)
-            side.damage(hurt, direct=False)
-            self._say("%s 가 압정을 밟았다 — %d (%d겹, HP %d/%d)"
-                      % (side.name, hurt, n, side.hp, side.max_hp))
-            self._pinch_berry(side)
+            if side.chip(hurt):
+                self._say("%s 가 압정을 밟았다 — %d (%d겹, HP %d/%d)"
+                          % (side.name, hurt, n, side.hp, side.max_hp))
+                self._pinch_berry(side)
         if not side.alive:
             return
 
@@ -1358,6 +1412,21 @@ class Battle(object):
 
     def _entry_abilities(self, side):
         """나올 때 한 번 터지는 특성. 위협이 제일 흔하다 (보만다 99.3%)."""
+        foe = self.opp if side is self.me else self.me
+        # 규칙으로 읽은 것 — 감미로운꿀(회피율 −1) · 배리어프리(벽 해제)
+        # (위협도 entry_drop 규칙에 걸리지만 아래 ENTRY_ABILITY 가 이미 하므로 건너뛴다)
+        if side.base.ability not in ENTRY_ABILITY:
+            for r in self._rules(side, "entry_drop"):
+                if foe.alive:
+                    self._lower(foe, r["stat"], -r["step"], side,
+                                "%s 의 %s" % (side.name, side.base.ability))
+        if self._rules(side, "screen_cleaner"):
+            gone = [n for p in (self.me_party, self.opp_party) for n in p.screens]
+            for p in (self.me_party, self.opp_party):
+                p.screens = {}
+            if gone:
+                self._say("%s 의 %s — %s 해제" % (side.name, side.base.ability,
+                                                 ", ".join(gone)))
         ab = ENTRY_ABILITY.get(side.base.ability)
         if not ab:
             return
@@ -1527,6 +1596,49 @@ class Battle(object):
         return [r for r in ability_rules(self.dex, side.base.ability)
                 if r["kind"] == kind]
 
+    def _roll_crit(self, atk, dfn, move, stage, mold):
+        """급소가 뜨나. 조가비갑옷(안 맞음) · 대운(+1) · 무도한행동(독이면 반드시)."""
+        for r in self._rules(atk, "crit_up"):
+            stage += r["step"]
+        crit = self.rng.random() < calc.crit_chance(move, stage)
+        for r in self._rules(atk, "crit_vs_status"):
+            if dfn.status in r["statuses"]:
+                crit = True
+        if crit and self._rules(dfn, "no_crit") and not mold:
+            crit = False
+        return crit
+
+    def _priority(self, user, move):
+        """이 기술의 실제 우선도 (짓궂은마음·질풍날개처럼 특성이 올리는 것 포함)."""
+        pri = move.get("priority", 0)
+        pa = best.PRIORITY_ABILITY.get(user.base.ability)
+        if pa:
+            if pa["kind"] == "category" and move["category"] == pa["category"]:
+                pri += pa["bonus"]
+            elif (pa["kind"] == "type_full_hp" and move["type"] == pa["type"]
+                  and user.hp >= user.max_hp):
+                pri += pa["bonus"]
+        return pri
+
+    @staticmethod
+    def _foe_directed(move):
+        """상대를 겨냥한 변화기인가 (매직미러가 되받아치는 것 · 여왕의위엄이 막는 것)."""
+        for ef in move_effects(move):
+            if ef["kind"] in ("status", "phaze", "hazard", "retype", "trick"):
+                return True
+            if ef["kind"] == "rank" and ef["who"] == "foe":
+                return True
+        return False
+
+    def _sleep_turns(self, side, turns):
+        """잠드는 턴 수. 일찍기상 — "잠듦 상태가 되어도 2배 빠르게 깨어난다" (절반, 버림, 최소 1)."""
+        for r in self._rules(side, "early_bird"):
+            turns = max(1, turns // r["mult"])
+        return turns
+
+    def _fainted_allies(self, side):
+        return sum(1 for m in self._party_of(side).members if not m.alive)
+
     def _lower(self, target, stat, step, by, why):
         """상대(by)가 target 의 능력을 깎는다 (step<0). 막는 특성과 오기·승기를 한 곳에서.
 
@@ -1542,7 +1654,11 @@ class Battle(object):
                 self._say("%s 의 %s — 능력이 안 깎인다"
                           % (target.name, target.base.ability))
             return 0
-        if any(r["stat"] == stat for r in self._rules(target, "drop_proof")):
+        proof = (any(r["stat"] == stat for r in self._rules(target, "drop_proof"))
+                 or (stat == "accuracy" and self._rules(target, "keen_eye"))   # 날카로운눈
+                 or any(r["type"] in target.types                              # 플라워베일
+                        for r in self._rules(target, "flower_veil")))
+        if proof:
             self._say("%s 의 %s — %s 가 안 깎인다"
                       % (target.name, target.base.ability, STAT_LABEL[stat]))
             return 0
@@ -1607,6 +1723,14 @@ class Battle(object):
         if (_NO_REPEAT.search(d) and user.last_move is not None
                 and user.last_move["name"] == move["name"] and not user.last_failed):
             return "실패 — 두 번 연달아 쓸 수 없다"
+        # 여왕의위엄·테일아머 — "자신과 같은 편에게 상대는 선제 기술을 사용할 수 없다"
+        # (나를 겨냥한 기술만 — 칼춤 같은 자기 강화는 막지 않는다. 틀깨기는 뚫는다)
+        if (target is not user and self._rules(target, "block_priority")
+                and not self._rules(user, "mold_breaker")
+                and self._priority(user, move) > 0
+                and (move["category"] != "변화" or self._foe_directed(move))):
+            return "실패 — %s 의 %s 때문에 선제 기술을 쓸 수 없다" % (
+                target.name, target.base.ability)
         if "실패" not in d:
             return None
         if _FIRST_ONLY.search(d) and user.acted:
@@ -1647,13 +1771,16 @@ class Battle(object):
         m = _CRASH.search(move.get("description") or "")
         if m and atk.alive:
             lost = max(1, atk.max_hp // int(m.group(1)))
-            atk.damage(lost, direct=False)
+            if not atk.chip(lost):
+                return
             self._say("%s 는 기세가 넘쳐 스스로 다쳤다 — %d (HP %d/%d)"
                       % (atk.name, lost, atk.hp, atk.max_hp))
             self._pinch_berry(atk)
 
     def _hit(self, atk, dfn, move, who):
         """공격기 한 방. 실제로 들어간 데미지를 돌려준다."""
+        # 틀깨기 — 받는 쪽 특성(받아내기·탈·옹골참·조가비갑옷·인분 …)을 무시한다
+        mold = bool(self._rules(atk, "mold_breaker"))
         if dfn.protecting:
             self._say("%s 의 %s — 막혔다" % (atk.name, move["name"]))
             self._crash(atk, move)
@@ -1667,7 +1794,7 @@ class Battle(object):
             self._say("%s 의 %s — %s" % (atk.name, move["name"], why))
             self._crash(atk, move)
             return 0
-        if self._absorb(atk, dfn, move):
+        if not mold and self._absorb(atk, dfn, move):
             self._crash(atk, move)            # 안 통한 것이다 (분함의발구르기가 본다)
             return 0
         d_text = move.get("description") or ""
@@ -1688,8 +1815,13 @@ class Battle(object):
         ef = item_effect(self.dex, atk.item, "crit_stage")
         if ef and (not ef.get("who") or atk.base.poke["name"] in ef["who"]):
             stage += ef["step"]
-        crit = self.rng.random() < calc.crit_chance(move, stage)
+        crit = self._roll_crit(atk, dfn, move, stage, mold)
         extra = self._power_scale(move, atk)
+        for r in self._rules(atk, "supreme"):
+            # 총대장 — 쓰러진 우리 편 1마리당 10%, 최대 50%
+            bonus = min(r["cap"], r["per"] * self._fainted_allies(atk))
+            if bonus:
+                extra *= 1 + bonus
         if atk.flash_fire and move["type"] == "불꽃":
             # 타오르는불꽃 상태 — 설명문엔 '상태가 된다' 까지만 있다. 배율은 본편 값 (미확인)
             extra *= calc.CONFIG["flash_fire_boost"]
@@ -1739,14 +1871,14 @@ class Battle(object):
                     self._say("%s 의 %s — %d번째가 빗나가 끝났다"
                               % (atk.name, move["name"], i + 1))
                     break
-                crit = self.rng.random() < calc.crit_chance(move, stage)
+                crit = self._roll_crit(atk, dfn, move, stage, mold)
                 mv_i = (dict(move, power=fx["powers"][i])
                         if fx["powers"] and i < len(fx["powers"]) else move)
                 res = calc.calc_damage(self.dex, atk.as_build(), dfn.as_build(),
                                        mv_i, critical=crit, extra=extra)
                 if "error" in res:
                     break
-            got, touched = self._land(atk, dfn, move, res, crit)
+            got, touched = self._land(atk, dfn, move, res, crit, mold)
             total += got
             landed += 1
             connected = connected or touched
@@ -1768,16 +1900,16 @@ class Battle(object):
 
         # 반동
         rec = move_recoil(move)
-        if rec and dmg:
+        if rec and dmg and not self._rules(atk, "rock_head"):   # 돌머리
             back = max(1, int(dmg * rec))
-            atk.damage(back, direct=False)
-            self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
+            if atk.chip(back):
+                self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
         # 생명의구슬
         # 죽기살기 같은 고정 데미지는 생명의구슬이 세게 하지도, 반동을 주지도 않는다
         if (dmg and atk.item == "생명의구슬" and not atk.item_used
                 and not res.get("fixed") and not sheer):
-            atk.damage(max(1, atk.max_hp // 10), direct=False)
-            self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
+            if atk.chip(max(1, atk.max_hp // 10)):
+                self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
 
         # 데미지 계산기가 '이 특성은 못 넣었다' 고 한 것들을 올린다.
         # 다만 여기서 이미 다루는 것(탈·지구력·까칠한피부·열교환·옹골참)은 뺀다.
@@ -1802,7 +1934,7 @@ class Battle(object):
                 continue          # 반동 — 위에서 실제로 넣었다 (전엔 넣으면서도 경고했다)
             self._warn("%s: %s" % (move["name"], c))
 
-        self._secondaries(atk, dfn, move, fx, dmg, connected, sheer)
+        self._secondaries(atk, dfn, move, fx, dmg, connected, sheer, mold)
         self._pinch_berry(dfn)
         return dmg
 
@@ -1811,6 +1943,9 @@ class Battle(object):
         acc = move.get("accuracy")
         d = move.get("description") or ""
         if acc is None or acc > 100:
+            return True
+        # 노가드 — "서로가 사용하는 기술의 명중률이 100%" (일격필살도 맞는다)
+        if self._rules(atk, "no_guard") or self._rules(dfn, "no_guard"):
             return True
         # 작아지기 — "작아지기 상태인 상대에게는 ... 반드시 명중한다"
         if dfn.minimized and _MINIMIZE_PUNISH.search(d):
@@ -1830,8 +1965,16 @@ class Battle(object):
             return True
         hit_p = acc / 100.0
         # 명중률·회피율 랭크 (사용자가 확인해 준 배율 — calc.CONFIG)
-        hit_p *= accuracy_stage_mult(atk.ranks.get("accuracy", 0)
-                                     - dfn.ranks.get("evasion", 0))
+        # 날카로운눈·발광 — "상대의 회피율 변화를 무시"
+        eva = 0 if self._rules(atk, "keen_eye") else dfn.ranks.get("evasion", 0)
+        hit_p *= accuracy_stage_mult(atk.ranks.get("accuracy", 0) - eva)
+        for r in self._rules(atk, "acc_mult"):              # 복안 1.3배
+            hit_p *= r["mult"]
+        if not self._rules(atk, "mold_breaker"):
+            for r in self._rules(dfn, "evasion_when"):      # 눈숨기·모래숨기·갈지자걸음
+                if (r["when"] == self.field.weather
+                        or (r["when"] == "혼란" and dfn.confused)):
+                    hit_p /= r["mult"]
         for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
             ef = item_effect(self.dex, src.item, kind)
             if ef:
@@ -1868,20 +2011,22 @@ class Battle(object):
             return 5
         return self.rng.randint(lo, hi)
 
-    def _land(self, atk, dfn, move, res, crit):
+    def _land(self, atk, dfn, move, res, crit, mold=False):
         """한 방. (몸에 들어간 데미지, 닿았나) — 대타·탈에 막혀도 '닿은' 것이다."""
         # 원격 — "사용하는 기술이 접촉 기술이 아니게 된다" (울퉁불퉁멧·정전기 등을 안 받는다)
         contact = bool(move["isContact"]) and not self._rules(atk, "long_reach")
         hp_before = dfn.hp
         dmg = self.rng.choice(res["rolls"])
         # 스크린 — 급소에는 안 통한다 (본편 규칙). 죽기살기 같은 고정 데미지도 안 깎인다.
-        if not crit and not res.get("fixed"):
+        # 틈새포착 — "빛의장막, 리플렉터, 오로라베일, ... 대타출동을 무시"
+        infiltrate = bool(self._rules(atk, "infiltrator"))
+        if not crit and not res.get("fixed") and not infiltrate:
             shield = self._party_of(dfn).screen_mult(move["category"])
             if shield < 1.0:
                 dmg = max(1, int(dmg * shield))
 
         # 따라큐의 탈 — 데미지를 통째로 막고 최대 HP의 1/8 만 잃는다
-        if dfn.disguise and dmg > 0:
+        if dfn.disguise and dmg > 0 and not mold:
             dfn.disguise = False
             lost = max(1, dfn.max_hp // 8)
             dfn.damage(lost, direct=False)
@@ -1890,7 +2035,7 @@ class Battle(object):
             self._pinch_berry(dfn)
             return 0, True
 
-        if dfn.substitute > 0:
+        if dfn.substitute > 0 and not infiltrate:
             took = min(dfn.substitute, dmg)
             dfn.substitute -= took
             gone = dfn.substitute <= 0
@@ -1902,7 +2047,7 @@ class Battle(object):
                 dfn.substitute = 0
             return 0, True
 
-        note = dfn.damage(dmg)
+        note = dfn.damage(dmg, ignore_ability=mold)
         self._say("%s 의 %s → %s 에게 %d (HP %d/%d)%s%s"
                   % (atk.name, move["name"], dfn.name, dmg, dfn.hp, dfn.max_hp,
                      "  급소!" if crit else "",
@@ -1928,10 +2073,10 @@ class Battle(object):
                                  ab["hazard"], foe_party.hazard_text()))
             elif ab["kind"] == "contact_recoil" and contact:
                 back = max(1, int(atk.max_hp * ab["frac"]))
-                atk.damage(back, direct=False)
-                self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
-                          % (dfn.name, dfn.base.ability, atk.name, back,
-                             atk.hp, atk.max_hp))
+                if atk.chip(back):
+                    self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
+                            % (dfn.name, dfn.base.ability, atk.name, back,
+                               atk.hp, atk.max_hp))
 
         self._ability_on_hit(atk, dfn, move, res, crit, dmg, contact, hp_before)
 
@@ -1948,10 +2093,10 @@ class Battle(object):
             ef = item_effect(self.dex, dfn.item, "contact_chip")
             if ef and contact:
                 back = max(1, int(atk.max_hp * ef["frac"]))
-                atk.damage(back, direct=False)
-                self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
-                          % (dfn.name, dfn.item, atk.name, back,
-                             atk.hp, atk.max_hp))
+                if atk.chip(back):
+                    self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
+                            % (dfn.name, dfn.item, atk.name, back,
+                               atk.hp, atk.max_hp))
         if dmg and item_effect(self.dex, dfn.item, "float") \
                 and not dfn.item_used:
             dfn.item_used = True
@@ -2003,7 +2148,7 @@ class Battle(object):
                 if rng.random() < r["chance"]:
                     st = r["options"][0] if len(r["options"]) == 1 else rng.choice(r["options"])
                     self._say("%s 의 %s —" % (dfn.name, dfn.base.ability))
-                    self._inflict(atk, st)
+                    self._inflict(atk, st, by=dfn)
             for r in self._rules(dfn, "contact_drop"):
                 if atk.alive:
                     self._lower(atk, r["stat"], -r["step"], dfn,
@@ -2011,10 +2156,10 @@ class Battle(object):
             if not dfn.alive and atk.alive:
                 for r in self._rules(dfn, "aftermath"):
                     lost = max(1, int(atk.max_hp * r["frac"]))
-                    atk.damage(lost, direct=False)
-                    self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
-                              % (dfn.name, dfn.base.ability, atk.name, lost,
-                                 atk.hp, atk.max_hp))
+                    if atk.chip(lost):
+                        self._say("%s 의 %s — %s 가 %d (HP %d/%d)"
+                                % (dfn.name, dfn.base.ability, atk.name, lost,
+                                   atk.hp, atk.max_hp))
             if (dfn.alive and self._rules(dfn, "pickpocket") and self._can_take(atk)
                     and (not dfn.item or dfn.item_used)):
                 self._say("%s 의 %s — %s 의 %s 를 훔쳤다"
@@ -2024,7 +2169,7 @@ class Battle(object):
             for r in self._rules(atk, "poison_touch"):
                 if dfn.alive and rng.random() < r["chance"]:
                     self._say("%s 의 %s —" % (atk.name, atk.base.ability))
-                    self._inflict(dfn, r["status"])
+                    self._inflict(dfn, r["status"], by=atk)
         # 악취 — 10% 풀죽음 (이미 움직인 상대에겐 소용없다)
         for r in self._rules(atk, "stench"):
             if (dfn.alive and not dfn.moved and rng.random() < r["chance"]
@@ -2037,6 +2182,12 @@ class Battle(object):
             self._say("%s 의 %s — %s 의 %s 를 빼앗았다"
                       % (atk.name, atk.base.ability, dfn.name, dfn.item))
             atk.item, atk.item_used, dfn.item = dfn.item, False, None
+        # 넘치는씨·모래뿜기 — "기술로 데미지를 입으면 5턴 동안 그래스필드/모래바람"
+        for r in self._rules(dfn, "hit_field"):
+            now = self.field.terrain if r["field"] in TERRAIN else self.field.weather
+            if now != r["field"]:
+                self.field.set(r["field"], turns=r["turns"])
+                self._say("%s 의 %s — %s" % (dfn.name, dfn.base.ability, r["field"]))
         if not dfn.alive:
             return
         # 맞은 쪽이 오르는 것
@@ -2065,7 +2216,7 @@ class Battle(object):
                     and holder.item not in self.dex.mega_by_item
                     and not self._rules(holder, "sticky"))
 
-    def _secondaries(self, atk, dfn, move, fx, dealt, connected, sheer):
+    def _secondaries(self, atk, dfn, move, fx, dealt, connected, sheer, mold=False):
         """공격기의 추가 효과·뒤처리 (calc.attack_effects 가 설명문에서 읽은 것).
 
         상대에게 거는 것은 **몸에 데미지가 들어갔을 때만** (대타에 막히면 안 걸린다),
@@ -2076,7 +2227,7 @@ class Battle(object):
         if fx.get("faint_on_hit") and atk.alive:
             atk.hp = 0
             self._say("%s 는 %s 로 쓰러졌다" % (atk.name, move["name"]))
-        shield = dfn.base.ability in shield_dust_abilities(self.dex)
+        shield = dfn.base.ability in shield_dust_abilities(self.dex) and not mold
         for g in fx["groups"]:
             if g["cond"]:
                 self._warn("%s: '...한 경우' 에만 걸리는 추가 효과는 아직 계산에 "
@@ -2113,11 +2264,11 @@ class Battle(object):
                 elif k == "status":
                     opts = e["options"]
                     self._inflict(dfn, opts[0] if len(opts) == 1
-                                  else self.rng.choice(opts))
+                                  else self.rng.choice(opts), by=atk)
                 elif k == "flinch":
                     if dfn.moved:
                         continue          # 이미 움직였으면 풀죽어도 소용없다
-                    if dfn.base.ability in flinch_proof_abilities(self.dex):
+                    if dfn.base.ability in flinch_proof_abilities(self.dex) and not mold:
                         self._say("%s 의 %s — 풀죽지 않는다"
                                   % (dfn.name, dfn.base.ability))
                     else:
@@ -2130,7 +2281,7 @@ class Battle(object):
         if fx["drain"] and dealt and atk.alive and self._rules(dfn, "liquid_ooze"):
             # 해감액 — "상대를 회복시키는 대신 그만큼 데미지를 준다"
             lost = max(1, int(dealt * fx["drain"]))
-            atk.damage(lost, direct=False)
+            atk.chip(lost)
             self._say("%s 의 %s — %s 가 흡수하려다 %d 를 잃었다 (HP %d/%d)"
                       % (dfn.name, dfn.base.ability, atk.name, lost, atk.hp, atk.max_hp))
         elif fx["drain"] and dealt and atk.alive:
@@ -2159,9 +2310,17 @@ class Battle(object):
                 idx = self.choose_replacement(party)
                 self.switch_in(party, idx, "%s 로" % move["name"])
 
+    def _unnerved(self, side):
+        """긴장감 — "상대가 나무열매를 먹지 못하게 한다" (지금 마주한 상대가 긴장감이면)."""
+        foe = self.opp if side is self.me else (self.me if side is self.opp else None)
+        return bool(foe is not None and foe.alive and self._rules(foe, "unnerve")
+                    and side.item and side.item.endswith("열매"))
+
     def _pinch_berry(self, side):
         """자뭉열매처럼 반피에서 터지는 열매. 상위권 1위 도구가 이거다."""
         if side.item_used or not side.item or not side.alive:
+            return
+        if self._unnerved(side):
             return
         ef = item_effect(self.dex, side.item, "heal_pinch")
         if not ef or side.hp > side.max_hp * ef["at"]:
@@ -2177,6 +2336,8 @@ class Battle(object):
     def _cure_berry(self, side):
         """리샘열매·유루열매처럼 상태를 풀어 주는 열매."""
         if side.item_used or not side.alive:
+            return
+        if self._unnerved(side):
             return
         ef = item_effect(self.dex, side.item, "cure")
         if not ef:
@@ -2196,7 +2357,14 @@ class Battle(object):
             self._say("%s 의 %s — %s 가 풀렸다" % (side.name, side.item, hit))
 
     # -- 변화기 -------------------------------------------------------------
-    def _use_status(self, user, target, move):
+    def _use_status(self, user, target, move, bounced=False):
+        # 매직미러 — "상대의 변화 기술에 효과를 받지 않고 상대에게 되받아친다" (틀깨기는 뚫는다)
+        if (not bounced and target is not user and self._foe_directed(move)
+                and self._rules(target, "magic_bounce")
+                and not self._rules(user, "mold_breaker")):
+            self._say("%s 의 %s — %s 의 %s 를 되받아쳤다"
+                      % (target.name, target.base.ability, user.name, move["name"]))
+            return self._use_status(target, user, move, bounced=True)
         # 설명문의 실패 조건 (꿀꺽 — 비축하기 상태가 아니면 실패)
         why = self.move_blocked(user, target, move)
         if why:
@@ -2261,12 +2429,13 @@ class Battle(object):
                 # 잠자기 — 스스로 잠든다. 면역 판정을 거치지 않는다.
                 user.status = ef["status"]
                 # 게임 설명문이 '2턴 동안' 이라고 못박고 있다 (본편은 3턴).
-                user.status_turns = 2
-                self._say("%s 는 %s 상태가 됐다 (2턴)" % (user.name, ef["status"]))
+                user.status_turns = self._sleep_turns(user, 2)
+                self._say("%s 는 %s 상태가 됐다 (%d턴)" % (user.name, ef["status"],
+                                                      user.status_turns))
             elif k == "status":
                 if target.protecting:
                     continue
-                self._inflict(target, ef["status"], move)
+                self._inflict(target, ef["status"], move, by=user)
             elif k == "protect":
                 user.protecting = True
                 self._say("%s 의 %s — 이 턴은 막는다" % (user.name, move["name"]))
@@ -2451,8 +2620,15 @@ class Battle(object):
                 self._warn("'%s' 의 효과를 설명문에서 못 읽었습니다" % move["name"])
 
     # -- 상태 이상 ----------------------------------------------------------
-    def _inflict(self, side, status, move=None):
-        """상태 이상을 건다. 막히면 왜 막혔는지 로그에 남긴다."""
+    def _inflict(self, side, status, move=None, by=None):
+        """상태 이상을 건다. 막히면 왜 막혔는지 로그에 남긴다.
+
+        by — 건 쪽 (부식: 강철·독에게도 독 / 싱크로: 되돌려 건다). 압정·졸음 등은 None.
+        """
+        # 플라워베일 — "같은 편 풀타입 포켓몬은 ... 상태 이상도 되지 않는다" (싱글에선 자기)
+        if any(r["type"] in side.types for r in self._rules(side, "flower_veil")):
+            self._say("%s 의 %s — %s 에 안 걸린다" % (side.name, side.base.ability, status))
+            return False
         # 1) 기술 설명문에 적힌 타입 면역 (전기자석파 -> 땅, 수면가루 -> 풀)
         if move is not None:
             for t in move_type_immunity(move):
@@ -2466,7 +2642,10 @@ class Battle(object):
                       % (side.name, side.base.ability, status))
             return False
         # 3) 타입 면역 — 게임 데이터에 없어서 본편 규칙을 가정한 부분
-        for t in calc.STATUS_TYPE_IMMUNE.get(status, ()):
+        #    부식 — "강철타입, 독타입 포켓몬도 독, 맹독 상태로 만들 수 있다"
+        corrode = (by is not None and status in ("독", "맹독")
+                   and self._rules(by, "corrosion"))
+        for t in ([] if corrode else calc.STATUS_TYPE_IMMUNE.get(status, ())):
             if t in side.base.types:
                 self._say("%s 는 %s타입이라 %s 에 안 걸린다" % (side.name, t, status))
                 self._warn("'%s타입은 %s 에 안 걸린다' 는 게임 데이터에 없는 "
@@ -2494,8 +2673,8 @@ class Battle(object):
             return False
         side.status = status
         if status == "잠듦":
-            side.status_turns = self.rng.randint(calc.CONFIG["sleep_min"],
-                                                 calc.CONFIG["sleep_max"])
+            side.status_turns = self._sleep_turns(side, self.rng.randint(
+                calc.CONFIG["sleep_min"], calc.CONFIG["sleep_max"]))
             self._say("%s 는 잠들었다 (%d턴)" % (side.name, side.status_turns))
         elif status == "맹독":
             side.toxic_n = 1
@@ -2505,6 +2684,13 @@ class Battle(object):
         if status not in STATUS_DONE:
             self._warn("'%s' 상태의 효과는 아직 계산에 없습니다 (이름만 붙습니다)"
                        % status)
+        # 싱크로 — "상대의 기술이나 특성에 의해 독, 맹독, 마비, 화상 상태가 되면 상대도 같은 상태"
+        if by is not None and by is not side and by.alive:
+            for r in self._rules(side, "synchronize"):
+                if status in r["statuses"]:
+                    self._say("%s 의 %s — %s 에게 되돌린다" % (side.name, side.base.ability,
+                                                            by.name))
+                    self._inflict(by, status)   # by 없이 — 서로 되돌리며 끝없이 돌지 않게
         return True
 
     def _can_move(self, side, move=None):
@@ -2912,20 +3098,18 @@ class Battle(object):
             if not side.alive:
                 continue
             if side.status == "화상":
-                side.damage(max(1, side.max_hp // calc.CONFIG["burn_chip"]),
-                            direct=False)
-                self._say("%s 화상 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
+                if side.chip(max(1, side.max_hp // calc.CONFIG["burn_chip"])):
+                    self._say("%s 화상 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
             elif side.status == "독":
-                side.damage(max(1, side.max_hp // calc.CONFIG["poison_chip"]),
-                            direct=False)
-                self._say("%s 독 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
+                if side.chip(max(1, side.max_hp // calc.CONFIG["poison_chip"])):
+                    self._say("%s 독 데미지 (HP %d/%d)" % (side.name, side.hp, side.max_hp))
             elif side.status == "맹독":
                 # 맹독은 턴마다 세진다 — 1/16, 2/16, 3/16 ...
                 hurt = max(1, side.max_hp * side.toxic_n
                            // calc.CONFIG["toxic_chip"])
-                side.damage(hurt, direct=False)
-                self._say("%s 맹독 데미지 %d (%d턴째, HP %d/%d)"
-                          % (side.name, hurt, side.toxic_n, side.hp, side.max_hp))
+                if side.chip(hurt):
+                    self._say("%s 맹독 데미지 %d (%d턴째, HP %d/%d)"
+                            % (side.name, hurt, side.toxic_n, side.hp, side.max_hp))
                 side.toxic_n += 1
 
             # 하품 -> 졸음 -> 다음 턴 끝에 잠든다
@@ -2935,10 +3119,11 @@ class Battle(object):
                     self._inflict(side, "잠듦")
 
             if (self.field.weather == "모래바람"
-                    and not (set(side.base.types) & SAND_IMMUNE)):
-                side.damage(max(1, side.max_hp // calc.CONFIG["sand_chip"]))
-                self._say("%s 모래바람 데미지 (HP %d/%d)"
-                          % (side.name, side.hp, side.max_hp))
+                    and not (set(side.base.types) & SAND_IMMUNE)
+                    and not self._rules(side, "sand_immune")):     # 모래숨기·방진
+                if side.chip(max(1, side.max_hp // calc.CONFIG["sand_chip"])):
+                    self._say("%s 모래바람 데미지 (HP %d/%d)"
+                            % (side.name, side.hp, side.max_hp))
                 self._warn("모래바람 칩 데미지 1/%d 은 미확인 값입니다"
                            % calc.CONFIG["sand_chip"])
 

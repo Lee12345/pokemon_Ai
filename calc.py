@@ -827,12 +827,36 @@ def sheer_force_on(dex, attacker, move):
     return bool(sheer_force_mult(dex, attacker.ability) and has_secondary(move))
 
 
+def _abilities_saying(dex, attr, phrase):
+    got = getattr(dex, attr, None)
+    if got is None:
+        got = {a["name"] for a in dex.abilities if phrase in (a.get("description") or "")}
+        setattr(dex, attr, got)
+    return got
+
+
+def mold_breaker_abilities(dex):
+    """틀깨기 — "상대의 특성에 상관없이 기술을 사용할 수 있다" (battle.ABILITY_RULES 와 같은 문장)."""
+    return _abilities_saying(dex, "_mold_breaker", "상대의 특성에 상관없이 기술을 사용할 수 있다")
+
+
+def unaware_abilities(dex):
+    """천진 — "상대의 능력 변화를 무시하고 공격할 수 있다 ... 공격을 받는다"."""
+    return _abilities_saying(dex, "_unaware", "상대의 능력 변화를 무시하고 공격할 수 있다")
+
+
 def calc_damage(dex, attacker, defender, move, critical=False,
                 stab=None, extra=1.0):
     """한 번 때렸을 때의 데미지를 계산한다.
 
     돌려주는 값에 최소/최대 데미지, HP 대비 비율, 확정 몇 타인지가 들어있다.
     """
+    # 틀깨기 — 받는 쪽 특성을 없는 것으로 친다 (부유·두꺼운지방·멀티스케일·옹골참 …).
+    # ! Build 를 **고치지 않고** 복사본을 쓴다 — 캐시 열쇠(best._build_key)가 원본을 본다.
+    if attacker.ability in mold_breaker_abilities(dex) and defender.ability:
+        import copy
+        defender = copy.copy(defender)
+        defender.ability = None
     if move["category"] == "변화":
         return {"error": "'%s' 은(는) 변화기라서 데미지가 없습니다." % move["name"]}
 
@@ -890,7 +914,13 @@ def calc_damage(dex, attacker, defender, move, critical=False,
     # "유리한 랭크변화는 적용되고, 불리한 랭크변화는 무시한다")
     a_rank = src.ranks.get(atk_key, 0)
     d_rank = defender.ranks.get(def_key, 0)
-    a = src.stat(atk_key, with_rank=not (critical and a_rank < 0))
+    # 천진 — 받는 쪽이 천진이면 때리는 쪽 랭크를, 때리는 쪽이 천진이면 받는 쪽 랭크를 무시한다
+    unaware = unaware_abilities(dex)
+    ignore_atk_rank = src is attacker and defender.ability in unaware
+    if attacker.ability in unaware:
+        ignore_def_rank = True
+    a = src.stat(atk_key, with_rank=not (ignore_atk_rank
+                                         or (critical and a_rank < 0)))
     if (a_ab and a_ab["kind"] == "attack_stat" and move["category"] == "물리"
             and src is attacker and atk_key == "attack"):
         a = int(a * a_ab["mult"])
