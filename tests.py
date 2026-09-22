@@ -4973,7 +4973,7 @@ def test_artmatch(dex):
         return pngio.read_png(os.path.join(here, "data", "screens", fname))
 
     def picks(w, h, px):
-        return [r[0][1] for _, r in artmatch.identify(w, h, px)]
+        return [r[0][1] for _, _, r in artmatch.identify(w, h, px)]
 
     # 그림 자료가 게임 자료와 맞는가 — 없으면 그 포켓몬은 영영 못 알아본다
     with open(os.path.join(here, "data", "art", "index.json"), encoding="utf-8") as f:
@@ -4986,7 +4986,8 @@ def test_artmatch(dex):
     for fname, labels in truth.items():
         want = [key_of(l) for l in labels]
         w, h, px = read(fname)
-        ranked = [r for _, r in artmatch.identify(w, h, px)]
+        found = artmatch.identify(w, h, px)
+        ranked = [r for _, _, r in found]
         got = [r[0][1] for r in ranked]
         check("%s: 6마리 전부 맞힘" % fname, got == want,
               [(l, g) for l, g, k in zip(labels, got, want) if g != k])
@@ -4995,6 +4996,13 @@ def test_artmatch(dex):
             # (빼지 않으면 무장조가 2등과 0.11 차 — 잰 값 0.23)
             gaps = {labels[i]: ranked[i][0][0] - ranked[i][1][0] for i in (4, 5)}
             check("빨간 몸(드래캄·무장조)도 2등과 0.2 넘게 앞선다", min(gaps.values()) > 0.2, gaps)
+            # 대쓰여너는 암수 모습이 따로 있다 — 성별 표시(♀)로 수컷 모습을 뺀다 (빼기 전 2등과 0.03 차)
+            check("대쓰여너(♀): 수컷 모습이 후보에 없다",
+                  all(k != key_of("대쓰여너/수컷의 모습") for _, k in ranked[1]), ranked[1])
+        genders = {"선출_아이패드.png": ["수컷", "암컷", "수컷", "암컷", "암컷", "암컷"],
+                   "선출_스위치.png": ["암컷", "암컷", "수컷", "암컷", "수컷", None]}[fname]
+        check("%s: 성별 표시 6칸 (메타몽은 표시 없음)" % fname,
+              [g for _, g, _ in found] == genders, [g for _, g, _ in found])
         if fname == "선출_스위치.png":
             # 틀이 한 칸(4점) 어긋나도 — 기기마다 칸 속 자리가 조금씩 다르다 (잰 폭 0.536~0.584 H)
             old = artmatch.FRAME_X
@@ -5052,6 +5060,77 @@ def test_artmatch(dex):
     check("champs 목록: 판 주소와 자리를 읽는다",
           sheets == {"04": "https://x/pokemon-sprite-96-04.png?v=1"}
           and cells == {"0445-00": ("04", 192, 576)}, (sheets, cells))
+
+
+def test_msgread(dex):
+    """[56] 문구 칸 글 → 일어난 일 (2026-09-22).
+
+    아래 글은 사용자 아이패드 녹화 한 판에서 **글자 인식이 실제로 읽은 그대로** 다
+    (틀린 글자 포함). 그 판: 내 쪽 하마돈·마폭시·고릴타·보만다·더시마사리·타부자고,
+    상대 다크펫·대쓰여너·빠르모트·블래키·드래캄·무장조.
+    """
+    import msgread
+    print("\n[56] 문구 칸 — 글자 인식 결과를 일어난 일로")
+    here = ["하마돈", "마폭시", "고릴타", "보만다", "더시마사리", "타부자고",
+            "다크펫", "대쓰여너", "빠르모트", "블래키", "드래캄", "무장조"]
+    names = msgread.Names(dex, here)
+    cases = [
+        # (읽힌 글, 종류, 더 맞아야 할 것)
+        ("상대 다크펫의 / 폴터가이스트!", "기술", {"mon": "다크펫", "side": "opp", "move": "폴터가이스트"}),
+        ("상대 다크표겟의 / 폴터가이스트!", "기술", {"mon": "다크펫", "move": "폴터가이스트"}),
+        ("상대 빠르모트의 / 냉등편지!", "기술", {"mon": "빠르모트", "move": "냉동펀치"}),
+        ("타부자고의 / 세도볼!", "기술", {"mon": "타부자고", "side": "me", "move": "섀도볼"}),
+        ("상대 빠르모들읳 / 회생의기도!", "기술", {"mon": "빠르모트", "move": "회생의기도"}),
+        ("효과가 징장했다!", "효과굉장", {}),
+        ("그러나 실패하고 말았츈F.!", "실패", {}),
+        ("가랏! 하마된", "나옴", {"mon": "하마돈", "side": "me"}),
+        ("尼<菂는 / 다크펫을 내보냈다!", "나옴", {"mon": "다크펫", "side": "opp"}),
+        ("7든<菂는 / 작은 빠르호트를 내보냈다! •", "나옴", {"mon": "빠르모트", "side": "opp"}),
+        ("하마톤 / 돌아와나", "들어감", {"mon": "하마돈", "side": "me"}),
+        ("상대 다크펫은 쓰러졌츈P", "쓰러짐", {"mon": "다크펫", "side": "opp"}),
+        ("하마돈은 쓰러졌다!", "쓰러짐", {"mon": "하마돈", "side": "me"}),
+        # 풍선 문구엔 '상대' 가 없었다 — 그 판의 타부자고는 **내** 것
+        ("타부자고는 / 풍선 때문에 떠 있다!", "풍선", {"mon": "타부자고", "side": "me", "item": "풍선"}),
+        ("타부자고의 / 풍선이 터졌다!", "풍선터짐", {"mon": "타부자고"}),
+        ("상대 다크펫은 타부자고의 / 풍선을 통찰했다!", "통찰",
+         {"mon": "다크펫", "side": "opp", "other": "타부자고", "other_side": "me", "item": "풍선"}),
+        ("모래바람이 불기 시작飢대", "모래바람시작", {}),
+        ("모래 바람이 가라앉았다!)", "모래바람끝", {}),
+        ("모래바람이 / 상대 빠르모트를 덮쳤다!", "모래바람데미지", {"mon": "빠르모트", "side": "opp"}),
+        ("상대이 주변에 / 뾰족한 바위가 떠다니기 시작했다!", "스텔스록깔림", {}),
+        ("상대 대쓰여너에게 / 뾰족한 바위가 박혔다!", "스텔스록데미지", {"mon": "대쓰여너"}),
+        ("상대 다크표겟의 / 졸음을 유도했다!", "하품", {"mon": "다크펫"}),
+        ("하마돈은 / 앙코르를 받았다!", "앙코르", {"mon": "하마돈", "side": "me"}),
+        ("상대 다크뎃은 / 이미 졸린 상태다.", "이미졸림", {"mon": "다크펫"}),
+        ("상대 다크펫은 / 쿨쿨 잠들어 있다.", "자는중", {"mon": "다크펫"}),
+        ("상대 다크펫은 / 눈을 떴다!", "깸", {"mon": "다크펫"}),
+        ("상대 대쓰여너이 / 공격이 떨어졌다!", "능력하락", {"mon": "대쓰여너", "stat": "공격"}),
+        ("상대 다크펫은 / 정신을 자려 짜울 수 있게 되었다!", "되살아남", {"mon": "다크펫"}),
+        ("상대 다크펫은 상대를- / 길동무로 삼으려 하고 있다!", "길동무", {"mon": "다크펫"}),
+        ("상대 다크뎃이 / 길동무!", "기술", {"mon": "다크펫", "move": "길동무"}),
+        ("상대 다크펫의 다크펫나이트와 / 尼<菂의 모두링이 반응했다!", "메가반응",
+         {"mon": "다크펫", "side": "opp", "item": "다크펫나이트"}),
+        ("보만다는 / 메가보만다로 메가진화했다!", "메가진화", {"mon": "보만다", "side": "me"}),
+        ("7든<菂와의 / 승부에서 이겼다!", "이김", {}),
+    ]
+    bad = []
+    for text, kind, more in cases:
+        ev = msgread.read(text.split(" / "), names)
+        if ev["kind"] != kind or any(ev.get(k) != v for k, v in more.items()):
+            bad.append((text, ev))
+    check("영상 문구 %d개를 일어난 일로 (틀린 글자 포함)" % len(cases), not bad, bad[:3])
+    # 문구가 아닌 글 · 너무 깨진 글은 억지로 읽지 않는다 — '못 읽음'
+    junk = ["06:43", "(, 06:42", "㉧ 0/3 / 선택 완료", "대기 중", "HP 감소 / 06•34",
+            "62마돈테 / 지진!", "t$9C8ttt", "배드렇", "역린!",
+            "풍선이 터전다,"]        # 이름이 빠진 문구 — 점수 0.68. 받아들이면 엉뚱한 이름이 붙는다
+    wrong = [(t, msgread.read(t.split(" / "), names)["kind"]) for t in junk]
+    wrong = [x for x in wrong if x[1] != "못 읽음"]
+    check("문구가 아니거나 너무 깨진 글 %d개는 '못 읽음'" % len(junk), not wrong, wrong)
+    ev = msgread.read(["상대 다크펫의", "폴터가이스트!"], names)
+    check("못 읽음이 아니면 점수가 붙는다 (0.78 이상)", ev["score"] >= msgread.ACCEPT, ev)
+    check("자음·모음 풀기: '굉' 과 '징' 은 반쯤 닮았다",
+          0.3 < msgread.sim("굉", "징") < 0.8 and msgread.sim("굉장", "굉장") == 1.0,
+          msgread.sim("굉", "징"))
 
 
 def main():
@@ -5113,6 +5192,7 @@ def main():
     test_abilities_batch2(dex)
     test_abilities_batch3(dex)
     test_artmatch(dex)
+    test_msgread(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

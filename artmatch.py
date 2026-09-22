@@ -198,14 +198,60 @@ def art_grids():
     return _ART_CACHE
 
 
+# ── 성별 표시 ──────────────────────────────────────────────────────────
+# 칸 오른쪽 아래(칸 높이 H 기준 가로 1.55~2.1 H, 세로 0.5~0.97 H)의 동그라미:
+# ♂ 파란 동그라미, ♀ 밝은 빨간 동그라미(칸 바탕보다 훨씬 밝다), 없음(메타몽 등).
+# 잰 것 (12칸): ♂ 파랑 0.12~0.15 · ♀ 빨강 0.022~0.098 (스위치 화면은 압축으로 약하다) · 없음 둘 다 0.
+GENDER_BOX = (1.55, 0.5, 2.1, 0.97)
+GENDER_BLUE = 0.06
+GENDER_RED = 0.01
+
+
+def read_gender(w, h, px, panel):
+    """'수컷' / '암컷' / None(표시 없음)."""
+    x0, y0, x1, y1 = panel
+    H = y1 - y0
+    gx0, gy0, gx1, gy1 = GENDER_BOX
+    blue = red = n = 0
+    for y in range(int(y0 + gy0 * H), min(int(y0 + gy1 * H), y1)):
+        for x in range(int(x0 + gx0 * H), min(int(x0 + gx1 * H), x1)):
+            i = (y * w + x) * 4
+            r, g, b = px[i], px[i + 1], px[i + 2]
+            n += 1
+            if b > 150 and b > r + 60:
+                blue += 1
+            elif r > 200 and g < 90 and b < 110:
+                red += 1
+    if not n:
+        return None
+    blue, red = blue / float(n), red / float(n)
+    if blue > GENDER_BLUE and blue > red:
+        return "수컷"
+    if red > GENDER_RED:
+        return "암컷"
+    return None
+
+
+def _gender_ok(form, gender):
+    """모습 이름에 성별이 들어간 것(대쓰여너·냐오닉스·에써르)만 가른다."""
+    if gender is None:
+        return True
+    other = "암컷" if gender == "수컷" else "수컷"
+    return other not in (form or "")
+
+
 def identify(w, h, px, top=3):
-    """상대 6칸 → [(칸, [(점수, key), …])]."""
+    """상대 6칸 → [(칸, 성별, [(점수, key), …])]."""
     arts = art_grids()
+    with open(os.path.join(ART, "index.json"), encoding="utf-8") as f:
+        forms = {k: v["form"] for k, v in json.load(f)["art"].items()}
     out = []
     for panel in find_panels(w, h, px):
+        gender = read_gender(w, h, px, panel)
         screen = _screen_grid(w, h, px, panel)
-        ranked = sorted(((_score(screen, a), k) for k, a in arts.items()), reverse=True)
-        out.append((panel, ranked[:top]))
+        ranked = sorted(((_score(screen, a), k) for k, a in arts.items()
+                         if _gender_ok(forms.get(k), gender)), reverse=True)
+        out.append((panel, gender, ranked[:top]))
     return out
 
 
@@ -214,10 +260,10 @@ def main(argv):
     with open(os.path.join(ART, "index.json"), encoding="utf-8") as f:
         index = json.load(f)["art"]
     w, h, px = pngio.read_png(argv[0])
-    for i, (panel, ranked) in enumerate(identify(w, h, px), 1):
+    for i, (panel, gender, ranked) in enumerate(identify(w, h, px), 1):
         names = ["%s %.2f" % (index[k]["name"] + ("(" + index[k]["form"] + ")" if index[k]["form"] else ""), s)
                  for s, k in ranked]
-        print("%d. %s" % (i, " · ".join(names) or "그림을 못 찾음"))
+        print("%d. [%s] %s" % (i, gender or "성별 표시 없음", " · ".join(names) or "그림을 못 찾음"))
 
 
 if __name__ == "__main__":
