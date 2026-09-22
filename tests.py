@@ -3452,6 +3452,80 @@ def test_rosters(dex):
     check("짝 예측 보고서도 나온다",
           "나머지는?" in samples.report_rosters(dex, parties, name=A))
 
+def test_poltergeist(dex):
+    """폴터가이스트는 상대가 도구를 안 들고 있으면 실패한다.
+
+    2026-09-22 사용자 영상 (아이패드 녹화): 하마돈이 자뭉열매를 먹은 뒤
+    다크펫의 폴터가이스트가 「그러나 실패하고 말았다!」 로 끝났다. 사용자가
+    "빗나감이 아니라 자뭉열매를 소모했기 때문" 이라고 짚었다. 설명문에는
+    적혀 있었는데 코드 어디에도 없어서, 계산기는 도구가 없어도 110 으로 때렸다.
+    """
+    import battle, best, random
+    print("\n[47] 폴터가이스트 — 상대가 도구가 없으면 실패")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    pg = dex.find_move("폴터가이스트")
+    iron = dex.find_move("철벽")
+    check("설명문에 실패 조건이 있다", "도구를 지니고 있지 않은 경우 실패"
+          in (pg.get("description") or ""), pg.get("description"))
+
+    # ① 데미지 계산 — 도구가 있으면 맞고 없으면 실패
+    atk, dfn = P("다크펫"), P("하마돈")
+    dfn.item = "자뭉열매"
+    with_item = calc.calc_damage(dex, atk, dfn, pg)
+    dfn.item = None
+    without = calc.calc_damage(dex, atk, dfn, pg)
+    check("도구를 들면 데미지가 나온다 (%s)" % with_item.get("max"),
+          "error" not in with_item and with_item["max"] > 0, with_item.get("error"))
+    check("도구가 없으면 실패한다", "error" in without and "실패" in without["error"],
+          without)
+
+    # ② 한 턴 표 — 캐시 열쇠에 도구가 들어 있어서 두 답이 섞이면 안 된다
+    dfn.item = "자뭉열매"
+    r1 = best.rate_moves(dex, atk, dfn, [(pg, 1.0)])[0]["kind"]
+    dfn.item = None
+    r2 = best.rate_moves(dex, atk, dfn, [(pg, 1.0)])[0]["kind"]
+    check("한 턴 표도 도구 유무로 갈린다 (%s / %s)" % (r1, r2),
+          r1 == "damage" and r2 == "none", (r1, r2))
+
+    # ③ 영상 그대로 — 1턴에 맞아서 자뭉열매를 먹고, 2턴 폴터가이스트는 실패.
+    #    명중 90% 라 1턴이 빗나간 씨앗은 건너뛴다. 대조군: 도구가 남아 있으면 맞는다.
+    #    씨앗 하나만 보면 안 된다 — 명중 판정 뒤에 거르면 열 판에 한 판꼴로만
+    #    '빗나감' 이 찍혀서, 첫 씨앗은 우연히 통과한다 (일부러 고장 내 보고 알았다:
+    #    172판 중 19판). 그래서 재현한 판 **전부**를 센다.
+    seen, leaked, missed, said1 = 0, 0, 0, ""
+    for seed in range(200):
+        me, op = P("다크펫"), P("하마돈")
+        op.item = "자뭉열매"
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True,
+                          opp_hp=[55])
+        b.step(pg, iron)
+        if not b.opp.item_used:
+            continue                      # 1턴이 빗나갔거나 50% 위로 남았다
+        h = b.opp.hp
+        n_log = len(b.log)
+        b.step(pg, iron)
+        took, said = h - b.opp.hp, " / ".join(b.log[n_log:])
+        seen += 1
+        leaked += took > 0
+        missed += ("빗나감" in said) or ("실패" not in said)
+        said1 = said1 or said
+    check("열매를 먹은 뒤 폴터가이스트는 한 방울도 안 들어간다 (%d판 중 %d판 들어감)"
+          % (seen, leaked), leaked == 0, said1)
+    check("로그가 '빗나감' 이 아니라 '실패' 라고 한다 (%d판 중 %d판 어긋남)"
+          % (seen, missed), missed == 0, said1)
+    check("영상 장면을 실제로 재현했다 (%d판)" % seen, seen >= 100, seen)
+
+    hits = 0
+    for seed in range(10):
+        me, op = P("다크펫"), P("하마돈")
+        op.item = "먹다남은음식"          # 먹어 없어지지 않는 도구
+        b = battle.Battle(dex, me, op, rng=random.Random(seed))
+        h = b.opp.hp
+        b.step(pg, iron)
+        hits += (h - b.opp.hp) > 0
+    check("대조군: 도구가 남아 있으면 맞는다 (10번 중 %d번)" % hits, hits >= 7, hits)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -3502,6 +3576,7 @@ def main():
     test_fetch_champs(dex)
     test_rosters(dex)
     test_party_file(dex)
+    test_poltergeist(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

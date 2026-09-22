@@ -606,6 +606,25 @@ class Build(object):
 # ---------------------------------------------------------------------------
 # 데미지 계산
 # ---------------------------------------------------------------------------
+# 설명문에 적힌 '실패' 조건 중 데미지 계산에서 판정할 수 있는 것.
+#   폴터가이스트: "상대가 도구를 지니고 있지 않은 경우 실패한다."
+# 2026-09-22 사용자 영상에서 하마돈의 자뭉열매를 먹은 뒤 다크펫의 폴터가이스트가
+# 「그러나 실패하고 말았다!」 로 끝났는데, 계산기는 도구가 없어도 110 으로 때리고 있었다.
+# 대전에서는 먹은 열매·터진 풍선이 Side.as_build 에서 item=None 으로 넘어온다.
+_FAIL_NO_ITEM = re.compile(r"상대가 도구를 지니고 있지 않은 경우 실패")
+
+
+def move_fails(move, attacker, defender):
+    """이 기술이 지금 실패하면 그 까닭을, 아니면 None.
+
+    명중 판정보다 먼저 본다 — 게임도 '빗나감' 이 아니라 '실패' 라고 한다.
+    """
+    d = move.get("description") or ""
+    if _FAIL_NO_ITEM.search(d) and not defender.item:
+        return "실패 — %s 이(가) 도구를 지니고 있지 않다" % defender.name
+    return None
+
+
 def calc_damage(dex, attacker, defender, move, critical=False,
                 stab=None, extra=1.0):
     """한 번 때렸을 때의 데미지를 계산한다.
@@ -618,6 +637,10 @@ def calc_damage(dex, attacker, defender, move, critical=False,
     power = move["power"]
     if power <= 0:
         return {"error": "'%s' 은(는) 위력이 정해져 있지 않습니다." % move["name"]}
+
+    why = move_fails(move, attacker, defender)
+    if why:
+        return {"error": why}
 
     notes = []
     warnings = []

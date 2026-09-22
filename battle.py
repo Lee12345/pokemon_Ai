@@ -1176,6 +1176,15 @@ class Battle(object):
             self._say("%s 의 %s — 막혔다" % (atk.name, move["name"]))
             return 0
 
+        # 설명문의 실패 조건 (폴터가이스트 등) — 명중 판정보다 먼저.
+        # calc_damage 도 같은 것을 보지만, 여기서 먼저 걸러야 로그가 '빗나감' 이 안 된다.
+        why = None
+        if "실패" in (move.get("description") or ""):     # 몸을 새로 만드는 값을 아낀다
+            why = calc.move_fails(move, atk.as_build(), dfn.as_build())
+        if why:
+            self._say("%s 의 %s — %s" % (atk.name, move["name"], why))
+            return 0
+
         acc = move.get("accuracy")
         if acc is not None and acc <= 100:
             hit_p = acc / 100.0
