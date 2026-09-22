@@ -4211,7 +4211,16 @@ def test_fixed_ohko_minimize(dex):
     eva_rate, w2 = edge_rate(2)
     check("회피율 +2 면 명중이 준다 (%.0f%% → %.0f%%, 기대 80 → 48)" % (base_rate, eva_rate),
           74 <= base_rate <= 86 and 42 <= eva_rate <= 54, (base_rate, eva_rate))
-    check("회피율 랭크 배율은 미확인이라 경고한다 (안 쓰면 안 한다)", w2 and not w0, (w0, w2))
+    # 배율은 사용자가 확인해 줌 (나무위키 '포켓몬스터/랭크' 2.1.2) — 표를 한 칸씩 대조한다
+    want = {-6: 3 / 9., -5: 3 / 8., -4: 3 / 7., -3: 3 / 6., -2: 3 / 5., -1: 3 / 4., 0: 1.0,
+            1: 4 / 3., 2: 5 / 3., 3: 6 / 3., 4: 7 / 3., 5: 8 / 3., 6: 9 / 3.}
+    bad = {n: battle.accuracy_stage_mult(n) for n in want
+           if abs(battle.accuracy_stage_mult(n) - want[n]) > 1e-12}
+    check("명중률/회피율 배율이 확인된 표(−6~+6)와 13칸 모두 같다", not bad, bad)
+    check("±6 을 넘으면 6 으로 자른다 (명중 −6 · 회피 +6 = −12 → −6)",
+          battle.accuracy_stage_mult(-12) == want[-6]
+          and battle.accuracy_stage_mult(12) == want[6])
+    check("확인된 값이라 '미확인' 경고를 안 띄운다", not w2 and not w0, (w0, w2))
 
     # ⑤ 작아지기
     b = duel(P("누리레느"), P("잠만보"), [M("작아지기")], [iron])

@@ -47,6 +47,16 @@ STAT_LABEL = dict(calc.STAT_KO, accuracy="명중률", evasion="회피율")
 # 명중 판정 전용 랭크 — Side.ranks 에만 있고 Build(실능) 에는 안 쓰인다.
 HIT_RANKS = ("accuracy", "evasion")
 
+
+def accuracy_stage_mult(n):
+    """(명중률 랭크 − 회피율 랭크) 가 n 일 때 명중에 곱하는 값. −6~+6 으로 자른다.
+
+    사용자가 확인해 줌 (나무위키 랭크 2.1.2): n>=0 (3+n)/3, n<0 3/(3−n).
+    """
+    n = max(-6, min(6, n))
+    base = float(calc.CONFIG["accuracy_stage_base"])
+    return (base + n) / base if n >= 0 else base / (base - n)
+
 # 날씨가 어느 타입을 올리고 어느 타입을 깎는가.
 # **게임 데이터에 숫자가 없다.** 본편 값을 쓰고 경고를 띄운다 — 압정과 같다.
 WEATHER_BOOST = {"비": "물", "쾌청": "불꽃"}
@@ -1517,15 +1527,9 @@ class Battle(object):
                 return False
             return True
         hit_p = acc / 100.0
-        # 명중률·회피율 랭크 (미확인 본편 배율 — calc.CONFIG)
-        stage = max(-6, min(6, atk.ranks.get("accuracy", 0)
-                            - dfn.ranks.get("evasion", 0)))
-        if stage:
-            base = calc.CONFIG["accuracy_stage_base"]
-            hit_p *= ((base + stage) / float(base) if stage > 0
-                      else base / float(base - stage))
-            self._warn("명중률·회피율 랭크 배율((%d+n)/%d)은 게임 데이터에 없는 "
-                       "미확인 값입니다" % (base, base))
+        # 명중률·회피율 랭크 (사용자가 확인해 준 배율 — calc.CONFIG)
+        hit_p *= accuracy_stage_mult(atk.ranks.get("accuracy", 0)
+                                     - dfn.ranks.get("evasion", 0))
         for src, kind in ((atk, "accuracy"), (dfn, "evasion")):
             ef = item_effect(self.dex, src.item, kind)
             if ef:
