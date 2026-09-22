@@ -612,6 +612,18 @@ class Build(object):
 # 「그러나 실패하고 말았다!」 로 끝났는데, 계산기는 도구가 없어도 110 으로 때리고 있었다.
 # 대전에서는 먹은 열매·터진 풍선이 Side.as_build 에서 item=None 으로 넘어온다.
 _FAIL_NO_ITEM = re.compile(r"상대가 도구를 지니고 있지 않은 경우 실패")
+#   불사르기·전광쌍격: "자신이 불꽃타입이 아닌 경우 실패한다." (쓰고 나면 그 타입이 없어진다)
+_FAIL_NOT_TYPE = re.compile(r"자신이 (\S+?)타입이 아닌 경우 실패")
+#   죽기살기: "상대의 남은 HP에서 자신의 남은 HP를 뺀 수치만큼 데미지를 준다.
+#             상대의 HP가 자신의 HP 이하면 실패한다."
+_ENDEAVOR = re.compile(r"상대의 남은 HP에서 자신의 남은 HP를 뺀 수치만큼 데미지")
+# 몸(Build)만 보고는 판정할 수 없는 조건(나온 첫 턴·상대가 고른 기술·필드 등)은
+# `battle.Battle.move_blocked` 가 본다. 여기에는 몸만으로 되는 것만 둔다.
+
+
+def hp_now(build):
+    """지금 남은 HP (실수치). Build 는 비율만 들고 있다."""
+    return int(round(build.stat("hp") * build.hp_ratio))
 
 
 def move_fails(move, attacker, defender):
@@ -620,8 +632,17 @@ def move_fails(move, attacker, defender):
     명중 판정보다 먼저 본다 — 게임도 '빗나감' 이 아니라 '실패' 라고 한다.
     """
     d = move.get("description") or ""
+    if "실패" not in d:
+        return None
     if _FAIL_NO_ITEM.search(d) and not defender.item:
         return "실패 — %s 이(가) 도구를 지니고 있지 않다" % defender.name
+    m = _FAIL_NOT_TYPE.search(d)
+    if m and m.group(1) not in attacker.types:
+        return "실패 — %s 이(가) %s타입이 아니다" % (attacker.name, m.group(1))
+    if _ENDEAVOR.search(d):
+        mine, theirs = hp_now(attacker), hp_now(defender)
+        if theirs <= mine:
+            return "실패 — 상대 HP(%d)가 자신 HP(%d) 이하" % (theirs, mine)
     return None
 
 
@@ -741,6 +762,26 @@ def calc_damage(dex, attacker, defender, move, critical=False,
         if eff == 0:
             return {"error": "%s 에게 %s 타입은 효과가 없습니다." % (
                 defender.name, move_type)}
+
+    # 죽기살기 — 위력이 아니라 남은 HP 의 차이만큼 들어간다 (상성·자속·난수 없음).
+    # 데이터의 위력 1 로 계산하면 1~2 데미지가 나와서 조용히 쓸모없는 기술이 된다.
+    if _ENDEAVOR.search(move.get("description") or ""):
+        gap = hp_now(defender) - hp_now(attacker)
+        if gap <= 0:
+            return {"error": "실패 — 상대 HP가 자신 HP 이하"}
+        rolls = [gap] * (CONFIG["random_max"] - CONFIG["random_min"] + 1)
+        return {
+            "move": move, "moveType": move_type, "power": 0,
+            "notes": ["죽기살기: 상대 남은 HP − 자신 남은 HP = %d 고정" % gap],
+            "warnings": warnings, "attack": a, "defense": d, "hp": hp,
+            "effectiveness": eff, "stab": 1.0, "critical": 1.0, "burn": 1.0,
+            "rolls": rolls, "min": gap, "max": gap,
+            "minPct": gap * 100.0 / hp, "maxPct": gap * 100.0 / hp,
+            "ohkoChance": 1.0 if gap >= hp else 0.0,
+            "hitsMin": math.ceil(hp / gap), "hitsMax": math.ceil(hp / gap),
+            # 스크린·급소·날씨로 바뀌지 않는 고정 데미지다 (battle._hit 가 본다)
+            "fixed": True,
+        }
 
     # 공격측 도구
     ai = dex.item_effects.get(attacker.item) if attacker.item else None

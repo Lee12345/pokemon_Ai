@@ -3526,6 +3526,278 @@ def test_poltergeist(dex):
     check("대조군: 도구가 남아 있으면 맞는다 (10번 중 %d번)" % hits, hits >= 7, hits)
 
 
+def test_fail_conditions(dex):
+    """설명문에 '실패한다' 가 붙은 공격기 17개 + 짝이 되는 규칙 (2026-09-22).
+
+    폴터가이스트([47])를 고치다 세어 보니 17개가 더 있었고 거의 다 안 붙어 있었다.
+    만나자마자(갑주무사 71.8%)가 매 턴 위력 100 선제기로, 기습(대도각참 99%)이
+    상대가 변화기를 써도 들어갔다. 터지지 않고 그 기술을 든 쪽이 조용히 세졌다.
+    기술마다 **답이 뻔한 상황**을 만들고, 조건이 맞을 때는 **된다** 는 대조군을 붙인다.
+    """
+    import battle, best, random, re
+    print("\n[48] 설명문의 실패 조건 — 17개 기술")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    M = dex.find_move
+    iron = M("철벽")
+
+    def my_hits(b, since):
+        """이 턴에 **내 기술이** 준 데미지. 로그에서 읽는다.
+
+        ! 처음엔 턴 전후 상대 HP 차이로 쟀다. 그랬더니 모래바람 칩(11)과
+          자뭉열매 회복이 섞여서, 실패한 트림이 '11 들어감' 으로 잡히고
+          '열매 먹은 뒤 트림은 들어간다' 가 **모래 칩 덕에 저절로** 통과했다.
+        """
+        pat = re.compile(r"%s 의 \S+ → \S+ 에게 (\d+)" % re.escape(b.me.name))
+        return sum(int(m.group(1)) for line in b.log[since:]
+                   for m in [pat.search(line)] if m)
+
+    def duel(me, op, mine, theirs, seed=1, **kw):
+        kw.setdefault("my_fresh", True)
+        kw.setdefault("opp_fresh", True)
+        b = battle.Battle(dex, me, op, rng=random.Random(seed), log=True, **kw)
+        dealt = []
+        for a, o in zip(mine, theirs):
+            n = len(b.log)
+            b.step(a, o)
+            dealt.append(my_hits(b, n))
+        return b, dealt
+
+    def said(b, text):
+        return any(text in line for line in b.log)
+
+    # ① 규칙이 **딱 그 기술들만** 잡는가 — 넓게 잡으면 엉뚱한 기술이 실패한다
+    want = {
+        battle._FIRST_ONLY: {"속이기", "만나자마자"},
+        battle._SUCKER: {"기습"},
+        battle._UPPER_HAND: {"기선제압"},
+        battle._FOCUS: {"힘껏펀치"},
+        battle._LAST_RESORT: {"비장의무기"},
+        battle._BELCH: {"트림"},
+        battle._NEED_STOCKPILE: {"토해내기", "꿀꺽"},
+        battle._NEED_TERRAIN: {"아이언롤러"},
+        battle._CLEAR_TERRAIN: {"아이언롤러", "아이스스피너"},
+        battle._CRASH: {"무릎차기", "발꿈치찍기", "썬더다이브"},
+        battle._AFTER_FAIL: {"분함의발구르기", "열불내기"},
+        battle._LOSE_TYPE: {"불사르기", "전광쌍격"},
+        battle._FLINCH_ALWAYS: {"속이기", "기선제압"},
+        calc._FAIL_NOT_TYPE: {"불사르기", "전광쌍격"},
+        calc._ENDEAVOR: {"죽기살기"},
+        calc._FAIL_NO_ITEM: {"폴터가이스트"},
+    }
+    for rx, names in want.items():
+        got = {m["name"] for m in dex.moves if rx.search(m.get("description") or "")}
+        check("규칙이 %s 만 잡는다" % "·".join(sorted(names)), got == names, got)
+    # 한 턴 표의 '조건부' 주의도 같은 기술에 붙는가 (패턴을 두 곳에 적었으므로 대조)
+    fail_attacks = [m for m in dex.moves if "실패" in (m.get("description") or "")
+                    and m["category"] != "변화"]
+    covered = [m["name"] for m in fail_attacks
+               if any(c.startswith(best.CONDITIONAL) for c in best.move_caveats(m))
+               or calc._FAIL_NO_ITEM.search(m["description"])
+               or calc._ENDEAVOR.search(m["description"])]
+    check("설명문에 '실패' 가 붙은 공격기 %d개 전부에 조건이 붙었다" % len(fail_attacks),
+          len(covered) == len(fail_attacks) == 18,
+          sorted(set(m["name"] for m in fail_attacks) - set(covered)))
+
+    # ② 나온 첫 턴만 — 만나자마자·속이기
+    b, dealt = duel(P("갑주무사"), P("하마돈"), [M("만나자마자")] * 2, [iron] * 2)
+    check("만나자마자: 1턴은 들어가고 2턴은 실패 (%s)" % dealt,
+          dealt[0] > 0 and dealt[1] == 0 and said(b, "첫 기술이 아니다"), b.log)
+    b = battle.Battle(dex, [P("갑주무사"), P("아머까오")], P("하마돈"),
+                      rng=random.Random(1), log=True, my_fresh=True, opp_fresh=True)
+    b.step(M("만나자마자"), iron)
+    b.step(("교체", 1), iron)
+    b.step(("교체", 0), iron)
+    n = len(b.log)
+    b.step(M("만나자마자"), iron)
+    again = my_hits(b, n)
+    check("교체해 다시 나오면 만나자마자가 또 된다 (%d)" % again, again > 0, b.log[-4:])
+    b, dealt = duel(P("갑주무사"), P("하마돈"), [M("만나자마자")], [iron], my_fresh=False)
+    check("이미 나와 있던 놈이면 1턴부터 실패", dealt[0] == 0, b.log)
+    b, _ = duel(P("갑주무사"), P("하마돈"), [M("만나자마자")], [iron], my_fresh=None)
+    check("막 나왔는지 모르면 막 나온 것으로 보되 경고한다",
+          any("막 나왔는지 몰라서" in w for w in b.warnings), b.warnings)
+    b, _ = duel(P("갑주무사"), P("하마돈"), [M("만나자마자")], [iron])
+    check("알고 있으면 경고하지 않는다",
+          not any("막 나왔는지 몰라서" in w for w in b.warnings), b.warnings)
+    b, _ = duel(P("포푸니크"), P("하마돈"), [M("속이기")], [M("지진")])
+    check("속이기를 맞으면 풀죽어서 못 움직인다",
+          said(b, "풀죽어서 움직이지 못했다") and not said(b, "하마돈 의 지진"), b.log)
+    tough = P("하마돈")
+    tough.ability = "정신력"
+    b, _ = duel(P("포푸니크"), tough, [M("속이기")], [M("지진")])
+    check("정신력은 풀죽지 않는다 (설명문에서 읽음)",
+          said(b, "풀죽지 않는다") and said(b, "하마돈 의 지진"), b.log)
+
+    # ③ 상대가 무엇을 골랐나 — 기습·기선제압
+    b, dealt = duel(P("대도각참"), P("하마돈"), [M("기습")] * 2, [iron, M("지진")])
+    check("기습: 상대가 변화기면 실패, 공격기면 들어간다 (%s)" % dealt,
+          dealt[0] == 0 and dealt[1] > 0, b.log)
+    b, dealt = duel(P("대도각참"), P("갑주무사"), [M("기습")], [M("만나자마자")])
+    check("기습: 상대가 더 빠른 선제기로 먼저 움직였으면 실패 (%s)" % dealt,
+          dealt[0] == 0 and said(b, "이미 움직였다"), b.log)
+    b = battle.Battle(dex, P("대도각참"), [P("하마돈"), P("아머까오")],
+                      rng=random.Random(1), log=True, my_fresh=True, opp_fresh=True)
+    b.step(M("기습"), ("교체", 1))
+    check("기습: 상대가 교체하면 실패", said(b, "공격 기술을 고르지 않았다"), b.log)
+    b, dealt = duel(P("모크나이퍼"), P("누리레느"), [M("기선제압")] * 2,
+                    [M("아쿠아제트"), M("문포스")])
+    check("기선제압: 선제기에는 들어가고 풀죽이며, 아니면 실패 (%s)" % dealt,
+          dealt[0] > 0 and dealt[1] == 0 and said(b, "누리레느 는 풀죽었다"), b.log)
+
+    # ④ 이 턴에 먼저 맞았나 — 힘껏펀치
+    b, dealt = duel(P("고릴타"), P("누리레느"), [M("힘껏펀치")], [M("문포스")])
+    check("힘껏펀치: 먼저 맞으면 실패", dealt[0] == 0 and said(b, "먼저 맞았다"), b.log)
+    b, dealt = duel(P("고릴타"), P("누리레느"), [M("힘껏펀치")], [iron])
+    check("힘껏펀치: 안 맞으면 들어간다 (%d)" % dealt[0], dealt[0] > 0, b.log)
+
+    # ⑤ 나온 뒤 쓴 기술 — 비장의무기
+    b = battle.Battle(dex, P("캥카"), P("누리레느"), rng=random.Random(3), log=True,
+                      my_fresh=True, opp_fresh=True)
+    b.me.moveset = ["비장의무기", "속이기", "기습", "철벽"]
+    got = []
+    for mv in ["비장의무기", "속이기", "기습", "철벽", "비장의무기"]:
+        n = len(b.log)
+        b.step(M(mv), iron)
+        got.append(my_hits(b, n))
+    check("비장의무기: 다른 기술을 다 쓰기 전엔 실패, 다 쓴 뒤엔 들어간다 (%s)" % got,
+          got[0] == 0 and got[4] > 0, b.log)
+    b, dealt = duel(P("캥카"), P("누리레느"), [M("철벽"), M("비장의무기")], [iron] * 2)
+    check("비장의무기: 기술 목록을 모르면 4개로 보고 실패", dealt[1] == 0
+          and said(b, "4개로 봄"), b.log)
+
+    # ⑥ 열매를 먹었나 — 트림 (명중 90% 라 들어간 판을 찾는다)
+    b, dealt = duel(P("하마돈"), P("누리레느"), [M("트림")], [iron])
+    check("트림: 열매를 안 먹었으면 실패", dealt[0] == 0 and said(b, "나무열매를 안 먹었다"),
+          b.log)
+    hit = 0
+    for seed in range(10):
+        me = P("하마돈")
+        me.item = "자뭉열매"
+        b = battle.Battle(dex, me, P("누리레느"), rng=random.Random(seed),
+                          log=True, my_fresh=True, opp_fresh=True)
+        b.me.item_used = True                      # 이미 먹었다
+        n = len(b.log)
+        b.step(M("트림"), iron)
+        hit += my_hits(b, n) > 0                   # 모래 칩이 섞이지 않게 로그로
+    check("트림: 열매를 먹은 뒤엔 들어간다 (10번 중 %d번)" % hit, hit >= 7, hit)
+
+    # ⑦ 비축 — 토해내기
+    b, dealt = duel(P("하마돈"), P("누리레느"),
+                    [M("토해내기"), M("비축하기"), M("비축하기"), M("토해내기")], [iron] * 4)
+    check("토해내기: 비축 없으면 실패, 비축하면 들어간다 (%s)" % dealt,
+          dealt[0] == 0 and dealt[3] > 0, b.log)
+    check("토해내기 뒤 비축과 방어·특방 상승이 풀린다 (%s)" % b.me.rank_text(),
+          b.me.stockpile == 0 and b.me.ranks["defense"] == 0
+          and b.me.ranks["spDef"] == 0, b.me.ranks)
+    b2, d2 = duel(P("하마돈"), P("누리레느"),
+                  [M("비축하기"), M("비축하기"), M("토해내기")], [iron] * 3)
+    b1, d1 = duel(P("하마돈"), P("누리레느"), [M("비축하기"), M("토해내기")], [iron] * 2)
+    check("비축 2회가 1회보다 세다 (%d vs %d)" % (d2[2], d1[1]), d2[2] > d1[1],
+          (d1, d2))
+    b, _ = duel(P("하마돈"), P("누리레느"), [M("비축하기")] * 4, [iron] * 4)
+    check("비축하기는 3회까지", b.me.stockpile == 3 and said(b, "더 비축할 수 없다"),
+          b.me.stockpile)
+
+    # ⑧ 필드 — 아이언롤러
+    b, dealt = duel(P("하마돈"), P("누리레느"), [M("아이언롤러")], [iron])
+    check("아이언롤러: 필드가 없으면 실패", dealt[0] == 0 and said(b, "필드가 없다"), b.log)
+    b, dealt = duel(P("고릴타"), P("누리레느"), [M("아이언롤러")], [iron])
+    check("아이언롤러: 필드가 있으면 들어가고 필드를 없앤다 (%d)" % dealt[0],
+          dealt[0] > 0 and b.field.terrain is None, (b.field.terrain, b.log))
+
+    # ⑨ 자기 타입 — 불사르기·전광쌍격
+    b, dealt = duel(P("윈디"), P("누리레느"), [M("불사르기")] * 2, [iron] * 2)
+    check("불사르기: 순수 불꽃은 타입이 없어진다 — 계산에도 [] 로 간다 (%s / %s)"
+          % (b.me.types, b.me.as_build().types),
+          b.me.types == [] and b.me.as_build().types == [], b.me.types)
+    check("불사르기: 불꽃타입이 없으면 실패 (%s)" % dealt, dealt[0] > 0 and dealt[1] == 0,
+          b.log)
+    b, _ = duel(P("빠르모트"), P("누리레느"), [M("전광쌍격")], [iron])
+    check("전광쌍격: 전기타입을 잃는다 (%s)" % b.me.types,
+          "전기" not in b.me.types and b.me.types, b.me.types)
+    b = battle.Battle(dex, [P("윈디"), P("하마돈")], P("누리레느"),
+                      rng=random.Random(1), my_fresh=True, opp_fresh=True)
+    b.step(M("불사르기"), iron)
+    b.step(("교체", 1), iron)
+    check("교체하면 타입이 돌아온다", b.me_party.members[0].types == ["불꽃"],
+          b.me_party.members[0].types)
+
+    # ⑩ 죽기살기 — 남은 HP 의 차이, 고정 데미지
+    b, dealt = duel(P("고릴타"), P("누리레느"), [M("죽기살기")], [iron], my_hp=[10])
+    mine_hp = max(1, int(round(b.me.max_hp * 0.10)))
+    check("죽기살기: 상대 HP − 내 HP 만큼 들어간다 (%d, 기대 %d)"
+          % (dealt[0], b.opp.max_hp - mine_hp), dealt[0] == b.opp.max_hp - mine_hp,
+          b.log)
+    check("죽기살기에는 생명의구슬 반동이 없다", not said(b, "생명의구슬 반동"), b.log)
+    b, dealt = duel(P("고릴타"), P("누리레느"), [M("죽기살기")], [iron], opp_hp=[10])
+    check("죽기살기: 상대 HP 가 내 HP 이하면 실패", dealt[0] == 0, b.log)
+
+    # ⑪ 빗나가거나 실패하면 다친다 — 무릎차기·썬더다이브
+    b, _ = duel(P("에이스번"), P("다크펫"), [M("무릎차기")], [iron])
+    check("무릎차기: 고스트에게 안 통해도 최대 HP 절반을 잃는다 (%d/%d)"
+          % (b.me.hp, b.me.max_hp),
+          b.me.hp == b.me.max_hp - b.me.max_hp // 2 and said(b, "스스로 다쳤다"), b.log)
+    missed = None
+    for seed in range(60):
+        b, _ = duel(P("렌트라"), P("누리레느"), [M("썬더다이브")], [iron], seed=seed)
+        if said(b, "빗나감"):
+            missed = b
+            break
+    check("썬더다이브: 빗나가도 다친다", missed is not None and said(missed, "스스로 다쳤다"),
+          missed.log if missed else None)
+
+    # ⑫ 직전에 실패했으면 2배 — 분함의발구르기·열불내기
+    b, dealt = duel(P("케오퍼스"), P("누리레느"), [M("분함의발구르기")] * 2,
+                    [M("방어"), iron])
+    ctl, cdealt = duel(P("케오퍼스"), P("누리레느"), [iron, M("분함의발구르기")],
+                       [iron, iron])
+    check("분함의발구르기: 막힌 다음 턴은 2배 (%d vs 대조 %d)" % (dealt[1], cdealt[1]),
+          said(b, "위력 2배") and not said(ctl, "위력 2배")
+          and dealt[1] > cdealt[1] * 1.6, (b.log, ctl.log))
+
+    # ⑬ 얼음이 녹는 불꽃 기술 (불사르기와 같은 문장)
+    b = battle.Battle(dex, P("윈디"), P("누리레느"), rng=random.Random(1), log=True,
+                      my_fresh=True, opp_fresh=True)
+    b.me.status = "얼음"
+    b.step(M("플레어드라이브"), iron)
+    check("얼어 있어도 플레어드라이브는 녹이고 쓴다", my_hits(b, 0) > 0
+          and b.me.status is None, b.log)
+
+    # ⑭ AI 가 둘째 턴부터 만나자마자를 되풀이하지 않는다
+    #    (전에는 고른 기술 하나를 외워 끝까지 썼다 — 이제는 매번 실패하게 된다)
+    #    ! 상대를 하마돈으로 두면 원래 아쿠아브레이크가 더 세서 거를 일이 없다 —
+    #      일부러 고장 내 보니 그 검사는 통과해 버렸다. 만나자마자가 1등인 상대
+    #      (한카리아스: 둘 다 1배라 위력 100 이 85 를 이긴다)로 둔다. 마스카나(벌레 4배)는
+    #      1턴에 쓰러져서 둘째 턴이 없었다 — 그것도 고장을 못 잡았다.
+    used = 0
+    for seed in range(5):
+        r = battle.run_once(dex, P("갑주무사"), P("한카리아스"), [M("만나자마자")],
+                            [M("철벽")], random.Random(seed), log=True,
+                            my_moves=[M("만나자마자"), M("아쿠아브레이크")])
+        used += sum(1 for line in r["log"] if "첫 기술이 아니다" in line)
+    check("AI 가 실패할 줄 아는 만나자마자를 다시 고르지 않는다 (%d번 헛씀)" % used,
+          used == 0, used)
+    used = 0
+    for seed in range(5):
+        r = battle.run_once(dex, P("갑주무사"), P("하마돈"), [M("만나자마자")],
+                            [M("지진")], random.Random(seed), log=True)
+        used += sum(1 for line in r["log"] if "첫 기술이 아니다" in line)
+    check("기술 목록 없이 계획을 되풀이할 때도 마찬가지 (%d번 헛씀)" % used,
+          used == 0, used)
+
+    # ⑮ 상대가 변화기만 쓰면 기습을 계속 고르지 않는다 (정한 규칙 — Policy._just_failed)
+    #    이게 없으면 철벽만 쓰는 하마돈에게 200판 6000번 헛치고 판이 안 끝났다.
+    worst, unended = 0, 0
+    for seed in range(10):
+        r = battle.run_once(dex, P("대도각참"), P("하마돈"), [M("기습")], [iron],
+                            random.Random(seed), log=True,
+                            my_moves=[M("기습"), M("아이언헤드")])
+        worst = max(worst, sum(1 for line in r["log"] if "공격 기술을 고르지" in line))
+        unended += r["result"] == "안 끝남"
+    check("변화기만 쓰는 상대에게 기습은 판마다 한 번만 헛친다 (최대 %d번, 안 끝남 %d판)"
+          % (worst, unended), worst <= 1 and unended == 0, (worst, unended))
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -3577,6 +3849,7 @@ def main():
     test_rosters(dex)
     test_party_file(dex)
     test_poltergeist(dex)
+    test_fail_conditions(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

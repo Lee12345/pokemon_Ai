@@ -456,6 +456,47 @@ def move_recoil(move):
 
 
 # ---------------------------------------------------------------------------
+# 설명문에 적힌 '실패한다' 조건과 그 짝 (2026-09-22)
+#
+# ! 전에는 이 조건들을 **하나도** 안 읽었다. 폴터가이스트가 도구 없는 상대에게
+#   맞고(사용자 영상에서 잡힘), 만나자마자(갑주무사 71.8%)가 매 턴 위력 100
+#   선제기로, 기습(대도각참 99%)이 상대가 변화기를 써도 들어갔다. 터지지 않고
+#   그 기술을 든 쪽이 조용히 세졌다.
+# 규칙마다 **걸리는 기술을 전부 세어서** 딱 그 기술만 잡는 것을 확인했다
+# (tests.py [48] 이 못 박는다). 이름을 박지 않고 설명문을 읽는다.
+# ---------------------------------------------------------------------------
+_FIRST_ONLY = re.compile(r"등장하고 가장 먼저 사용하지 않으면 실패")       # 속이기·만나자마자
+# 기습. 설명문은 "상대가 공격 기술을 선택하였고 ... 이미 공격하였다면 실패" 로
+# 옮겨져 있는데, 본편 규칙은 '상대가 공격기를 안 골랐거나 이미 움직였으면 실패' 다.
+_SUCKER = re.compile(r"상대가 공격 기술을 선택하였고 이 기술을 사용한 턴 동안 이미 공격하였다면 실패")
+_UPPER_HAND = re.compile(r"상대가 선제 공격 기술을 사용하지 않은 경우 실패")  # 기선제압
+_FOCUS = re.compile(r"상대로부터 먼저 기술로 데미지를 입으면 실패")         # 힘껏펀치
+_LAST_RESORT = re.compile(r"다른 배운 기술을 모두 사용하지 않은 경우 실패")  # 비장의무기
+_BELCH = re.compile(r"나무열매를 먹지 않은 경우 이 기술은 실패")            # 트림
+_NEED_STOCKPILE = re.compile(r"비축하기 상태가 아닌 경우 이 기술은 실패")    # 토해내기·꿀꺽
+_STOCKPILE = re.compile(r"비축하기 상태를 1회 추가")                        # 비축하기
+_NEED_TERRAIN = re.compile(r"필드가 전개되어 있지 않은 경우 실패")          # 아이언롤러
+_CLEAR_TERRAIN = re.compile(r"필드를 해제한다")                            # 아이언롤러·아이스스피너
+_CRASH = re.compile(r"빗나가거나 실패하면 자신의 최대 HP의 1/(\d+)만큼 데미지")  # 무릎차기 등
+_AFTER_FAIL = re.compile(r"직전 턴에 자신이 행동하지 못했거나 기술이 빗나가거나 "
+                         r"실패한 경우 위력이 (\d+)배")                     # 분함의발구르기·열불내기
+_LOSE_TYPE = re.compile(r"자신의 (\S+?)타입이 없어진다")                   # 불사르기·전광쌍격
+# 속이기·기선제압의 풀죽음은 확률이 아니라 기술 그 자체다 ('30% 확률로 ...' 와 다르다).
+_FLINCH_ALWAYS = re.compile(r"(?:^|[.]\s*)상대를 풀죽게 한다")
+_THAW_SELF = re.compile(r"자신의 얼음 상태를 회복")                        # 불꽃 기술 5개
+
+
+def flinch_proof_abilities(dex):
+    """'풀죽지 않는다' 고 적힌 특성 (정신력). dex 에 붙여 외운다 (§7 — id 열쇠 금지)."""
+    got = getattr(dex, "_flinch_proof", None)
+    if got is None:
+        got = {a["name"] for a in dex.abilities
+               if "풀죽지 않" in (a.get("description") or "")}
+        dex._flinch_proof = got
+    return got
+
+
+# ---------------------------------------------------------------------------
 # 대전 중 한 마리의 상태
 # ---------------------------------------------------------------------------
 class Side(object):
@@ -544,6 +585,35 @@ class Side(object):
         self.toxic_n = 0
         self.confused = 0
         self.drowsy = 0
+        # 배운 기술 이름 목록. 아는 경우에만 (Policy 가 내 기술을 알 때 채운다).
+        # 비장의무기가 본다 — 모르면 '기술 4개' 로 보고 경고한다.
+        self.moveset = None
+        # 이 턴의 기록 — 기습·기선제압·힘껏펀치가 본다. Battle.step 이 매 턴 지운다.
+        self.chosen = None           # 이 턴에 고른 기술 (교체했으면 None)
+        self.moved = False           # 이 턴에 이미 행동했나
+        self.hit_this_turn = False   # 이 턴에 기술로 데미지를 입었나
+        self.move_failed = False     # 방금 쓴 기술이 빗나가거나 실패했나
+        self.reset_entry()
+
+    def reset_entry(self):
+        """나온 뒤의 기록. 들어올 때마다 새로 시작한다 (switch_in 이 부른다).
+
+        ! 교체해서 다시 나오면 속이기·만나자마자가 또 된다 — 그게 게임 규칙이다.
+          그래서 Party 가 아니라 **나올 때마다** 지운다.
+        """
+        self.acted = False           # 나온 뒤 기술을 한 번이라도 썼나 (속이기·만나자마자)
+        self.used_moves = set()      # 나온 뒤 쓴 기술 이름 (비장의무기)
+        self.stockpile = 0           # 비축하기 횟수 (토해내기)
+        self.last_failed = False     # 직전 행동이 실패했나 (분함의발구르기·열불내기)
+        self.last_move = None        # 직전에 쓴 기술 (Policy._just_failed — 상대가 본다)
+        # 판 중간에서 시작해 '막 나왔는지' 를 몰라서 막 나왔다고 **가정한** 몸인가.
+        # Battle.__init__ 이 켜고, 실제로 교체해 들어오면 여기서 꺼진다.
+        self.fresh_guessed = False
+
+    @property
+    def ate_berry(self):
+        """이 배틀에서 나무열매를 먹었나 (트림). 먹은 열매는 item 에 이름이 남는다."""
+        return bool(self.item_used and self.item and self.item.endswith("열매"))
 
     @property
     def name(self):
@@ -592,7 +662,9 @@ class Side(object):
           계산되고 있었다. 딱 이 프로젝트가 고장나는 방식이다.
         """
         poke = self.base.poke
-        if self.types_override:
+        # ! `is not None` 이어야 한다. 불사르기로 순수 불꽃이 타입을 잃으면 [] 가
+        #   되는데, 참/거짓으로 물으면 [] 가 '안 바뀜' 으로 읽혀 원래 타입으로 돌아간다.
+        if self.types_override is not None:
             poke = dict(poke)
             poke["types"] = list(self.types_override)
         return calc.Build(
@@ -665,7 +737,9 @@ class Side(object):
     @property
     def types(self):
         """지금 이 몸의 타입. 물붓기 같은 것으로 바뀌어 있을 수 있다."""
-        return self.types_override or self.base.types
+        if self.types_override is not None:      # [] (타입 없음) 도 바뀐 것이다
+            return self.types_override
+        return self.base.types
 
     def rank_text(self):
         got = ["%s%+d" % (calc.STAT_KO[k], v)
@@ -867,7 +941,15 @@ class Battle(object):
 
     def __init__(self, dex, me_build, opp_build, rng=None, log=False,
                  matchup=None, my_hp=None, opp_hp=None, my_active=0,
-                 opp_hazards=None, my_hazards=None, opp_active=0):
+                 opp_hazards=None, my_hazards=None, opp_active=0,
+                 my_fresh=None, opp_fresh=None):
+        """my_fresh / opp_fresh — 지금 나와 있는 놈이 **이번 턴에 막 나왔나.**
+
+        속이기·만나자마자는 나온 뒤 첫 기술일 때만 된다. 판 처음부터 돌리면
+        당연히 True 지만(run_once 가 그렇게 준다), 실전 중간 상태에서 부르면
+        알 수가 없다. None(모름)이면 막 나온 것으로 보되, 그 가정 때문에
+        그 기술이 먹혔으면 **경고를 남긴다** — 조용히 넘어가지 않게.
+        """
         self.dex = dex
         # 한 마리만 넣으면 1대1, 목록을 넣으면 교체가 있는 대전이 된다
         self.me_party = Party(dex, me_build, my_hp)
@@ -887,6 +969,13 @@ class Battle(object):
         self.turn = 0
         self.log = [] if log else None
         self.warnings = []
+        # 막 나왔는지 몰라서 '막 나왔다' 고 가정한 몸에는 표시를 단다 (Side.fresh_guessed).
+        for party, fresh in ((self.me_party, my_fresh),
+                             (self.opp_party, opp_fresh)):
+            if fresh is None:
+                party.active.fresh_guessed = True
+            elif not fresh:
+                party.active.acted = True
         self._immune_abilities = status_immune_abilities(dex)
         self._warn_dead_items()
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
@@ -1067,6 +1156,10 @@ class Battle(object):
             old.protecting = False
         party.active_idx = idx
         side = party.active
+        side.reset_entry()                       # 방금 나온 것을 이제 안다
+        # 턴 중간에 들어온 놈은 이 턴에 고른 것이 없고 움직이지도 않는다.
+        # (예전 턴의 기록이 남아 있으면 기습이 그걸 보고 틀린다)
+        side.chosen, side.moved, side.hit_this_turn = None, True, False
         self._say("%s 로 교체%s" % (side.name, (" (%s)" % reason) if reason else ""))
         self._apply_hazards(party, side)
         if party.heal_wish and side.alive:
@@ -1170,20 +1263,82 @@ class Battle(object):
                           calc.CONFIG["weather_weaken"]))
         return mult
 
+    def move_blocked(self, user, target, move, foresee=False):
+        """이 기술이 지금 실패하면 그 까닭을, 아니면 None. 설명문의 조건을 본다.
+
+        foresee=True 는 **턴 전에 고를 때** (Policy) 다. 상대가 무엇을 골랐는지·
+        이 턴에 맞았는지에 달린 것(기습·기선제압·힘껏펀치)은 그때 알 수 없으므로
+        안 본다. 나머지는 턴 전에도 확실히 알 수 있다.
+        """
+        d = move.get("description") or ""
+        if "실패" not in d:
+            return None
+        if _FIRST_ONLY.search(d) and user.acted:
+            return "실패 — 나온 뒤 첫 기술이 아니다"
+        if _LAST_RESORT.search(d):
+            others = ([n for n in user.moveset if n != move["name"]]
+                      if user.moveset else None)
+            if others is None:
+                # 기술 목록을 모른다 — 기술 4개로 보고 나머지 3개를 다 썼나 본다.
+                used = [n for n in user.used_moves if n != move["name"]]
+                if len(used) < 3:
+                    return "실패 — 다른 기술을 다 안 썼다 (기술 목록을 몰라 4개로 봄)"
+            elif not all(n in user.used_moves for n in others):
+                return "실패 — 다른 기술을 다 안 썼다"
+        if _BELCH.search(d) and not user.ate_berry:
+            return "실패 — 이 배틀에서 나무열매를 안 먹었다"
+        if _NEED_STOCKPILE.search(d) and not user.stockpile:
+            return "실패 — 비축하기 상태가 아니다"
+        if _NEED_TERRAIN.search(d) and not self.field.terrain:
+            return "실패 — 필드가 없다"
+        if not foresee:
+            if _SUCKER.search(d) and (target.moved or target.chosen is None
+                                      or target.chosen["category"] == "변화"):
+                return ("실패 — 상대가 이미 움직였다" if target.moved else
+                        "실패 — 상대가 공격 기술을 고르지 않았다")
+            if _UPPER_HAND.search(d) and (
+                    target.moved or target.chosen is None
+                    or target.chosen.get("priority", 0) <= 0):
+                return "실패 — 상대가 선제 공격 기술을 쓰지 않는다"
+            if _FOCUS.search(d) and user.hit_this_turn:
+                return "실패 — 이 턴에 먼저 맞았다"
+        # 몸(Build)만 보고 되는 것 — 폴터가이스트·불사르기·전광쌍격·죽기살기
+        return calc.move_fails(move, user.as_build(), target.as_build())
+
+    def _crash(self, atk, move):
+        """무릎차기처럼 빗나가거나 실패하면 자신이 다치는 기술."""
+        atk.move_failed = True
+        m = _CRASH.search(move.get("description") or "")
+        if m and atk.alive:
+            lost = max(1, atk.max_hp // int(m.group(1)))
+            atk.damage(lost, direct=False)
+            self._say("%s 는 기세가 넘쳐 스스로 다쳤다 — %d (HP %d/%d)"
+                      % (atk.name, lost, atk.hp, atk.max_hp))
+            self._pinch_berry(atk)
+
     def _hit(self, atk, dfn, move, who):
         """공격기 한 방. 실제로 들어간 데미지를 돌려준다."""
         if dfn.protecting:
             self._say("%s 의 %s — 막혔다" % (atk.name, move["name"]))
+            self._crash(atk, move)
             return 0
 
-        # 설명문의 실패 조건 (폴터가이스트 등) — 명중 판정보다 먼저.
-        # calc_damage 도 같은 것을 보지만, 여기서 먼저 걸러야 로그가 '빗나감' 이 안 된다.
-        why = None
-        if "실패" in (move.get("description") or ""):     # 몸을 새로 만드는 값을 아낀다
-            why = calc.move_fails(move, atk.as_build(), dfn.as_build())
+        # 설명문의 실패 조건 — 명중 판정보다 먼저. calc_damage 도 몸으로 되는 것은
+        # 보지만, 여기서 먼저 걸러야 로그가 '빗나감' 이 안 된다 (열 판에 한 판꼴로
+        # 그랬다 — tests.py [47]).
+        why = self.move_blocked(atk, dfn, move)
         if why:
             self._say("%s 의 %s — %s" % (atk.name, move["name"], why))
+            self._crash(atk, move)
             return 0
+        d_text = move.get("description") or ""
+        if _NEED_STOCKPILE.search(d_text):
+            # 토해내기 — 비축한 만큼 위력이 오른다 (설명문: 100~300)
+            move = dict(move, power=100 * atk.stockpile)
+        if atk.fresh_guessed and _FIRST_ONLY.search(d_text):
+            self._warn("%s 가 이번 턴에 막 나왔는지 몰라서, 막 나온 것으로 보고 %s 를 "
+                       "통하게 했습니다 (나온 첫 턴만 되는 기술)"
+                       % (atk.name, move["name"]))
 
         acc = move.get("accuracy")
         if acc is not None and acc <= 100:
@@ -1198,6 +1353,7 @@ class Battle(object):
             if self.rng.random() > min(1.0, hit_p):
                 self._say("%s 의 %s — 빗나감 (명중 %.0f%%)"
                           % (atk.name, move["name"], min(1.0, hit_p) * 100))
+                self._crash(atk, move)
                 return 0
 
         # 기술마다 급소 확률이 다르다. '반드시 급소' 도 있다 (트릭플라워 등).
@@ -1207,6 +1363,11 @@ class Battle(object):
             stage += ef["step"]
         crit = self.rng.random() < calc.crit_chance(move, stage)
         extra = self._power_scale(move, atk)
+        m2 = _AFTER_FAIL.search(d_text)
+        if m2 and atk.last_failed:
+            extra *= int(m2.group(1))
+            self._say("%s 의 %s — 직전에 실패해서 위력 %s배"
+                      % (atk.name, move["name"], m2.group(1)))
         jw = item_effect(self.dex, atk.item, "jewel")
         if jw and not atk.item_used and move["type"] == jw["type"] \
                 and move["category"] != "변화":
@@ -1218,11 +1379,12 @@ class Battle(object):
                                critical=crit, extra=extra)
         if "error" in res:
             self._say("%s 의 %s — %s" % (atk.name, move["name"], res["error"]))
+            self._crash(atk, move)        # 고스트에게 무릎차기 — 안 통해도 다친다
             return 0
 
         dmg = self.rng.choice(res["rolls"])
-        # 스크린 — 급소에는 안 통한다 (본편 규칙)
-        if not crit:
+        # 스크린 — 급소에는 안 통한다 (본편 규칙). 죽기살기 같은 고정 데미지도 안 깎인다.
+        if not crit and not res.get("fixed"):
             shield = self._party_of(dfn).screen_mult(move["category"])
             if shield < 1.0:
                 dmg = max(1, int(dmg * shield))
@@ -1254,6 +1416,16 @@ class Battle(object):
                   % (atk.name, move["name"], dfn.name, dmg, dfn.hp, dfn.max_hp,
                      "  급소!" if crit else "",
                      "  · " + note if note else ""))
+        if dmg:
+            dfn.hit_this_turn = True           # 힘껏펀치가 본다
+        # 속이기·기선제압 — 풀죽게 하는 것이 기술 그 자체다 (확률이 아니다).
+        # 정신력처럼 '풀죽지 않는다' 고 적힌 특성은 설명문에서 읽는다.
+        if dmg and dfn.alive and _FLINCH_ALWAYS.search(d_text):
+            if dfn.base.ability in flinch_proof_abilities(self.dex):
+                self._say("%s 의 %s — 풀죽지 않는다" % (dfn.name, dfn.base.ability))
+            else:
+                dfn.flinched = True
+                self._say("%s 는 풀죽었다" % dfn.name)
 
         # 맞은 쪽 특성이 반응한다
         ab = ON_HIT_ABILITY.get(dfn.base.ability)
@@ -1335,7 +1507,8 @@ class Battle(object):
             atk.damage(back, direct=False)
             self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
         # 생명의구슬
-        if atk.item == "생명의구슬" and not atk.item_used:
+        # 죽기살기 같은 고정 데미지는 생명의구슬이 세게 하지도, 반동을 주지도 않는다
+        if atk.item == "생명의구슬" and not atk.item_used and not res.get("fixed"):
             atk.damage(max(1, atk.max_hp // 10), direct=False)
             self._say("생명의구슬 반동 %d" % max(1, atk.max_hp // 10))
 
@@ -1350,8 +1523,10 @@ class Battle(object):
         # 기술에 붙은 특수 규칙은 경고로만.
         # 날씨·필드는 여기서 실제로 계산하므로 그 경고는 뺀다.
         for c in best.move_caveats(move):
-            if "날씨·필드" in c:
-                continue
+            if "날씨·필드" in c or c.startswith(best.CONDITIONAL):
+                continue          # 여기서 실제로 판정하는 것들이다
+            if "위력이" in c and _NEED_STOCKPILE.search(d_text):
+                continue          # 토해내기 — 비축한 만큼 위력을 위에서 실제로 넣었다
             self._warn("%s: %s" % (move["name"], c))
         self._pinch_berry(dfn)
         return dmg
@@ -1394,13 +1569,30 @@ class Battle(object):
 
     # -- 변화기 -------------------------------------------------------------
     def _use_status(self, user, target, move):
+        # 설명문의 실패 조건 (꿀꺽 — 비축하기 상태가 아니면 실패)
+        why = self.move_blocked(user, target, move)
+        if why:
+            self._say("%s 의 %s — %s" % (user.name, move["name"], why))
+            user.move_failed = True
+            return
+        d_text = move.get("description") or ""
+        if _STOCKPILE.search(d_text) and user.stockpile >= 3:
+            # "비축하기 상태는 최대 3회까지" — 넘치면 방어·특방도 안 오른다
+            self._say("%s 의 %s — 더 비축할 수 없다 (3회)" % (user.name, move["name"]))
+            user.move_failed = True
+            return
         # 황금몸 — 상대가 쓰는 변화 기술이 아예 안 통한다
         if (target is not user and move["category"] == "변화"
                 and target.base.ability in STATUS_MOVE_PROOF):
             self._say("%s 의 %s — %s 의 %s 로 막혔다"
                       % (user.name, move["name"], target.name,
                          target.base.ability))
+            user.move_failed = True
             return
+        if _STOCKPILE.search(d_text):
+            user.stockpile += 1
+            self._say("%s 의 %s — 비축 %d회" % (user.name, move["name"],
+                                                user.stockpile))
 
         for ef in move_effects(move):
             k = ef["kind"]
@@ -1432,6 +1624,7 @@ class Battle(object):
             elif k == "heal":
                 if user.hp >= user.max_hp:
                     self._say("%s 의 %s — HP가 꽉 차서 실패" % (user.name, move["name"]))
+                    user.move_failed = True
                     continue
                 got = user.heal(user.max_hp * ef["frac"])
                 if ef.get("cure"):
@@ -1469,6 +1662,7 @@ class Battle(object):
                 cost = max(1, int(user.max_hp * ef["cost"]))
                 if user.hp <= cost:
                     self._say("%s 의 %s — HP가 모자라 실패" % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     user.damage(cost, direct=False)
                     user.ranks["attack"] = ef["step"]
@@ -1504,6 +1698,7 @@ class Battle(object):
                 a, b = user.item, target.item
                 if user.item_used or target.item_used:
                     self._say("%s 의 %s — 실패 (이미 쓴 도구)" % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     user.item, target.item = b, a
                     self._say("%s 의 %s — 도구를 바꿨다 (%s <-> %s)"
@@ -1514,6 +1709,7 @@ class Battle(object):
                 if not dead:
                     self._say("%s 의 %s — 쓰러진 포켓몬이 없어 실패"
                               % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     user.hp = 0
                     back = party.members[dead[0]]
@@ -1533,6 +1729,7 @@ class Battle(object):
                 if not bench:
                     self._say("%s 의 %s — 바꿀 포켓몬이 없어 실패"
                               % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     keep = dict(user.ranks)
                     sub = user.substitute
@@ -1549,8 +1746,10 @@ class Battle(object):
                 cost = max(1, int(user.max_hp * ef["frac"]))
                 if user.substitute:
                     self._say("%s 의 %s — 이미 대타가 있다" % (user.name, move["name"]))
+                    user.move_failed = True
                 elif user.hp <= cost:
                     self._say("%s 의 %s — HP가 모자라 실패" % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     user.damage(cost, direct=False)
                     user.substitute = cost
@@ -1560,6 +1759,7 @@ class Battle(object):
             elif k == "wish":
                 if user.wish:
                     self._say("%s 의 %s — 이미 걸려 있다" % (user.name, move["name"]))
+                    user.move_failed = True
                 else:
                     # 희망사항은 **다음 턴 끝에** 자리로 회복이 온다.
                     # 그래서 빠지고 나서 들어온 놈이 받는다 — 그게 이 기술의 핵심이다.
@@ -1616,6 +1816,7 @@ class Battle(object):
                                    % move["name"])
                 else:
                     self._say("%s 의 %s — 더 못 쌓는다" % (user.name, move["name"]))
+                    user.move_failed = True
             else:
                 self._say("%s 의 %s — 효과를 아직 모른다" % (user.name, move["name"]))
                 self._warn("'%s' 의 효과를 설명문에서 못 읽었습니다" % move["name"])
@@ -1677,7 +1878,7 @@ class Battle(object):
                        % status)
         return True
 
-    def _can_move(self, side):
+    def _can_move(self, side, move=None):
         """행동할 수 있는가. 잠듦·얼음·마비·혼란을 여기서 본다."""
         if side.status == "잠듦":
             if side.status_turns > 0:
@@ -1687,11 +1888,16 @@ class Battle(object):
             side.status = None
             self._say("%s 가 깨어났다" % side.name)
         elif side.status == "얼음":
-            if self.rng.random() >= calc.CONFIG["freeze_thaw"]:
+            if move and _THAW_SELF.search(move.get("description") or ""):
+                # 플레어드라이브·열탕·불사르기 등 — "사용하면 자신의 얼음 상태를 회복한다"
+                side.status = None
+                self._say("%s 의 %s — 얼음이 녹았다" % (side.name, move["name"]))
+            elif self.rng.random() >= calc.CONFIG["freeze_thaw"]:
                 self._say("%s 는 얼어붙어 움직이지 못했다" % side.name)
                 return False
-            side.status = None
-            self._say("%s 의 얼음이 풀렸다" % side.name)
+            else:
+                side.status = None
+                self._say("%s 의 얼음이 풀렸다" % side.name)
 
         if (side.status == "마비"
                 and self.rng.random() < calc.CONFIG["paralysis_skip"]):
@@ -1725,12 +1931,45 @@ class Battle(object):
     def _act(self, actor, target, move):
         if not actor.alive:
             return
-        if not self._can_move(actor):
+        actor.move_failed = False
+        if not self._can_move(actor, move):
+            actor.last_failed = True          # '행동하지 못했다' 도 실패로 친다 (설명문)
             return
         if move["category"] == "변화":
             self._use_status(actor, target, move)
         else:
             self._hit(actor, target, move, None)
+        # 나온 뒤의 기록 — **쓰고 난 뒤에** 남긴다. 먼저 남기면 속이기가 자기 자신
+        # 때문에 '첫 기술이 아니다' 로 실패한다.
+        actor.acted = True
+        actor.fresh_guessed = False
+        actor.used_moves.add(move["name"])
+        actor.last_move = move
+        if not actor.move_failed:
+            self._after_use(actor, move)
+        actor.last_failed = actor.move_failed
+
+    def _after_use(self, user, move):
+        """기술이 제대로 나갔을 때만 일어나는 뒤처리 (설명문에 적힌 것)."""
+        d = move.get("description") or ""
+        m = _LOSE_TYPE.search(d)
+        if m and m.group(1) in user.types:
+            # 불사르기·전광쌍격. 순수 불꽃이면 타입이 **없어진다** ([] — None 과 다르다)
+            user.types_override = [t for t in user.types if t != m.group(1)]
+            self._say("%s 의 %s타입이 없어졌다 (지금 %s)"
+                      % (user.name, m.group(1),
+                         "/".join(user.types_override) or "타입 없음"))
+        if _CLEAR_TERRAIN.search(d) and self.field.terrain:
+            self._say("%s 의 %s — %s 가 사라졌다"
+                      % (user.name, move["name"], self.field.terrain))
+            self.field.terrain, self.field.terrain_turns = None, 0
+        if _NEED_STOCKPILE.search(d) and user.stockpile:
+            # 토해내기·꿀꺽 — 비축을 다 쓰고, 비축하며 올린 방어·특방도 돌려놓는다
+            n, user.stockpile = user.stockpile, 0
+            user.bump("defense", -n)
+            user.bump("spDef", -n)
+            self._say("%s 의 비축이 풀렸다 (방어·특방 -%d, 지금 %s)"
+                      % (user.name, n, user.rank_text()))
 
     def step(self, my_action, opp_action):
         """한 턴 진행.
@@ -1786,6 +2025,12 @@ class Battle(object):
 
         my_move = pending[0][1]
         opp_move = pending[1][1]
+        # 이 턴의 기록 — 교체가 끝난 뒤 **지금 나와 있는 놈** 에게 단다.
+        # 기습은 '상대가 공격기를 골랐고 아직 안 움직였나' 를 본다.
+        for side, mv in ((self.me, my_move), (self.opp, opp_move)):
+            side.chosen = mv
+            side.moved = False
+            side.hit_this_turn = False
         if my_move is None and opp_move is None:
             self._end_of_turn()
             self._replace_fainted()
@@ -1810,8 +2055,11 @@ class Battle(object):
                 break
             if actor.flinched:
                 self._say("%s 는 풀죽어서 움직이지 못했다" % actor.name)
+                actor.last_failed = True      # 행동하지 못했다 (분함의발구르기가 본다)
+                actor.moved = True
                 continue
             self._act(actor, target, move)
+            actor.moved = True
 
         if self.me.alive and self.opp.alive:
             self._end_of_turn()
@@ -2188,27 +2436,58 @@ class Policy(object):
         # 실제보다 한참 높게 나온다 (재 보니 최대 89%p 차이가 났다).
         self.allow_switch = allow_switch
 
-    def _best_move(self, side):
+    def _best_move(self, side, battle=None):
         # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
         restricted = bool(self.moves) and self._is_lead(side)
+        if restricted:
+            side.moveset = [m["name"] for m in self.moves]   # 비장의무기가 본다
         key = (side.name, restricted)
-        if key not in self._fallback:
+        rows = self._fallback.get(key)
+        if rows is None:
             if restricted:
                 cand = [(m, None) for m in self.moves]
             else:
                 cand = best.candidate_moves(self.dex, side.base.poke)
             rows = best.rate_moves(
                 self.dex, side.as_build(), self._foe, cand)
-            threat = best.best_threat(rows)
-            if threat:
-                mv = threat["move"]
-            else:
-                dmg = [r for r in rows if r["kind"] != "status"]
-                mv = (dmg[0]["move"] if dmg else
-                      (rows[0]["move"] if rows else
-                       self.dex.find_move("막치기")))
-            self._fallback[key] = mv
-        return self._fallback[key]
+            self._fallback[key] = rows
+        # ! 표는 한 번만 재지만 **고르는 것은 매 턴** 한다. 전에는 고른 기술 하나를
+        #   외워 두고 끝까지 썼는데, 만나자마자처럼 '나온 첫 턴만' 되는 기술이 1등이면
+        #   둘째 턴부터 매번 실패하게 된다. 지금 확실히 실패할 기술은 빼고 고른다.
+        #   (기습처럼 상대 선택에 달린 것은 턴 전에 알 수 없으므로 안 뺀다)
+        if battle is not None:
+            foe = battle.opp if side is battle.me else battle.me
+            rows = [r for r in rows if battle.move_blocked(
+                side, foe, r["move"], foresee=True) is None
+                and not self._just_failed(side, r["move"], foe)]
+        threat = best.best_threat(rows)
+        if threat:
+            return threat["move"]
+        dmg = [r for r in rows if r["kind"] != "status"]
+        return (dmg[0]["move"] if dmg else
+                (rows[0]["move"] if rows else self.dex.find_move("막치기")))
+
+    @staticmethod
+    def _just_failed(side, move, foe=None):
+        """상대 선택에 달린 기술(기습·기선제압·힘껏펀치)을 **지금 안 고를 까닭**.
+
+        ! **이건 정한 규칙이지 잰 것이 아니다** (2026-09-22). 이게 없으면 철벽만
+          쓰는 하마돈을 상대로 대도각참이 30턴 내내 기습을 골라 200판에 6000번
+          실패했고 판이 안 끝났다. '방금 실패했으면 한 턴 쉰다' 로는 기습과
+          아이언헤드를 번갈아 써서 여전히 2512번 실패했다.
+          그래서 **사람이 보는 것** 으로 고른다 —
+            기습     상대가 직전에 변화기를 썼으면 안 고른다
+            기선제압 상대가 직전에 선제기가 아닌 기술을 썼으면 안 고른다
+            힘껏펀치 방금 이 기술이 실패했으면 한 턴 쉰다
+        """
+        d = move.get("description") or ""
+        seen = foe.last_move if foe is not None else None
+        if _SUCKER.search(d) and seen is not None:
+            return seen["category"] == "변화"
+        if _UPPER_HAND.search(d) and seen is not None:
+            return seen.get("priority", 0) <= 0
+        return bool(_FOCUS.search(d) and side.last_failed and side.last_move
+                    and side.last_move["name"] == move["name"])
 
     def _wrap_mega(self, party, action):
         """메가를 아직 안 썼고 지금 나와 있는 놈이 할 수 있으면 같이 한다.
@@ -2254,9 +2533,21 @@ class Policy(object):
             #   칼춤을 한 번 쓰는 것과 여섯 턴 내리 쓰는 것은 완전히
             #   다른 이야기다. 내 기술을 알 때는 매 턴 다시 고른다.
             if self.moves:
-                return self._wrap_mega(party, self._best_move(party.active))
-            return self._wrap_mega(party, _pick(self.plan, turn_index))
-        return self._wrap_mega(party, self._best_move(party.active))
+                return self._wrap_mega(party, self._best_move(party.active, battle))
+            again = _pick(self.plan, turn_index)
+            # 되풀이하려는 수가 **확실히 실패하면** (만나자마자를 둘째 턴에 등)
+            # 되풀이하지 않고 쓸 수 있는 기술 중에서 고른다.
+            if (battle is not None and isinstance(again, dict)
+                    and (battle.move_blocked(
+                        party.active,
+                        battle.opp if party is battle.me_party else battle.me,
+                        again, foresee=True)
+                         or self._just_failed(
+                             party.active, again,
+                             battle.opp if party is battle.me_party else battle.me))):
+                again = self._best_move(party.active, battle)
+            return self._wrap_mega(party, again)
+        return self._wrap_mega(party, self._best_move(party.active, battle))
 
 
 def action_name(action, party=None):
@@ -2320,8 +2611,13 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
     """
+    kw = dict(state or {})
+    if state is None:
+        # 판 처음부터 — 둘 다 **확실히** 막 나왔다 (경고할 일이 아니다).
+        # 실전 중간 상태(state)를 주면 모른다 — Battle 이 가정하고 경고한다.
+        kw["my_fresh"] = kw["opp_fresh"] = True
     b = Battle(dex, me_build, opp_build, rng=rng, log=log,
-               matchup=matchup, **(state or {}))
+               matchup=matchup, **kw)
     # 내 쪽은 '이 계획이 좋은가' 를 재는 중이므로 계획을 그대로 밀고,
     # 계획이 끝난 뒤부터는 양쪽 다 빼는 것을 판단한다.
     # ! lead 를 **Battle 에게 물어서** 넘긴다. 손으로 me_build[0] 이라고
