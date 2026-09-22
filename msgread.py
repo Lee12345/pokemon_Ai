@@ -72,7 +72,7 @@ def normalize(text):
 
 # ── 문장 틀 ────────────────────────────────────────────────────────────
 # {P} 포켓몬(앞에 '상대' 가 붙을 수 있다) · {M} 기술 · {I} 도구 · {A} 특성 · {S} 능력치
-# {T} 상대 트레이너 이름 (일본어 등 — 글자 인식이 못 읽어 비거나 깨진다) · {X} 아무 말
+# {Y} 타입 · {T} 상대 트레이너 이름 (일본어 등 — 글자 인식이 못 읽어 비거나 깨진다) · {X} 아무 말
 # (a|b) 는 조사 갈래. 뒤의 이름표가 돌려줄 일의 종류. 문장부호는 비교할 때 뺀다 (normalize).
 # '의' 자리에 '이' 도 받는다 — 글자 인식이 「대쓰여너이」 「다크뎃이」 「보만다이」 로 세 번 읽었다.
 TEMPLATES = [
@@ -104,6 +104,8 @@ TEMPLATES = [
     ("{P}(의|이){I}와{T}(의|이)메가링이반응했다!", "메가반응"),
     ("{P}(는|은){X}로메가진화했다!", "메가진화"),
     ("{T}와의승부에서이겼다!", "이김"),
+    # 스위치 화면(유튜버 방송, 사용자가 줌)에서 — 변환자재로 타입이 바뀜
+    ("{P}(는|은){Y}타입이됐다!", "타입바뀜"),
 ]
 STATS = ["공격", "방어", "특수공격", "특수방어", "스피드", "명중률", "회피율"]
 
@@ -134,6 +136,7 @@ class Names:
         self.moves = [m["name"] for m in dex.moves]
         self.items = [i["name"] for i in dex.items]
         self.abilities = [a["name"] for a in dex.abilities]
+        self.types = list(dex.types)
 
     def best(self, text, pool):
         if not text:
@@ -164,7 +167,8 @@ def _slot(kind, text, names):
             if sc2 > sc:
                 name, sc = name2, sc2
         return {"name": name, "side": side, "read": body}, sc
-    pool = {"M": names.moves, "I": names.items, "A": names.abilities, "S": STATS}[kind]
+    pool = {"M": names.moves, "I": names.items, "A": names.abilities, "S": STATS,
+            "Y": names.types}[kind]
     name, sc = names.best(text, pool)
     return {"name": name, "read": text}, sc
 
@@ -204,7 +208,7 @@ def _match(tokens, text, names, memo, pos=0, ti=0):
             rest = _match(tokens, text, names, memo, pos + L, ti + 1)
             if rest is None:
                 continue
-            w = 3 if arg in "PMIAS" else 0            # 이름은 무겁게, 트레이너 이름은 안 셈
+            w = 3 if arg in "PMIASY" else 0           # 이름은 무겁게, 트레이너 이름은 안 셈
             cand = (rest[0] + s * w, rest[1] + w, [(arg, val)] + rest[2])
             if best is None or (cand[1] and (not best[1] or cand[0] / cand[1] > best[0] / best[1])):
                 best = cand
@@ -233,7 +237,7 @@ def read(lines, names):
         ev["mon"], ev["side"] = mons[0]["name"], mons[0]["side"]
     if len(mons) > 1:
         ev["other"], ev["other_side"] = mons[1]["name"], mons[1]["side"]
-    for k, field in (("M", "move"), ("I", "item"), ("S", "stat")):
+    for k, field in (("M", "move"), ("I", "item"), ("S", "stat"), ("Y", "type")):
         for kk, v in vals:
             if kk == k:
                 ev[field] = v["name"]

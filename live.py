@@ -83,7 +83,15 @@ def _candidates(items, text, key="name"):
 
 
 def find_poke(dex, text):
-    """앞글자로 포켓몬 찾기. (포켓몬, 알림글) 또는 (None, 왜 안 되는지)."""
+    """앞글자로 포켓몬 찾기. (포켓몬, 알림글) 또는 (None, 왜 안 되는지).
+
+    「라이츄(알로라의모습)」 처럼 모습까지 적은 이름표(`poke_label`)는 그 모습으로 (띄어쓰기 무시).
+    """
+    tight = text.replace(" ", "").strip()
+    if "(" in tight:
+        hit = [p for p in dex.pokemon if not p.get("isMega") and poke_label(p) == tight]
+        if hit:
+            return hit[0], None
     got = _candidates(dex.pokemon, text)
     if not got:
         return None, None
@@ -372,7 +380,7 @@ def ask_party(dex):
 def party_line(build, moves):
     """한 마리를 파일에 적을 한 줄로."""
     return u"%s %s | %s %s %s %s" % (
-        build.poke["name"], ",".join(moves),
+        poke_label(build.poke), ",".join(moves),
         build.nature["name"] if build.nature else "",
         ev_text(build.sp), build.ability or "", build.item or "")
 
@@ -810,17 +818,22 @@ def turn_state(my_hp, my_active, opp_rows, opp_active):
             None)
 
 
-def evidence_map(seen, opp_pokes):
-    """{이름: 본 기술들} 을 {이름: Evidence} 로. 넘길 상대 것만 남긴다.
+def evidence_map(seen, opp_pokes, items=None, abilities=None):
+    """{이름: 본 기술들} (+ 드러난 도구·특성) 을 {이름: Evidence} 로. 넘길 상대 것만 남긴다.
 
     ! 하나로 뭉쳐서 넘기지 않는다. '지진을 봤다' 는 그때 나와 있던
       놈이 지진을 쓴다는 뜻이지 상대 셋 전부가 아니다.
+    도구·특성은 화면 문구로 드러난 것이다 — 「상대 X는 풍선 때문에 떠 있다」,
+    「상대 X의 X나이트와 … 메가링이 반응했다」, 「상대 X은 … 통찰했다」 (screenread, 2026-09-22).
     """
     out = {}
     for poke in opp_pokes:
-        got = (seen or {}).get(poke["name"])
-        if got:
-            out[poke["name"]] = scout.Evidence(seen_moves=list(got))
+        name = poke["name"]
+        got = (seen or {}).get(name)
+        item = (items or {}).get(name)
+        ability = (abilities or {}).get(name)
+        if got or item or ability:
+            out[name] = scout.Evidence(seen_moves=list(got or ()), item=item, ability=ability)
     return out or None
 
 
@@ -1075,31 +1088,61 @@ def rank_hits(items, text, key="name", limit=12):
     return (head + mid)[:limit]
 
 
+def poke_label(p):
+    """칸·파일에 적는 이름. 기본 모습은 이름 그대로, 다른 모습은 「라이츄(알로라의모습)」.
+
+    띄어쓰기를 뺀다 — 파티 파일은 이름을 띄어쓰기로 자른다 (`read_line`).
+    메가는 이름 그대로 (메가는 도구로 정해진다).
+    """
+    if p.get("isMega") or not p.get("formName") or p.get("formNo") == 0:
+        return p["name"]
+    return "%s(%s)" % (p["name"], p["formName"].replace(" ", ""))
+
+
 def pickable_pokemon(dex):
-    """고를 수 있는 포켓몬 목록. **같은 이름을 한 번만 보여 준다.**
+    """고를 수 있는 포켓몬 목록 — **사용률에 나오는 모습마다 하나.**
 
     ! 한카리아스는 기본·메가·메가Z 세 개가 다 'find_pokemon' 에 걸린다.
-      검색 후보에 같은 이름이 셋 나오면 무엇을 고른 건지 알 수 없다.
-      메가는 **도구(메가스톤)로 정해지는 것**이므로 여기서는 기본 폼만
-      보여 주고, 도구를 고르면 그때 메가로 바뀐다.
+      메가는 **도구(메가스톤)로 정해지는 것**이므로 여기서는 빼고,
+      도구를 고르면 그때 메가로 바뀐다.
+    ! ★ 예전엔 **이름마다 하나만** 보여 줬다. 그래서 워시로토무(전기/물)·알로라 라이츄·
+      히스이 윈디·팔데아 켄타로스·대쓰여너 암컷 등 **타입이나 종족값이 다른 23종**을 창에서
+      고를 수 없었고, 고르면 기본 모습(로토무 = 전기/고스트)으로 계산됐다 (2026-09-22,
+      화면 읽기가 모습까지 맞히는데 창이 못 받아서 찾음).
+      → 사용률에 나오는 모습은 따로 보여 준다. 사용률에 하나도 없는 이름은 번호가 가장
+      작은 모습 하나. 비비용 무늬·킬가르도 블레이드폼처럼 사용률에 없는 모습은 안 나온다.
     """
     got = getattr(dex, "_pickable", None)
     if got is not None:
         return got
-    seen, out = set(), []
+    used = set(getattr(dex, "usage", {}) or {})
+    groups = {}
     for p in dex.pokemon:
-        if p.get("isMega"):
-            continue
-        if p["name"] in seen:
-            continue
-        seen.add(p["name"])
-        out.append(p)
-    out.sort(key=lambda p: p["name"])
+        if not p.get("isMega"):
+            groups.setdefault(p["name"], []).append(p)
+    out = []
+    for name, ps in groups.items():
+        inuse = [p for p in ps if p["key"] in used]
+        out.extend(inuse or [min(ps, key=lambda p: p["formNo"])])
+    out.sort(key=lambda p: (p["name"], p["formNo"]))
     try:
         dex._pickable = out
     except AttributeError:
         pass
     return out
+
+
+def pickable_for(dex, poke):
+    """아무 모습 → 창 목록에 있는 모습. 목록에 없으면(비비용 정글의 모양 등) 같은 이름에서
+    타입·종족값이 같은 것, 그것도 없으면 같은 이름의 첫 것."""
+    pk = pickable_pokemon(dex)
+    if any(p is poke for p in pk):
+        return poke
+    same = [p for p in pk if p["name"] == poke["name"]]
+    for p in same:
+        if p["types"] == poke["types"] and p["baseStats"] == poke["baseStats"]:
+            return p
+    return same[0] if same else None
 
 
 def learnable(dex, poke):

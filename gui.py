@@ -317,7 +317,7 @@ class Slot(object):
                  font=FONT_B, width=2).pack(side="left")
         self.name = Picker(top, tk, "", width=13, on_pick=self.on_poke)
         self.name.pack(side="left")
-        self.name.source([(p["name"], p)
+        self.name.source([(live.poke_label(p), p)
                           for p in live.pickable_pokemon(self.dex)])
         self.title = tk.Label(top, text="", bg=CARD, fg=TEXT, font=FONT_B)
         self.title.pack(side="left", padx=(8, 0))
@@ -519,7 +519,9 @@ class Slot(object):
                     if p["dexNo"] == base["dexNo"]]
             if same:
                 base = same[0]
-        self.name.set(base["name"], base)
+        else:
+            base = live.pickable_for(self.dex, base) or base
+        self.name.set(live.poke_label(base), base)
         self.on_poke(base)
         if build.nature:
             self.nature.set(live.nature_label(self.dex, build.nature["name"]),
@@ -570,7 +572,7 @@ class OppSlot(object):
         self.name = Picker(self.box, tk, "", width=12,
                            on_pick=self.on_poke, rows=5)
         self.name.pack(side="left")
-        self.name.source([(p["name"], p)
+        self.name.source([(live.poke_label(p), p)
                           for p in live.pickable_pokemon(self.dex)])
         tk.Label(self.box, text="HP", bg=CARD, fg=DIM,
                  font=FONT_S).pack(side="left", padx=(6, 1))
@@ -671,6 +673,9 @@ class App(object):
         # 상대 이름 -> 본 기술 목록. **상대마다 따로 쌓는다** —
         # 지진을 쓴 것은 그때 나와 있던 놈이지 상대 셋 전부가 아니다.
         self.seen = {}
+        # 화면 문구로 드러난 상대 도구·특성 (screenread) — 이름 -> 값
+        self.opp_items = {}
+        self.opp_abilities = {}
 
         self.root = tk.Tk()
         self.root.title("포켓몬 챔피언스 — 무엇을 둘까")
@@ -882,6 +887,15 @@ class App(object):
                  "'나와 있음' 을 바꾸면 켜집니다)",
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
 
+        # 화면 사진 넣기 — 선출 화면이면 상대 6마리, 대전 화면이면 문구 칸의 일 (screenread)
+        rs = tk.Frame(box, bg=CARD)
+        rs.pack(fill="x", pady=(6, 0))
+        self.go_screen = tk.Button(rs, text="화면 사진 넣기", command=self.load_screens,
+                                   bg=LINE, fg=TEXT, relief="flat", font=FONT_B)
+        self.go_screen.pack(side="left")
+        tk.Label(rs, text="선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 찍은 순서대로)",
+                 bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(6, 0))
+
         r4 = tk.Frame(box, bg=CARD)
         r4.pack(fill="x", pady=(6, 0))
         tk.Label(r4, text="생각할 시간(초)", bg=CARD, fg=DIM,
@@ -934,12 +948,19 @@ class App(object):
     def clear_seen(self):
         sl = self.active_opp()
         if sl is not None:
-            self.seen.pop(sl.poke["name"], None)
+            for d in (self.seen, self.opp_items, self.opp_abilities):
+                d.pop(sl.poke["name"], None)
         self.draw_seen()
 
     def draw_seen(self):
         for sl in self.opp_slots:
-            sl.draw_seen(self.seen.get((sl.poke or {}).get("name")) or [])
+            name = (sl.poke or {}).get("name")
+            got = list(self.seen.get(name) or [])
+            if self.opp_items.get(name):
+                got.append("도구 " + self.opp_items[name])
+            if self.opp_abilities.get(name):
+                got.append("특성 " + self.opp_abilities[name])
+            sl.draw_seen(got)
 
     def redraw_opp_states(self):
         """상대 쪽 한 줄 요약. '6마리 중 2마리 밝혀짐' 처럼."""
@@ -1044,7 +1065,7 @@ class App(object):
                      % why, clear=True)
             return
         secs = max(1.0, num(self.secs, 10))
-        ev = live.evidence_map(self.seen, opp_pokes)
+        ev = live.evidence_map(self.seen, opp_pokes, self.opp_items, self.opp_abilities)
         oi = state["opp_active"]
         # 막 나왔나 — 계산에 넘기고, 넘긴 뒤엔 끈다 (다음 턴엔 이미 나와 있던 것이다).
         # 안 넘기면 대전이 '모름' 으로 보고 막 나온 것으로 가정한다 (경고만 남긴다).
@@ -1084,6 +1105,101 @@ class App(object):
             self._show(text)
         else:
             self.root.after(0, lambda: self._show(text))
+
+    # -- 화면 사진 --------------------------------------------------------
+    def board(self):
+        """창의 칸 -> screenread.Board."""
+        import screenread
+        my = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get())}
+              for sl in self.slots]
+        opp = [{"poke": sl.poke, "hp": sl.hp_pct(), "brought": bool(sl.brought.get())}
+               for sl in self.opp_slots]
+        return screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
+                                bool(self.my_fresh.get()), bool(self.opp_fresh.get()),
+                                self.seen, self.opp_items, self.opp_abilities)
+
+    def set_board(self, bd):
+        """screenread.Board -> 창의 칸. '나와 있음' 을 바꾸면 '막 나옴' 이 켜지므로
+        (trace) 나와 있음을 먼저 넣고 막 나옴을 나중에 넣는다."""
+        for sl, row in zip(self.slots, bd.my):
+            sl.hp.set("%g" % row["hp"])
+            sl.brought.set(bool(row["brought"]))
+        for sl, row in zip(self.opp_slots, bd.opp + [None] * len(self.opp_slots)):
+            poke = row["poke"] if row else None
+            if poke is not sl.poke:
+                sl.name.set(live.poke_label(poke) if poke else "", poke)
+                sl.poke = poke
+            sl.hp.set("%g" % (row["hp"] if row else 100.0))
+            sl.brought.set(bool(row and row["brought"]))
+            sl.redraw_state()
+        self.my_active.set(bd.my_active)
+        self.opp_active.set(bd.opp_active)
+        self.my_fresh.set(bool(bd.my_fresh))
+        self.opp_fresh.set(bool(bd.opp_fresh))
+        self.seen, self.opp_items, self.opp_abilities = bd.seen, bd.opp_items, bd.opp_abilities
+        self.draw_seen()
+        self.redraw_opp_states()
+
+    def load_screens(self, files=None):
+        """사진 고르기 -> 읽기(다른 갈래) -> 칸에 넣기 + '이렇게 읽었습니다'."""
+        if self.busy:
+            return
+        if files is None:
+            from tkinter import filedialog
+            files = filedialog.askopenfilenames(
+                title="게임 화면 사진 (여러 장이면 찍은 순서대로)",
+                filetypes=[("사진", "*.png *.jpg *.jpeg"), ("모든 파일", "*.*")])
+        files = list(files or [])
+        if not files:
+            return
+        import msgread
+        here = [sl.poke["name"] for sl in self.slots + self.opp_slots if sl.poke]
+        names = msgread.Names(self.dex, here)
+        self.busy = True
+        self.go_screen.config(text="읽는 중...", state="disabled")
+        self.say("사진 %d장을 읽습니다..." % len(files), clear=True)
+
+        def work():
+            import screenread
+            got = []
+            for f in files:
+                try:
+                    got.append((f, screenread.read_screen(f, self.dex, names), None))
+                except Exception as e:
+                    got.append((f, None, "%s: %s" % (type(e).__name__, e)))
+            if self.headless:
+                self._apply_screens(got)
+            else:
+                self.root.after(0, lambda: self._apply_screens(got))
+
+        if self.headless:
+            work()
+        else:
+            threading.Thread(target=work, daemon=True).start()
+
+    def _apply_screens(self, got):
+        import screenread
+        bd = self.board()
+        lines = ["이렇게 읽었습니다 — 틀린 칸은 직접 고치세요.", ""]
+        for f, res, err in got:
+            lines.append("■ %s" % os.path.basename(f))
+            if err:
+                lines.append("   ! 못 읽음: %s" % err)
+                continue
+            if res["kind"] == "선출":
+                notes = screenread.apply_preview(bd, res["opp"], self.dex)
+            else:
+                if res["lines"]:
+                    lines.append("   문구: 「%s」" % " / ".join(res["lines"]))
+                notes = screenread.apply(bd, res["event"], self.dex)
+            for ok, text in notes:
+                lines.append("   %s %s" % ("✓" if ok else "○", text))
+        self.set_board(bd)
+        self.busy = False
+        self.go_screen.config(text="화면 사진 넣기", state="normal")
+        lines.append("")
+        lines.append("✓ = 칸에 넣음   ○ = 읽었지만 칸이 없어 계산에 안 들어감 (또는 못 읽음)")
+        self.say("\n".join(lines), clear=True)
 
     # -- 선출 -------------------------------------------------------------
     def ask_pick(self):
@@ -1612,9 +1728,59 @@ def check():
               % ", ".join("%s(%d>%dpx)" % c for c in clipped[:8]))
         return 1
 
+    # ★ 모습이 다른 포켓몬을 고를 수 있는가 (2026-09-22) — 예전엔 이름마다 하나만 있어서
+    #   워시로토무를 고를 수 없었고 로토무(전기/고스트)로 계산됐다.
+    labels = [t for t, _v in app.opp_slots[0].name.items]
+    for want in ("로토무(워시로토무)", "라이츄(알로라의모습)", "대쓰여너(암컷의모습)"):
+        if want not in labels:
+            print("상대 칸 후보에 %s 가 없습니다 — 모습을 못 고릅니다" % want)
+            return 1
+
+    # ★ 화면 사진에서 읽은 것이 칸에 들어가는가 (screenread, 2026-09-22).
+    #   사진 읽기(글자 인식)는 윈도우 것이라 여기선 **읽은 결과를 바로 넣어** 본다.
+    wash = dex.find_pokemon("0479-02")
+    fake = [("선출.png", {"kind": "선출", "opp": [
+        {"key": "0479-02", "gender": None, "score": 0.9, "gap": 0.3},
+        {"key": dex.find_pokemon("하마돈")["key"], "gender": "수컷", "score": 0.9, "gap": 0.3},
+        {"key": dex.find_pokemon("타부자고")["key"], "gender": "암컷", "score": 0.9, "gap": 0.3}]}, None),
+        ("나옴.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "나옴", "mon": "하마돈", "side": "opp"}}, None),
+        ("기술.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "기술", "mon": "하마돈", "side": "opp", "move": "지진"}}, None),
+        ("풍선.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "풍선", "mon": "타부자고", "side": "opp", "item": "풍선"}}, None),
+        ("쓰러짐.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "쓰러짐", "mon": "로토무", "side": "opp"}}, None),
+        ("하품.png", {"kind": "대전", "lines": ["x"], "event": {
+            "kind": "하품", "mon": "하마돈", "side": "opp"}}, None)]
+    app._apply_screens(fake)
+    shown = app.out.get("1.0", "end")
+    o = app.opp_slots
+    bad = []
+    if (o[0].poke is not wash or o[0].name.get() is not wash
+            or o[0].name.var.get() != "로토무(워시로토무)"):
+        bad.append("선출 화면의 워시로토무가 1번 칸에 없음")
+    if app.opp_active.get() != 1 or not o[1].brought.get() or not app.opp_fresh.get():
+        bad.append("하마돈이 나왔는데 나와 있음·냈다·막 나옴이 안 켜짐")
+    if app.seen.get("하마돈") != ["지진"]:
+        bad.append("본 기술에 지진이 안 들어감 (%s)" % app.seen)
+    if app.opp_items.get("타부자고") != "풍선" or "도구 풍선" not in o[2].seen_label.cget("text"):
+        bad.append("타부자고의 풍선이 안 들어감")
+    if o[0].hp_pct() != 0:
+        bad.append("쓰러진 로토무 HP 가 0 이 아님")
+    if "○ 상대 하마돈: 하품" not in shown or "이렇게 읽었습니다" not in shown:
+        bad.append("칸이 없는 일(하품)을 '계산에 안 들어감' 으로 안 알림")
+    ev = live.evidence_map(app.seen, [p for p in (o[1].poke, o[2].poke)],
+                           app.opp_items, app.opp_abilities)
+    if not ev or ev["타부자고"].item != "풍선" or "지진" not in ev["하마돈"].seen_moves:
+        bad.append("본 기술·도구가 계산에 넘어가지 않음 (%s)" % ev)
+    if bad:
+        print("화면 사진 넣기: " + " / ".join(bad))
+        return 1
+
     print("창 점검 끝 — 후보 고르기 · 능력치 · 노력치 규칙 · 6자리 ·"
           " 상대 파티가 계산까지 가는지 · 추천 · 선출 · 마우스(한 번 누르기·휠)"
-          " · 최소 크기 · 글자 잘림까지 돌았습니다")
+          " · 최소 크기 · 글자 잘림 · 모습 고르기 · 화면 사진 넣기까지 돌았습니다")
     print("  " + text.strip().splitlines()[-1])
     app.root.destroy()
     return 0

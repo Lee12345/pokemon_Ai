@@ -1505,8 +1505,18 @@ def test_windows_safe(dex):
     #   규칙은 여기서 전부 시험한다. 사용자가 "한 줄씩 적는 게 아니라
     #   칸에 검색해서 넣게 해 달라" 고 해서 만든 부분이다.
     pool = live.pickable_pokemon(dex)
-    check("고를 수 있는 포켓몬이 이름마다 하나뿐이다 (%d마리)" % len(pool),
-          len(set(p["name"] for p in pool)) == len(pool), len(pool))
+    # 처음엔 '이름마다 하나뿐' 을 봤다 — 후보에 같은 글자(한카리아스·메가·메가Z)가 여럿 뜨면
+    # 무엇을 고른 건지 모르기 때문이다. 그런데 그 규칙 때문에 **워시로토무 등 모습이 다른 23종을
+    # 못 골랐다** (2026-09-22). 뜻(같은 글자가 두 번 안 뜬다)은 그대로 두고 기준을 이름표로 바꾼다.
+    labels = [live.poke_label(p) for p in pool]
+    check("후보에 같은 글자가 두 번 안 뜬다 — 이름표가 모두 다르다 (%d마리)" % len(pool),
+          len(set(labels)) == len(pool), len(pool))
+    usage = set(dex.usage)
+    dup = {}
+    for p in pool:
+        dup.setdefault(p["name"], []).append(p)
+    odd = [n for n, ps in dup.items() if len(ps) > 1 and not all(p["key"] in usage for p in ps)]
+    check("같은 이름이 여럿이면 전부 사용률에 나오는 서로 다른 모습이다", not odd, odd)
     check("메가는 후보에 없다 (도구로 정해진다)",
           not any(p.get("isMega") for p in pool))
     hits = [p["name"] for p in live.rank_hits(pool, "한카")]
@@ -5133,6 +5143,116 @@ def test_msgread(dex):
           msgread.sim("굉", "징"))
 
 
+def test_screenread(dex):
+    """[57] 화면 사진 → 창의 칸 (2026-09-22, 사용자: "창의 칸에 자동으로 채우자").
+
+    + 모습 고르기 — 창 목록이 이름마다 하나라 워시로토무 등 23종을 못 골랐던 것.
+    """
+    import live
+    import msgread
+    import screenread
+    print("\n[57] 화면 사진 → 창의 칸 · 모습 고르기")
+    here = os.path.dirname(os.path.abspath(__file__))
+    scr = lambda f: os.path.join(here, "data", "screens", f)
+
+    # -- 모습 고르기 ----------------------------------------------------------
+    pk = live.pickable_pokemon(dex)
+    keys = {p["key"] for p in pk}
+    labels = [live.poke_label(p) for p in pk]
+    need = {"0479-02": "로토무(워시로토무)", "0026-01": "라이츄(알로라의모습)",
+            "0902-01": "대쓰여너(암컷의모습)", "0128-03": "켄타로스(팔데아의모습/워터종)",
+            "0059-01": "윈디(히스이의모습)"}
+    check("창 목록에 타입·종족값이 다른 모습이 따로 있다 (워시로토무·알로라 라이츄 …)",
+          all(k in keys for k in need) and all(v in labels for v in need.values()),
+          [k for k in need if k not in keys])
+    check("사용률에 없는 모습은 안 나온다 (킬가르도 블레이드폼 · 비비용 정글의 모양)",
+          "0681-01" not in keys and not any(p["name"] == "비비용" and p["formName"] == "정글의 모양"
+                                            for p in pk))
+    check("창 목록 이름표가 서로 다 다르다 (%d개)" % len(labels), len(set(labels)) == len(labels))
+    wash = dex.find_pokemon("0479-02")
+    b, _f = live.build_one(dex, wash, {}, None, "", "")
+    line = live.party_line(b, ["하이드로펌프"])
+    b2, _m, _f2, why = live.read_line(dex, line)
+    check("워시로토무를 파티 파일에 적었다 다시 읽어도 워시로토무", b2 is not None
+          and b2.poke["key"] == "0479-02", (line, why))
+    p, _n = live.find_poke(dex, "라이츄(알로라의 모습)")
+    check("띄어쓴 이름표도 받는다: 라이츄(알로라의 모습) → 0026-01", p and p["key"] == "0026-01", p)
+    jungle = [x for x in dex.pokemon if x["name"] == "비비용" and x["formName"] == "정글의 모양"][0]
+    check("목록에 없는 모습은 같은 이름의 목록 것으로 (비비용 정글 → 팬시한)",
+          live.pickable_for(dex, jungle)["formName"] == "팬시한 모양")
+
+    # -- 판에 넣기 (글자 인식 없이) -------------------------------------------
+    P = lambda n: dex.find_pokemon(n)
+    def board():
+        my = [{"poke": P(n), "hp": 100.0, "brought": False} for n in ("하마돈", "타부자고", "보만다")]
+        opp = [{"poke": P(n), "hp": 100.0, "brought": False} for n in ("다크펫", "빠르모트")]
+        opp += [{"poke": None, "hp": 100.0, "brought": False}]
+        return screenread.Board(my, opp)
+    bd = board()
+    notes = screenread.apply(bd, {"kind": "나옴", "mon": "빠르모트", "side": "opp"}, dex)
+    check("상대가 나옴 → 그 칸 냈다·나와 있음·막 나옴",
+          bd.opp_active == 1 and bd.opp[1]["brought"] and bd.opp_fresh and notes[0][0], notes)
+    screenread.apply(bd, {"kind": "나옴", "mon": "타부자고", "side": "me"}, dex)
+    check("내가 냄 → 내 칸 냈다·나와 있음", bd.my_active == 1 and bd.my[1]["brought"] and bd.my_fresh)
+    screenread.apply(bd, {"kind": "기술", "mon": "다크펫", "side": "opp", "move": "폴터가이스트"}, dex)
+    check("상대가 기술을 씀 → 본 기술 · 그놈이 나와 있음 (나옴 문구를 놓쳐도)",
+          bd.seen == {"다크펫": ["폴터가이스트"]} and bd.opp_active == 0 and bd.opp[0]["brought"])
+    screenread.apply(bd, {"kind": "쓰러짐", "mon": "다크펫", "side": "opp"}, dex)
+    screenread.apply(bd, {"kind": "되살아남", "mon": "다크펫", "side": "opp"}, dex)
+    check("쓰러짐 → HP 0, 회생의기도로 되살아남 → HP 50", bd.opp[0]["hp"] == 50.0)
+    notes = screenread.apply(bd, {"kind": "나옴", "mon": "드래캄", "side": "opp"}, dex)
+    check("프리뷰에 없던 상대 → 빈 칸에 새로 적고 그렇다고 말한다",
+          bd.opp[2]["poke"]["name"] == "드래캄" and "새로 적음" in notes[0][1], notes)
+    notes = screenread.apply(bd, {"kind": "나옴", "mon": "한카리아스", "side": "me"}, dex)
+    check("내 파티에 없는 놈 → 칸을 안 바꾸고 '없음' 이라 말한다",
+          bd.my_active == 1 and not notes[0][0] and "없음" in notes[0][1], notes)
+    screenread.apply(bd, {"kind": "풍선", "mon": "빠르모트", "side": "opp", "item": "풍선"}, dex)
+    screenread.apply(bd, {"kind": "통찰", "mon": "다크펫", "side": "opp",
+                          "other": "타부자고", "item": "풍선"}, dex)
+    ev = live.evidence_map(bd.seen, [x["poke"] for x in bd.opp], bd.opp_items, bd.opp_abilities)
+    check("드러난 상대 도구·특성이 계산(Evidence)까지 간다",
+          ev["빠르모트"].item == "풍선" and ev["다크펫"].ability == "통찰"
+          and "폴터가이스트" in ev["다크펫"].seen_moves, ev)
+    notes = screenread.apply(bd, {"kind": "풍선", "mon": "타부자고", "side": "me", "item": "풍선"}, dex)
+    check("내 풍선은 상대 도구로 안 들어간다", "타부자고" not in bd.opp_items, bd.opp_items)
+    notes = screenread.apply(bd, {"kind": "능력하락", "mon": "다크펫", "side": "opp", "stat": "공격"}, dex)
+    check("칸이 없는 일(능력 하락)은 '계산엔 안 들어감' 이라 말한다",
+          not notes[0][0] and "안 들어감" in notes[0][1] and "공격" in notes[0][1], notes)
+
+    # -- 문구 칸 찾기 — 비율로 (4:3 · 16:9) ------------------------------------
+    for w, h, lines in ((2732, 2048, [(440, 1597, "상대 다크펫의"), (439, 1689, "폴터가이스트!"),
+                                      (2657, 185, "31"), (1310, 1506, "도구")]),
+                        (1341, 749, [(216, 568, "상대 개굴닌자는"), (216, 602, "악타입이 됐다!"),
+                                     (10, 336, "진짜 무섭긴하네요"), (1120, 278, "개굴닌자의")])):
+        got = screenread.message_lines(lines, w, h)
+        check("문구 칸만 골라낸다 (%dx%d)" % (w, h), got == [lines[0][2], lines[1][2]], got)
+    check("사진 크기를 머리만 읽어 안다 (PNG · JPG)",
+          screenread.image_size(scr("선출_스위치.png")) == (671, 749)
+          and screenread.image_size(scr("대전_스위치_타입바뀜.jpg")) == (1346, 755),   # ffprobe 로 잰 값
+          (screenread.image_size(scr("선출_스위치.png")),
+           screenread.image_size(scr("대전_스위치_타입바뀜.jpg"))))
+
+    # -- 사진 통째로 (윈도우 글자 인식이 있어야) --------------------------------
+    if os.name != "nt":
+        print("  (윈도우가 아니라 사진 글자 인식은 건너뜀)")
+        return
+    names = msgread.Names(dex, ["타부자고", "다크펫", "개굴닌자"])
+    want = {"대전_아이패드_풍선.jpg": {"kind": "풍선", "mon": "타부자고", "side": "me"},
+            "대전_아이패드_폴터가이스트.jpg": {"kind": "기술", "mon": "다크펫", "side": "opp",
+                                           "move": "폴터가이스트"},
+            # 작은 화면(1341) — 2배로 키워 읽어야 두 줄이 다 읽힌다
+            "대전_스위치_타입바뀜.jpg": {"kind": "타입바뀜", "mon": "개굴닌자", "side": "opp",
+                                      "type": "악"}}
+    for f, exp in want.items():
+        got = screenread.read_screen(scr(f), dex, names)
+        ev = got.get("event") or {}
+        check("사진 %s → %s" % (f, exp["kind"]), got["kind"] == "대전"
+              and all(ev.get(k) == v for k, v in exp.items()), (got.get("lines"), ev))
+    got = screenread.read_screen(scr("선출_스위치.png"), dex, names)
+    check("선출 화면 사진은 선출로 읽는다 (6마리)", got["kind"] == "선출" and len(got["opp"]) == 6,
+          got["kind"])
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -5193,6 +5313,7 @@ def main():
     test_abilities_batch3(dex)
     test_artmatch(dex)
     test_msgread(dex)
+    test_screenread(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
