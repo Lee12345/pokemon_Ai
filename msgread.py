@@ -41,7 +41,18 @@ _JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
 _JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ"
 
 
+# 같은 말을 몇 만 번 다시 쪼갠다 — 문구 한 줄을 읽는 데 `jamo` 13만 번 · `sim` 6만 번이었다
+# (2026-09-23 에 잼). 답이 글자에만 달렸으니 외워 두면 된다. 외운 것이 너무 불어나면 비운다.
+_JAMO_CACHE = {}
+_SIM_CACHE = {}
+CACHE_MAX = 300000
+USE_CACHE = True        # 검사가 끈다 — **안 외우고 잰 값과 같은지** 대 보려면 끌 수 있어야 한다
+
+
 def jamo(text):
+    got = _JAMO_CACHE.get(text) if USE_CACHE else None
+    if got is not None:
+        return got
     out = []
     for ch in text:
         c = ord(ch) - 0xAC00
@@ -52,7 +63,12 @@ def jamo(text):
                 out.append(_JONG[c % 28])
         else:
             out.append(ch)
-    return "".join(out)
+    got = "".join(out)
+    if USE_CACHE:
+        if len(_JAMO_CACHE) >= CACHE_MAX:
+            _JAMO_CACHE.clear()
+        _JAMO_CACHE[text] = got
+    return got
 
 
 def sim(a, b):
@@ -61,7 +77,21 @@ def sim(a, b):
         return 1.0
     if not a or not b:
         return 0.0
-    return difflib.SequenceMatcher(None, jamo(a), jamo(b), autojunk=False).ratio()
+    key = (a, b)
+    got = _SIM_CACHE.get(key) if USE_CACHE else None
+    if got is None:
+        got = difflib.SequenceMatcher(None, jamo(a), jamo(b), autojunk=False).ratio()
+        if USE_CACHE:
+            if len(_SIM_CACHE) >= CACHE_MAX:
+                _SIM_CACHE.clear()
+            _SIM_CACHE[key] = got
+    return got
+
+
+def forget():
+    """외워 둔 것을 비운다 (검사에서 '외운 것과 갓 잰 것이 같은가' 를 볼 때 쓴다)."""
+    _JAMO_CACHE.clear()
+    _SIM_CACHE.clear()
 
 
 def normalize(text):

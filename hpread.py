@@ -42,14 +42,57 @@ def _hsv(px, i):
 # 그래서 둘의 경계를 0.95 / 0.955 로 갈랐다. ! 처음엔 이 경계가 '13% · 4% 가 0 으로 나온' 원인이라고
 # 적었는데 **틀렸다** — 되돌려 봐도 4% 가 3.5% 로 잡힌다 (차이 0.6%). 진짜 원인은 같이 바꾼
 # '두 번째로 긴 줄' 쪽이었다 (두 가지를 한꺼번에 바꾸고 원인을 잘못 짚음, 2026-09-23).
-def is_pink(h, s, v):
-    """상대 이름 칸의 분홍."""
+
+
+def _slow_is_pink(h, s, v):
+    """원래 정의 — 읽기 쉬운 쪽. 아래 빠른 판이 같은 답을 주는지 검사가 대 본다."""
     return 0.86 < h < 0.95 and s > 0.45 and v > 0.45
 
 
-def is_fill(h, s, v):
-    """HP 막대의 찬 부분 — 초록·노랑·주황·빨강 (분홍과 겹치지 않게)."""
+def _slow_is_fill(h, s, v):
     return (h < 0.45 or h >= 0.955) and s > 0.45 and v > 0.45
+
+
+# 아래 둘은 위 `_slow_*` 와 **똑같은 답**을 정수 계산만으로 낸다 (검사가 1,677만 색 전부 대 본다).
+# 왜: `colorsys.rgb_to_hsv` 를 사진 한 장에 수백만 번 불러서 1초 넘게 거기에 썼다 (2026-09-23 에 잼).
+
+
+def is_pink(r, g, b):
+    """상대 이름 칸의 분홍. h 0.86~0.95 는 **빨강이 최댓값일 때만** 나온다."""
+    if r < g or r < b:
+        return False
+    if r < 115:                 # v = r/255 > 0.45
+        return False
+    mn = g if g < b else b
+    d = r - mn
+    if d * 20 <= r * 9:         # s = d/r > 0.45
+        return False
+    t = g - b                   # h = (t/d)/6 + 1 → -0.84 < t/d < -0.3
+    return -84 * d < 100 * t < -30 * d
+
+
+def is_fill(r, g, b):
+    """HP 막대의 찬 부분 — 초록·노랑·주황·빨강 (분홍과 겹치지 않게)."""
+    mx = r
+    if g > mx:
+        mx = g
+    if b > mx:
+        mx = b
+    if mx < 115:                # v > 0.45
+        return False
+    mn = r
+    if g < mn:
+        mn = g
+    if b < mn:
+        mn = b
+    d = mx - mn
+    if d * 20 <= mx * 9:        # s > 0.45
+        return False
+    if r == mx:                 # h = (t/d)/6 (mod 1) → h < 0.45 이거나 h >= 0.955
+        return 100 * (g - b) >= -27 * d
+    if g == mx:                 # h = (2 + (b-r)/d)/6 → h < 0.45 이려면 (b-r)/d < 0.7
+        return 10 * (b - r) < 7 * d
+    return False                # 파랑이 최댓값이면 h 는 0.45~0.955 안쪽이다
 
 
 def _longest(flags):
@@ -74,7 +117,7 @@ def find_strip(w, h, px):
     rows = []
     for y in range(ya):
         base = y * w * 4
-        rows.append([x for x in range(xa, w) if is_pink(*_hsv(px, base + x * 4))])
+        rows.append([x for x in range(xa, w) if is_pink(px[base + x * 4], px[base + x * 4 + 1], px[base + x * 4 + 2])])
     # 줄마다 **분홍 점의 개수** 로 본다. '가장 길게 이어진 분홍' 으로 보니 이름 글자(흰색)가 분홍을
     # 끊어서 글자가 있는 줄이 다 빠졌다 — 이름 줄 높이가 70 이 아니라 18 로 잡혔다.
     top = max(range(ya), key=lambda y: len(rows[y]))
@@ -99,11 +142,11 @@ def strip_height(w, h, px, strip):
     total = 0.0
     for y in range(max(0, y0 - 4), min(ya, y1 + 4)):
         base = y * w * 4
-        n = sum(1 for x in range(x0, x1) if is_pink(*_hsv(px, base + x * 4)))
+        n = sum(1 for x in range(x0, x1) if is_pink(px[base + x * 4], px[base + x * 4 + 1], px[base + x * 4 + 2]))
         if full is None:
             mid = (y0 + y1) // 2
             full = max(1, sum(1 for x in range(x0, x1)
-                              if is_pink(*_hsv(px, mid * w * 4 + x * 4))))
+                              if is_pink(px[mid * w * 4 + x * 4], px[mid * w * 4 + x * 4 + 1], px[mid * w * 4 + x * 4 + 2])))
         total += min(1.0, n / float(full))
     return total
 
@@ -139,12 +182,12 @@ def measure(w, h, px):
         base = y * w * 4
         # 먼저 찬 막대(가장 긴 초록·노랑·빨강)를 찾고, **바로 왼쪽에 분홍이 붙어 있어야** 막대로 본다.
         # (반대로 '왼쪽 분홍이 끝나는 곳' 부터 찾았더니 초상 칸의 분홍이 중간에 끊긴 곳을 잡았다.)
-        n, start = _longest([is_fill(*_hsv(px, base + x * 4)) for x in range(lo, hi)])
+        n, start = _longest([is_fill(px[base + x * 4], px[base + x * 4 + 1], px[base + x * 4 + 2]) for x in range(lo, hi)])
         start += lo
         if n < 2:
             fills.append(0)
             continue
-        if any(is_pink(*_hsv(px, base + x * 4)) for x in range(max(0, start - gap - 3), start)):
+        if any(is_pink(px[base + x * 4], px[base + x * 4 + 1], px[base + x * 4 + 2]) for x in range(max(0, start - gap - 3), start)):
             fills.append(n)
         else:
             fills.append(0)

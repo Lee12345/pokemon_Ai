@@ -23,19 +23,153 @@
 위 78~82%, 스위치(16:9) 16%·74~80% (docs/이어받기.md §10).
 """
 
+import atexit
 import os
+import queue
 import re
 import struct
 import subprocess
 import sys
 import tempfile
+import threading
 
 import paths
 import pngio
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OCR_SCRIPT = os.path.join(HERE, "tools", "글자읽기.ps1")
+WORKER_SCRIPT = os.path.join(HERE, "tools", "화면일꾼.ps1")
 MSG_BOX = (0.0, 0.70, 0.35, 0.90)       # 왼쪽 · 위 · 오른쪽 · 아래 (화면에 대한 몫)
+
+
+# ── 파워셸 일꾼 — 한 번 켜 두고 계속 시킨다 ─────────────────────────────
+#
+# 사진 한 장에 파워셸을 두 번 켰다 (그림 바꾸기 + 글자 읽기). 켜는 데만 장당 0.79초가
+# 갔다 (2026-09-23 에 잼 — 장당 2.88초 중). 캡처보드 화면을 계속 읽으려면 이게 제일 크다.
+#
+# ★ **고장 나면 예전 방식(장마다 새로 켜기)으로 돌아간다.** 대전 중에 도구가 멈추면 안 된다.
+#   돌아간 까닭은 `worker().fell_back` 에 남고, 창이 그걸 보여 준다. 조용히 죽지 않는다.
+USE_WORKER = True
+WORKER_WAIT = 20.0          # 한 번 시켜 놓고 이만큼까지 기다린다 (초)
+
+
+class Worker(object):
+    """파워셸 하나를 켜 두고 `tools/화면일꾼.ps1` 에게 시킨다."""
+
+    def __init__(self):
+        self.proc = None
+        self.lines = None
+        self.fell_back = None
+        self.used = 0
+
+    def start(self):
+        """켜져 있으면 True. 한 번 못 켠 뒤로는 다시 안 해 본다 (대전 중에 매번 1초를 버리면 안 된다)."""
+        if self.proc is not None and self.proc.poll() is None:
+            return True
+        if self.fell_back is not None:
+            return False
+        self.proc = None
+        try:
+            p = subprocess.Popen(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", WORKER_SCRIPT],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                encoding="utf-8", errors="replace", bufsize=1)
+        except OSError as e:
+            self.fell_back = "파워셸을 못 켰다: %s" % e
+            return False
+        q = queue.Queue()
+
+        def read():
+            try:
+                for row in p.stdout:
+                    q.put(row.rstrip("\r\n"))
+            except (OSError, ValueError):
+                pass
+            q.put(None)
+
+        threading.Thread(target=read, daemon=True).start()
+        self.proc, self.lines = p, q
+        try:
+            first = q.get(timeout=WORKER_WAIT)
+        except queue.Empty:
+            first = None
+        if first != "READY":
+            self._die("일꾼이 시작을 안 알렸다 (%r)" % (first,))
+            return False
+        return True
+
+    def _die(self, why):
+        self.fell_back = why
+        p, self.proc, self.lines = self.proc, None, None
+        if p is not None:
+            try:
+                p.kill()
+            except OSError:
+                pass
+
+    def ask(self, cmd):
+        """시킨다. 됐으면 True. 고장 나면 False 로 돌려주고 그 뒤로는 예전 방식을 쓴다."""
+        if not self.start():
+            return False
+        try:
+            self.proc.stdin.write(cmd + "\n")
+            self.proc.stdin.flush()
+        except (OSError, ValueError) as e:
+            self._die("일꾼에게 말을 못 걸었다: %s" % e)
+            return False
+        ok = None
+        while True:
+            try:
+                row = self.lines.get(timeout=WORKER_WAIT)
+            except queue.Empty:
+                self._die("일꾼이 %.0f초 안에 답을 안 했다: %s" % (WORKER_WAIT, cmd))
+                return False
+            if row is None:
+                self._die("일꾼이 도중에 꺼졌다: %s" % cmd)
+                return False
+            if row == "<<END>>":
+                break
+            if ok is None:
+                ok = row
+        if ok != "OK":
+            # 그 한 번만 실패한 것일 수도 있다 (사진이 깨졌다든가) → 일꾼은 살려 두고 예전 방식으로 해 본다.
+            return False
+        self.used += 1
+        return True
+
+    def stop(self):
+        p = self.proc
+        self.proc, self.lines = None, None
+        if p is None:
+            return
+        try:
+            p.stdin.write("bye\n")
+            p.stdin.flush()
+            p.wait(timeout=3)
+        except Exception:
+            try:
+                p.kill()
+            except OSError:
+                pass
+
+
+_WORKER = Worker()
+
+
+def worker():
+    return _WORKER
+
+
+def stop_worker():
+    _WORKER.stop()
+
+
+atexit.register(stop_worker)
+
+
+def _bar(path):
+    """세로줄은 주고받는 말의 구분자다 — 경로에 들어 있으면 일꾼에게 못 맡긴다."""
+    return "|" in path
 
 
 # ── 사진 ───────────────────────────────────────────────────────────────
@@ -65,10 +199,13 @@ def to_png(path):
         if f.read(8) == pngio.SIG:
             return path
     out = os.path.join(tempfile.gettempdir(), "screenread_%d.png" % os.getpid())
+    src = os.path.abspath(path)
+    if USE_WORKER and not _bar(src) and not _bar(out) and _WORKER.ask("png|%s|%s" % (src, out)):
+        return out
     cmd = ("Add-Type -AssemblyName System.Drawing; "
            "$b = [System.Drawing.Bitmap]::FromFile('%s'); $b.Save('%s', "
            "[System.Drawing.Imaging.ImageFormat]::Png); $b.Dispose()"
-           % (os.path.abspath(path).replace("'", "''"), out.replace("'", "''")))
+           % (src.replace("'", "''"), out.replace("'", "''")))
     subprocess.run(["powershell", "-NoProfile", "-Command", cmd], check=True,
                    capture_output=True)
     return out
@@ -92,6 +229,9 @@ def ocr(path, scale=1):
 
 
 def _scaled(src, tmp, scale):
+    if USE_WORKER and not _bar(src) and not _bar(tmp) and \
+            _WORKER.ask("scale|%s|%s|%d" % (src, tmp, scale)):
+        return
     cmd = ("Add-Type -AssemblyName System.Drawing; "
            "$s = [System.Drawing.Bitmap]::FromFile('%s'); "
            "$b = New-Object System.Drawing.Bitmap ($s.Width * %d), ($s.Height * %d); "
@@ -105,8 +245,9 @@ def _scaled(src, tmp, scale):
 
 
 def _ocr_file(tmp, scale):
-    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                    "-File", OCR_SCRIPT, "-Path", tmp], check=True, capture_output=True)
+    if not (USE_WORKER and not _bar(tmp) and _WORKER.ask("ocr|%s" % tmp)):
+        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                        "-File", OCR_SCRIPT, "-Path", tmp], check=True, capture_output=True)
     lines = []
     with open(tmp + ".txt", encoding="utf-8-sig") as f:
         for row in f:

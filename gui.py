@@ -1396,6 +1396,10 @@ class App(object):
         self.go_screen.config(text="화면 사진 넣기", state="normal")
         lines.append("")
         lines.append("✓ = 칸에 넣음   ○ = 읽었지만 칸이 없어 계산에 안 들어감 (또는 못 읽음)")
+        # 빠른 읽기가 안 되면 **말해 준다** — 조용히 느려지기만 하면 왜 느린지 알 수가 없다.
+        fell = screenread.worker().fell_back
+        if fell:
+            lines.append("! 빠르게 읽는 장치가 안 돌아 예전 방식으로 읽었습니다 (더 느립니다) — %s" % fell)
         self.say("\n".join(lines), clear=True)
 
     # -- 선출 -------------------------------------------------------------
@@ -1997,6 +2001,16 @@ def check():
                            app.opp_items, app.opp_abilities)
     if not ev or ev["타부자고"].item != "풍선" or "지진" not in ev["하마돈"].seen_moves:
         bad.append("본 기술·도구가 계산에 넘어가지 않음 (%s)" % ev)
+    # 빠르게 읽는 장치(파워셸 일꾼)가 안 돌면 **창에 그렇게 적히는가** (2026-09-23).
+    # 조용히 느려지기만 하면 왜 느린지 알 길이 없다.
+    import screenread
+    screenread.worker().fell_back = "일부러 고장 낸 것"
+    try:
+        app._apply_screens([("없음.png", None, "시험")])
+        if "일부러 고장 낸 것" not in app.out.get("1.0", "end"):
+            bad.append("빠르게 읽는 장치가 안 된다는 말이 창에 안 나옴")
+    finally:
+        screenread.worker().fell_back = None
     if bad:
         print("화면 사진 넣기: " + " / ".join(bad))
         return 1

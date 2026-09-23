@@ -29,10 +29,30 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.join(HERE, "data", "art")
 
 
-def is_panel(r, g, b):
-    """상대 칸의 바탕색(빨강~자주, 채도 있음)."""
+def _slow_is_panel(r, g, b):
+    """원래 정의 — 읽기 쉬운 쪽. 아래 빠른 판이 이것과 같은 답을 주는지 검사가 대 본다."""
     h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
     return (h > 0.88 or h < 0.02) and s > 0.45 and 0.25 < v < 0.9
+
+
+def is_panel(r, g, b):
+    """상대 칸의 바탕색(빨강~자주, 채도 있음).
+
+    위 `_slow_is_panel` 과 **똑같은 답**을 정수 계산만으로 낸다 (검사가 대 본다).
+    왜 이렇게 했나: `colorsys.rgb_to_hsv` 를 사진 한 장에 230만 번 불러서 1.2초를
+    거기에 썼다 (2026-09-23 에 잼). 빨강이 최댓값일 때만 h 가 0.88~1.0 · 0.0~0.02 에
+    들어가므로, 그 경우만 따져 보면 된다.
+    """
+    if r < g or r < b:          # 빨강이 최댓값이 아니면 그 색상대가 아니다
+        return False
+    if not (63 < r < 230):      # 0.25 < v < 0.9  (v = r/255)
+        return False
+    mn = g if g < b else b
+    d = r - mn
+    if d * 20 <= r * 9:         # s = d/r > 0.45
+        return False
+    t = g - b                   # h = (t/d)/6 (mod 1) → -0.72 < t/d < 0.12
+    return -72 * d < 100 * t < 12 * d
 
 
 def _runs(flags, min_len, max_gap):
@@ -50,8 +70,40 @@ def _runs(flags, min_len, max_gap):
     return out
 
 
+# 선출 화면인지 **싸게** 먼저 본다 — 4줄·8칸 걸러 보니 아래 화면 8장에서 (2026-09-23):
+#   선출 화면 2장  66.3% · 71.4%      ← 상대 칸의 빨간 띠가 오른쪽 절반을 가로지른다
+#   대전 화면 6장   4.1% ~ 34.5%      ← 분홍 이름 칸과 빨간 HP 막대뿐이다
+# 그래서 45% 로 가른다 (양쪽에 10%p 넘는 여유). 이게 없으면 **대전 화면인데도** 칸을 찾느라
+# 사진 한 장에 0.42초를 버린다. 걸러 보는 값이라 이 앞선 검사 자체는 0.03초면 끝난다.
+PANEL_GATE = 0.45
+
+
+def looks_like_panels(w, h, px):
+    """선출 화면처럼 보이나 — 가장 붉은 가로줄이 오른쪽 절반의 몇 할인지."""
+    x_from = w // 2
+    xs = range(x_from, w, 8)
+    cols = len(xs)
+    if not cols:
+        return 0.0
+    best = 0
+    for y in range(0, h, 4):
+        base = y * w * 4
+        n = 0
+        for x in xs:
+            i = base + x * 4
+            if is_panel(px[i], px[i + 1], px[i + 2]):
+                n += 1
+        if n > best:
+            best = n
+    return best / float(cols)
+
+
 def find_panels(w, h, px):
     """상대 6칸 [(x0, y0, x1, y1)]. 못 찾으면 ValueError."""
+    share = looks_like_panels(w, h, px)
+    if share < PANEL_GATE:
+        raise ValueError("상대 칸의 빨간 띠가 안 보인다 (가장 붉은 줄이 %.0f%%) — 선출 화면이 아닌 듯"
+                         % (share * 100))
     x_from = w // 2
     rows = []
     for y in range(h):

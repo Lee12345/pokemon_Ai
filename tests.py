@@ -5293,6 +5293,124 @@ def test_screenread(dex):
           got["kind"])
 
 
+def test_read_speed(dex):
+    """[59] 사진 읽기를 빠르게 한 것이 **답을 안 바꿨나** (2026-09-23).
+
+    캡처보드 화면을 계속 읽으려면 장당 2.88초로는 안 된다. 네 군데를 고쳤다 —
+      1. 색 판정을 `colorsys` 대신 정수 계산으로 (사진 한 장에 230만 번 불렀다)
+      2. 대전 화면이면 선출 칸 찾기를 건너뛴다 (0.42초를 통째로 버리고 있었다)
+      3. 파워셸을 한 번만 켜 두고 계속 시킨다 (장당 두 번 켜서 0.79초)
+      4. 자모 쪼개기·닮은 정도를 외워 둔다 (문구 한 줄에 13만 번·6만 번)
+    빠르게 한 것은 **답이 같아야** 뜻이 있다. 그래서 여기서는 속도가 아니라 **답**을 본다.
+    (잰 속도: 대전 화면 2.88 → 0.57초, 선출 화면 1.34 → 1.31초. 대전 화면 기준 5배.)
+    """
+    import artmatch
+    import hpread
+    import msgread
+    import pngio
+    import screenread
+    print("\n[59] 사진 읽기 빠르게 — 답이 그대로인가")
+    here = os.path.dirname(os.path.abspath(__file__))
+
+    # ① 정수 색 판정이 예전 colorsys 판과 같은 답을 주는가.
+    #    1,677만 색을 전부 대 봤을 때 다른 것은 is_panel 194 · is_pink 88 · is_fill 667 개뿐이고,
+    #    **전부 경계에서 5.6e-17 안**이다 (0.12/6 이 0.019999999999999997 로 나오는 식의 소수 오차).
+    #    검사에서는 5칸 걸러 14만 색을 본다 — 다르면 경계에서 1e-9 안이어야 한다.
+    import colorsys as _cs
+    # ! `_slow_is_panel` 은 rgb 를, `_slow_is_pink/_fill` 은 hsv 를 받는다 — 처음에 셋 다 hsv 로
+    #   불러서 42만 색 중 1만 개가 다르다고 나왔다 (검사가 틀린 것이었다).
+    pairs = ((lambda r, g, b, h, s, v: artmatch._slow_is_panel(r, g, b),
+              artmatch.is_panel, (0.02, 0.88), (0.45,), (0.25, 0.9)),
+             (lambda r, g, b, h, s, v: hpread._slow_is_pink(h, s, v),
+              hpread.is_pink, (0.86, 0.95), (0.45,), (0.45,)),
+             (lambda r, g, b, h, s, v: hpread._slow_is_fill(h, s, v),
+              hpread.is_fill, (0.45, 0.955), (0.45,), (0.45,)))
+    far = []
+    n_diff = n_seen = 0
+    for slow, fast, hs, ss, vs in pairs:
+        for r in range(0, 256, 5):
+            for g in range(0, 256, 5):
+                for b in range(0, 256, 5):
+                    n_seen += 1
+                    hv, sv, vv = _cs.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+                    if slow(r, g, b, hv, sv, vv) != fast(r, g, b):
+                        n_diff += 1
+                        edge = min([abs(hv - t) for t in hs] + [abs(sv - t) for t in ss]
+                                   + [abs(vv - t) for t in vs])
+                        if edge > 1e-9:
+                            far.append((fast.__name__, r, g, b, edge))
+    check("빠른 색 판정이 예전 판과 같은 답 (%d색 중 다른 것 %d개, 전부 경계)" % (n_seen, n_diff),
+          not far, far[:3])
+
+    # ② 선출 화면 가려내기 — 이게 틀리면 대전 화면을 선출로 읽거나 그 반대가 된다.
+    shares = {}
+    for f in sorted(os.listdir(os.path.join(here, "data", "screens"))):
+        w, h, px = pngio.read_png(screenread.to_png(os.path.join(here, "data", "screens", f)))
+        shares[f] = artmatch.looks_like_panels(w, h, px)
+    pre = [v for k, v in shares.items() if k.startswith("선출")]
+    bat = [v for k, v in shares.items() if k.startswith("대전")]
+    check("선출 화면 %d장은 가려내기를 넘고(가장 낮은 것 %.0f%%) 대전 화면 %d장은 못 넘는다(가장 높은 것 %.0f%%)"
+          % (len(pre), min(pre) * 100, len(bat), max(bat) * 100),
+          min(pre) > artmatch.PANEL_GATE > max(bat), sorted(shares.items(), key=lambda kv: kv[1]))
+    check("가려내기 값(%.0f%%)이 양쪽에서 10%%p 넘게 떨어져 있다" % (artmatch.PANEL_GATE * 100),
+          min(pre) - artmatch.PANEL_GATE > 0.10 and artmatch.PANEL_GATE - max(bat) > 0.10,
+          (round(max(bat), 3), round(min(pre), 3)))
+
+    # ③ 외워 둔 것과 **아예 안 외우고 잰 것**이 같은가. 열쇠를 잘못 잡으면 다른 말에 같은 답을 준다.
+    #   ! 처음엔 '외운 값끼리' 대 봤는데, 그러면 열쇠를 앞 글자만으로 잡아도 안 걸린다 (일부러
+    #     고장 내 보고 알았다). 그래서 외우기를 끄고 잰 값을 정답으로 쓴다.
+    words = ["다크펫", "다크팻", "상대다크펫", "지진", "지친", "폴터가이스트", "폴터가0스트", "", "풍선"]
+    both = [(a, b) for a in words for b in words]
+    old_cache = msgread.USE_CACHE
+    try:
+        msgread.USE_CACHE = False
+        want_sim = [msgread.sim(a, b) for a, b in both]
+        want_jamo = [msgread.jamo(a) for a in words]
+    finally:
+        msgread.USE_CACHE = old_cache
+    msgread.forget()
+    once = [msgread.sim(a, b) for a, b in both]
+    twice = [msgread.sim(a, b) for a, b in both]
+    check("외운 닮은 정도가 안 외우고 잰 것과 같다", once == twice == want_sim,
+          [(a, b, x, y) for (a, b), x, y in zip(both, once, want_sim) if x != y][:3])
+    check("외운 자모 쪼개기도 같다", [msgread.jamo(a) for a in words] == want_jamo,
+          [(a, x, y) for a, x, y in zip(words, [msgread.jamo(a) for a in words], want_jamo)
+           if x != y][:3])
+    check("자모 쪼개기가 맞다 (다크펫)", msgread.jamo("다크펫") == "ㄷㅏㅋㅡㅍㅔㅅ",
+          msgread.jamo("다크펫"))
+
+    # ④ 파워셸 일꾼 — 켜 두고 시킨 답이 장마다 새로 켠 답과 같아야 한다.
+    #    그리고 ★ **일꾼이 고장 나면 예전 방식으로 돌아가야 한다** (대전 중에 멈추면 안 된다).
+    names = msgread.Names(dex, ["다크펫"])
+    scr = os.path.join(here, "data", "screens", "대전_아이패드_폴터가이스트.jpg")
+    screenread.stop_worker()
+    old_use, old_script = screenread.USE_WORKER, screenread.WORKER_SCRIPT
+    try:
+        screenread.USE_WORKER = False
+        alone = screenread.read_screen(scr, dex, names)
+        screenread.USE_WORKER = True
+        screenread._WORKER = screenread.Worker()
+        kept = screenread.read_screen(scr, dex, names)
+        check("일꾼을 켜 두고 읽은 것이 장마다 새로 켠 것과 같다", kept == alone,
+              (alone.get("lines"), kept.get("lines")))
+        check("일꾼을 실제로 썼다 (안 쓰고 지나갔으면 위 검사가 아무것도 안 본 셈)",
+              screenread._WORKER.used > 0 and screenread._WORKER.fell_back is None,
+              (screenread._WORKER.used, screenread._WORKER.fell_back))
+        # 일부러 고장 — 없는 스크립트를 가리킨다
+        screenread.stop_worker()
+        screenread._WORKER = screenread.Worker()
+        screenread.WORKER_SCRIPT = os.path.join(here, "tools", "없는일꾼.ps1")
+        broken = screenread.read_screen(scr, dex, names)
+        check("일꾼이 고장 나도 예전 방식으로 읽는다 (답 그대로)", broken == alone,
+              (alone.get("lines"), broken.get("lines")))
+        check("되돌아간 까닭을 남긴다 (조용히 죽지 않는다)",
+              bool(screenread._WORKER.fell_back), screenread._WORKER.fell_back)
+    finally:
+        screenread.stop_worker()
+        screenread.USE_WORKER, screenread.WORKER_SCRIPT = old_use, old_script
+        screenread._WORKER = screenread.Worker()
+
+
 def test_mid_state(dex):
     """[58] 실전 중간 상태 — 상태이상 · 랭크 · 날씨·필드 · 압정을 계산에 넣는다 (2026-09-23).
 
@@ -5469,6 +5587,7 @@ def main():
     test_artmatch(dex)
     test_msgread(dex)
     test_screenread(dex)
+    test_read_speed(dex)
     test_mid_state(dex)
 
     print("\n" + "=" * 50)
