@@ -41,6 +41,8 @@ def _signature(got):
         return None
     if got.get("kind") == "선출":
         return ("선출",) + tuple(o.get("key") for o in got.get("opp", []))
+    if got.get("kind") == "상태확인":
+        return ("상태확인", tuple(got.get("mine") or ()), got.get("opp_hp"))
     ev = got.get("event")
     if not ev or ev.get("kind") == "못 읽음":
         return None
@@ -125,6 +127,8 @@ class Watcher(object):
     def _put(self, board, got, dex):
         if got.get("kind") == "선출":
             return screenread.apply_preview(board, got.get("opp", []), dex)
+        if got.get("kind") == "상태확인":
+            return screenread.apply_status(board, got, dex)
         ev = got.get("event")
         return screenread.apply(board, ev, dex) if ev else []
 

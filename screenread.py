@@ -394,6 +394,12 @@ def read_screen(path, dex, names, img=None):
     #   0~1개, 선출·상태확인 화면은 3~6개.** 그래서 3개 이상이면 HP 를 아예 안 잰다.
     stack = artmatch.stack_size(bands)
     battle_like = stack < STACK_MIN
+    if not battle_like and is_status(raw, w, h):
+        # 글자가 작아 2배로 키워야 읽힌다 — 이 화면일 때만 한 번 더 읽는다
+        big = ocr(path, STATUS_SCALE)
+        out = {"kind": "상태확인", "lines": lines, "event": None, "stack": stack, "raw": big}
+        out.update(status_screen(big, w, h, names))
+        return out
     out = {"kind": "대전", "lines": lines,
            "event": msgread.read(lines, names) if lines else None,
            "opp_hp": hpread.measure(w, h, px) if battle_like else None,
@@ -472,6 +478,57 @@ def combine_hp(bar, text):
         return b, None                  # 막대가 더 잘게 나온다
     return None, ("상대 HP 가 막대로는 %.0f%%, 글자로는 %d%% 입니다 — 달라서 안 넣었습니다"
                   % (b, text))
+
+
+# ── 「상태 확인」 화면 ──────────────────────────────────────────────────
+#
+# 게임에서 X 를 누르면 뜨는 화면이다. 한 장에 이게 다 있다 (2026-09-23 실전에서 봄) —
+# 상대 6마리 전부 · 나와 있는 놈 · 상대 상태이상(Zz) · 상대 HP % ·
+# **내가 이번 판에 낸 3마리** · 나와 있는 내 포켓몬의 기술 4개 + PP + 특성 + 도구.
+#
+# 글자가 작아서 **2배로 키워야** 읽힌다 (원본 크기로는 네 줄밖에 안 읽혔다).
+# 그래서 이 화면일 때만 한 번 더 읽는다 (0.3초 더) — 대전 화면은 그대로다.
+#
+# ★ **지금 읽는 것은 「낸 3마리」 와 「상대 HP」 뿐이다.** 이 화면 표본이 **한 판, 한 순간뿐**이라
+#   (27프레임이지만 전부 같은 15초) 자리를 더 박으면 또 '한 장에 맞춘 문턱' 이 된다 (§10 의 그 실수).
+#   기술·특성·도구·상태이상도 읽히긴 하지만, 다른 판 화면을 더 보고 나서 붙인다.
+STATUS_BOX = (0.60, 0.0, 1.0, 0.12)     # 오른쪽 위 「상태 확인」 글자
+MY_LIST_BOX = (0.0, 0.12, 0.35, 0.92)   # 왼쪽 — 이번 판에 낸 내 포켓몬 이름들
+STATUS_SCALE = 2
+NAME_MIN = 0.72                         # 이만큼 닮아야 그 포켓몬 이름으로 본다
+BROUGHT = 3                             # 챔피언스 싱글 — 6마리에서 3마리를 낸다
+
+
+def is_status(lines, w, h):
+    """「상태 확인」 화면인가. 실전 프레임에서 27/27 맞고 대전·선출 화면에서는 한 번도 안 걸렸다."""
+    import msgread
+    for x, y, t in lines:
+        if _in(STATUS_BOX, x, y, w, h) and msgread.sim(msgread.normalize(t), "상태확인") > 0.7:
+            return True
+    return False
+
+
+def status_screen(lines, w, h, names):
+    """상태 확인 화면 → {'mine': [이름 …], 'opp_hp': % 또는 None}.
+
+    이름은 **이 판에 있는 포켓몬**(`names.here`) 에서만 찾는다 — 깨진 글자가 엉뚱한 포켓몬이
+    되지 않게. 위에서 아래 순서 그대로 돌려준다.
+    ★ **누가 나와 있는지는 안 본다.** 이 화면에서 나와 있는 놈은 테두리가 밝지만, 목록 순서가
+      '나와 있는 놈이 맨 위' 인지 '파티 순서 그대로' 인지 **표본이 한 순간뿐이라 모른다.**
+    """
+    import msgread
+    pool = names.here or []
+    got = []
+    for x, y, t in sorted(lines, key=lambda r: r[1]):
+        if not _in(MY_LIST_BOX, x, y, w, h) or not pool:
+            continue
+        body = msgread.normalize(t)
+        if len(body) < 2:
+            continue
+        name, sc = names.best(body, pool)
+        if sc >= NAME_MIN and name not in got:
+            got.append(name)
+    return {"mine": got, "opp_hp": opp_hp_text(lines, w, h)}
 
 
 def opp_name_line(lines, w, h, names):
@@ -760,6 +817,51 @@ def apply_preview(board, found, dex):
     board.seen.clear()
     board.opp_items.clear()
     board.opp_abilities.clear()
+    return out
+
+
+def apply_status(board, res, dex):
+    """「상태 확인」 화면에서 읽은 것을 판에 넣는다 → [(넣었나, 한 줄)].
+
+    - **내가 이번 판에 낸 3마리** → 그 칸의 「냈다」 를 켜고, 나머지는 끈다.
+      (이 화면에 이름이 있다는 것이 곧 '냈다' 다 — 안 낸 놈은 여기 안 나온다.)
+    - **상대 HP %** → 나와 있는 상대 칸.
+    """
+    out = []
+    mine = res.get("mine") or []
+    if mine:
+        found = []
+        for name in mine:
+            j = board.find("me", name)
+            if j is None:
+                out.append((False, "상태 확인 화면의 %s 가 내 파티에 없습니다 — 칸을 확인하세요" % name))
+            else:
+                found.append(j)
+        # ★ **셋을 다 읽었을 때만 넣는다.** 챔피언스 싱글은 6마리에서 **3마리**를 낸다.
+        #   실전 27프레임 중 11프레임은 한둘만 읽혔는데, 그걸로 나머지의 「냈다」 를 끄면
+        #   **낸 포켓몬을 안 낸 것으로 만들어 버린다.** 조용히 틀리는 자리라 아예 안 넣는다.
+        if len(found) == BROUGHT:
+            for j, row in enumerate(board.my):
+                if row.get("poke"):
+                    row["brought"] = j in found
+            out.append((True, "이번 판에 낸 내 포켓몬: %s (나머지는 「냈다」 를 껐습니다)"
+                        % ", ".join(board.my[j]["poke"]["name"] for j in found)))
+        else:
+            out.append((False, "낸 포켓몬을 %d마리만 읽어서 안 넣었습니다 (읽힌 것: %s)"
+                        % (len(found), ", ".join(board.my[j]["poke"]["name"] for j in found) or "없음")))
+    hp = res.get("opp_hp")
+    if hp is not None:
+        i = board.opp_active
+        row = board.opp[i] if 0 <= i < len(board.opp) else None
+        if row is None or row["poke"] is None:
+            out.append((False, "상대 HP %d%% 를 읽었지만 나와 있는 상대 칸이 비어 있음" % hp))
+        else:
+            row["hp"] = float(hp)
+            row["brought"] = True
+            out.append((True, "상대 %s: HP %d%% (상태 확인 화면의 글자)"
+                        % (row["poke"]["name"], hp)))
+    if not out:
+        out.append((False, "상태 확인 화면인데 읽을 것을 못 찾았습니다"))
     return out
 
 

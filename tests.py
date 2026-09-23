@@ -5361,9 +5361,14 @@ def test_screenread(dex):
           < screenread.STACK_MIN
           <= min(stacks["선출_실전OBS.jpg"], stacks["상태확인_실전OBS.jpg"]), stacks)
     got = screenread.read_screen(scr("상태확인_실전OBS.jpg"), dex, names)
-    check("「상태 확인」 화면에서는 HP 를 아예 안 잰다 (예전엔 분홍 칸을 막대로 읽었다)",
-          got.get("opp_hp") is None and got.get("opp_hp_text") is None,
-          (got.get("opp_hp"), got.get("opp_hp_text")))
+    # 「상태 확인」 화면은 이제 그 화면으로 알아보고 **글자로** HP 를 읽는다 ([60]).
+    # 여기서 봐야 할 것은 **막대를 안 잰다** 는 것 — 예전엔 분홍 칸을 막대로 읽어 0% 를 냈다.
+    w, h, px = pngio_read(scr("상태확인_실전OBS.jpg"))
+    check("「상태 확인」 화면에서 HP 막대를 재지 않는다 (예전엔 분홍 칸을 막대로 읽었다)",
+          got["kind"] == "상태확인" and "opp_hp" in got and not isinstance(got["opp_hp"], dict),
+          (got["kind"], got.get("opp_hp")))
+    check("그 화면의 쌓인 띠가 %d 이상이라 대전 화면으로 안 본다" % screenread.STACK_MIN,
+          am.stack_size(am.panel_bands(w, h, px)) >= screenread.STACK_MIN)
     got = screenread.read_screen(scr("대전_아이패드_HP87.jpg"), dex, names)
     check("대전 화면에서는 그대로 잰다 (87%)",
           got.get("opp_hp") and abs(got["opp_hp"]["hp"] - 87) <= 2,
@@ -5595,6 +5600,37 @@ def test_watch(dex):
     w.step(bd, dex, names)
     got = w.step(bd, dex, names)
     check("새 판(reset)이면 같은 일을 다시 넣는다", got["changed"], got)
+
+    # 「상태 확인」 화면 (게임에서 X) — 한 장에 **내가 낸 3마리**와 상대 HP 가 있다.
+    # 글자가 작아 2배로 키워야 읽힌다. 실전 35프레임에서 27장을 이 화면으로 알아봤고
+    # (대전·선출 화면에서는 한 번도 헛것이 없었다), 그중 16장이 세 이름을 다 읽었다.
+    import live
+    mine6 = ["하마돈", "마폭시", "고릴타", "보만다", "더시마사리", "타부자고"]
+    opp6 = ["갸라도스", "팬텀", "조로아크", "초염몽", "엘레이드", "루카리오"]
+
+    def full_board():
+        return screenread.Board(
+            [{"poke": live.pickable_for(dex, dex.find_pokemon(n)), "hp": 100.0,
+              "brought": True} for n in mine6],
+            [{"poke": live.pickable_for(dex, dex.find_pokemon(n)), "hp": 100.0,
+              "brought": False} for n in opp6])
+
+    names6 = msgread.Names(dex, mine6 + opp6)
+    w = watch.Watcher(Replay([scr("상태확인_실전OBS.jpg")]))
+    bd = full_board()
+    w.step(bd, dex, names6)
+    got = w.step(bd, dex, names6)
+    check("「상태 확인」 화면으로 알아본다", got["kind"] == "상태확인", got["kind"])
+    check("낸 3마리를 판에 넣는다 (더시마사리·마폭시·하마돈만 「냈다」)",
+          [r["poke"]["name"] for r in bd.my if r["brought"]] == ["하마돈", "마폭시", "더시마사리"],
+          [r["poke"]["name"] for r in bd.my if r["brought"]])
+    check("상대 HP 68% 를 글자로 읽어 넣는다", bd.opp[0]["hp"] == 68.0, bd.opp[0]["hp"])
+    # ★ 셋을 다 못 읽으면 **아예 안 넣는다** — 실전 27프레임 중 11장이 한둘만 읽혔다.
+    #   그걸로 나머지의 「냈다」 를 끄면 낸 포켓몬을 안 낸 것으로 만들어 버린다.
+    bd = full_board()
+    notes = screenread.apply_status(bd, {"mine": ["하마돈"], "opp_hp": None}, dex)
+    check("낸 포켓몬을 셋 다 못 읽으면 「냈다」 를 안 건드린다",
+          all(r["brought"] for r in bd.my) and any("안 넣었습니다" in t for _o, t in notes), notes)
 
     # 선출 화면 → 상대 6칸
     w = watch.Watcher(Replay([scr("선출_실전OBS.jpg")]))
