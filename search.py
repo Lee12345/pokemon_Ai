@@ -192,18 +192,33 @@ def _evidence_for(evidence, index, poke):
     return evidence if index == 0 else None
 
 
-def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None):
+def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None,
+                     hidden=None, take=0):
     """상대가 낸 파티를 한 판치 뽑는다. ([빌드], [[기술]]).
 
     opp_build 를 주면 뽑지 않고 그것을 쓴다 (몸을 아는 시험용).
+
+    ★ **hidden / take — 아직 안 나온 상대 벤치.** 챔피언스는 프리뷰 6마리 중 3마리를
+      낸다. 상대가 한 마리만 나왔으면 **나머지 두 자리는 프리뷰의 나머지 중 누군가**다.
+      그걸 안 세면 "이 앞의 한 놈만 어떻게 하면 되는" 판을 재게 된다 —
+      실전에서 그래서 **하마돈이 한카리아스 앞에서 하품**을 골랐다 (2026-09-24,
+      사용자가 잡음: *"상대 벤치에 있는 에브이 고려 x"*). 하품은 상대를 물러나게
+      하는 수인데, 물러날 자리가 없는 판에서는 공짜 잠으로 보인다.
+
+    **판마다 다시 뽑는다.** 누가 남았는지는 모르므로, 프리뷰의 나머지 중에서
+    take 마리를 그때그때 고른다. 그 폭이 곧 '상대 벤치를 모른다' 는 폭이다.
     """
     if opp_build is not None:
         builds = _as_list(opp_build)
         return builds, [[m for m, _ in battle.realistic_moveset(dex, b.poke)]
                         for b in builds]
     speed_of = lambda b: best.effective_speed(dex, b)[0]
+    pokes = _as_list(opp_pokes)
+    if take and hidden:
+        pool = _as_list(hidden)
+        pokes = pokes + (rng.sample(pool, take) if take < len(pool) else list(pool))
     builds, movesets = [], []
-    for i, poke in enumerate(_as_list(opp_pokes)):
+    for i, poke in enumerate(pokes):
         b, mv = scout.sample_opponent(
             dex, poke, rng, _evidence_for(evidence, i, poke), speed_of)
         builds.append(b)
@@ -213,7 +228,7 @@ def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None):
 
 def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
             opp_build=None, turns=None, my_moves=None, state=None, sink=None,
-            guess=None):
+            guess=None, hidden=None, take=0):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
@@ -223,7 +238,7 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
       '안 들어간 특성' 경고가 한 줄도 안 보였다 (2026-09-22 에 알았다).
     """
     opp_builds, opp_sets = sample_opp_party(
-        dex, opp_pokes, rng, evidence, opp_build)
+        dex, opp_pokes, rng, evidence, opp_build, hidden, take)
     st = state or {}
     # 상대의 첫 수는 **지금 나와 있는 놈끼리** 재야 한다.
     # ! 전에는 양쪽 다 [0] 으로 굳어 있었다. 2번을 내보낸 채로 물으면
@@ -298,11 +313,21 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
 
 
 def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
-                seconds=10.0, seed=1, opp_build=None, state=None):
+                seconds=10.0, seed=1, opp_build=None, state=None,
+                opp_hidden=None, opp_take=0, stop=None):
     """이번 턴의 수를 고른다.
 
     opp_pokes 는 **한 마리든 파티든** 받는다. 파티를 주면 상대의
     벤치까지 넣고 판을 끝까지 돌린다.
+
+    opp_hidden / opp_take — **아직 안 나온 상대 벤치.** 프리뷰에서 본 나머지 중
+    몇 마리를 판마다 새로 뽑아 상대 파티에 붙인다 (`sample_opp_party`).
+
+    stop — 이것이 True 를 돌려주면 **하던 생각을 버리고 곧바로 돌아온다.**
+    ★ 생각하는 25초 동안 상대가 교체해 버리면 그 답은 **이미 쓸모가 없다.**
+      전에는 끝까지 계산해서 지난 상황의 답을 띄웠다 (2026-09-24 실전 기록:
+      01:49:54 에 상대가 에브이로 바뀌었는데 01:50:19 에 한카리아스용 답이 떴다).
+      돌려주는 것에 `stopped` 가 True 면 **그 답을 쓰면 안 된다.**
 
     돌려주는 것 —
       rows     : [{action, name, score, n, dropped}] 점수 내림차순
@@ -332,12 +357,25 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     #   110배로 잰 것이다. 그 값으로 예산을 나누니 멀쩡한 판인데도
     #   "모자라다" 며 얕은 모드로 떨어졌다. 조용히 답이 나빠지는 종류다.
     #   그래서 **덥히는 판을 먼저 버리고** 그 뒤 몇 판을 재서 평균한다.
+    # 판 하나 돌리는 것을 한 군데로 모은다 — 벤치·경고를 **모든 자리에** 같이 넘긴다.
+    # (전에는 같은 인자를 다섯 군데에 손으로 적었다. 한 군데만 빠뜨려도 조용히 틀어진다.)
+    def play(action, turns_=None, guess_=None):
+        return rollout(dex, builds, opp_pokes, action, rng, evidence,
+                       opp_build, turns_, moves, state, sink=warned,
+                       guess=guess_, hidden=opp_hidden, take=opp_take)
+
+    stopped = [False]
+
+    def give_up():
+        if stop is not None and stop():
+            stopped[0] = True
+        return stopped[0]
+
     warm_t0 = time.time()
     fastest = None
     for i in range(WARMUP_MAX):
         one = time.time()
-        rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
-                opp_build, None, moves, state, sink=warned)
+        play(actions[0])
         took = time.time() - one
         fastest = took if fastest is None else min(fastest, took)
         if i >= 2 and took <= fastest * WARMUP_SETTLE:
@@ -350,8 +388,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     times = []
     for _ in range(PROBE):
         one = time.time()
-        rollout(dex, builds, opp_pokes, actions[0], rng, evidence,
-                opp_build, None, moves, state, sink=warned)
+        play(actions[0])
         times.append(time.time() - one)
     per = max(1e-5, min(times))
     # ! **예산 시계는 재고 나서 켠다.** 전에는 재기 전에 켰다. 그러면
@@ -374,18 +411,17 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     # **예산이 아무리 짧아도 후보마다 최소 한 판은 돌린다.** 한 판도 안
     # 돌린 후보의 0점은 '나쁘다' 가 아니라 '모른다' 인데, 구별이 안 된다.
     for row in rows:
-        row["sum"] += rollout(dex, builds, opp_pokes, row["action"], rng,
-                              evidence, opp_build, turns, moves, state, sink=warned, guess=guess)
+        row["sum"] += play(row["action"], turns, guess)
         row["n"] += 1
-    while live and not out_of_time:
+        if give_up():
+            break
+    while live and not out_of_time and not give_up():
         for row in live:
             for _ in range(batch):
-                if time.time() - t0 >= seconds:
+                if time.time() - t0 >= seconds or give_up():
                     out_of_time = True
                     break
-                row["sum"] += rollout(dex, builds, opp_pokes, row["action"],
-                                      rng, evidence, opp_build, turns,
-                                      moves, state, sink=warned, guess=guess)
+                row["sum"] += play(row["action"], turns, guess)
                 row["n"] += 1
             if out_of_time:
                 break
@@ -395,13 +431,11 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
         if out_of_time:
             break
         if len(live) <= 2:
-            while time.time() - t0 < seconds:
+            while time.time() - t0 < seconds and not give_up():
                 for row in live:
-                    if time.time() - t0 >= seconds:
+                    if time.time() - t0 >= seconds or give_up():
                         break
-                    row["sum"] += rollout(dex, builds, opp_pokes,
-                                          row["action"], rng, evidence,
-                                          opp_build, turns, moves, state, sink=warned, guess=guess)
+                    row["sum"] += play(row["action"], turns, guess)
                     row["n"] += 1
             break
         live.sort(key=lambda r: -(r["sum"] / max(1, r["n"])))
@@ -421,6 +455,10 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     return {"rows": rows, "spent": time.time() - t0,
             "rollouts": sum(r["n"] for r in rows),
             "shallow": shallow, "guessed": guessed,
+            # **생각을 도중에 버렸나** — 상황이 바뀌어서. 이 답은 쓰면 안 된다.
+            "stopped": stopped[0],
+            # 판마다 새로 뽑아 붙인 상대 벤치 (몇 마리를, 몇 중에서)
+            "hidden": (opp_take, len(_as_list(opp_hidden)) if opp_hidden else 0),
             "perRollout": per,
             # 예산이 모자라 제대로 못 잰 후보들. 보고서가 이걸 말해야 한다.
             "thin": thin,

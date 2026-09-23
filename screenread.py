@@ -452,12 +452,28 @@ def read_screen(path, dex, names, img=None):
                         "gap": score - ranked[1][0] if len(ranked) > 1 else score})
         return {"kind": "선출", "opp": opp}
     import hpread
+    # ★ **윈도우 내장 읽기는 패들과 **나란히** 돌린다.** 둘은 서로 다른 장치를 쓴다
+    #   (패들은 이 프로세스, 윈도우는 파워셸 일꾼) — 줄 세워 돌리면 그 시간을 그냥 버린다.
+    #   잰 것 (OBS 한 장, 여섯 번 중 가운뎃값): **줄 세워서 0.89초 → 나란히 0.72초.**
+    #   (일꾼에게 말을 거는 것은 이 갈래 하나뿐이다 — `Worker.ask` 는 자물쇠가 없다.)
+    side_pct = []
+    pct_thread = None
+    if _paddle() and w >= SMALL_W:
+        def _read_pct():
+            try:
+                side_pct.append(_ocr_windows(path, 1))
+            except Exception:
+                pass
+        pct_thread = threading.Thread(target=_read_pct, daemon=True)
+        pct_thread.start()
     raw = ocr(path, 2 if w < SMALL_W else 1)
+    if pct_thread is not None:
+        pct_thread.join()
     # ★ **상대 HP % 글자만은 윈도우 내장이 낫다.** 패들 모델은 「11%」 를 「11 9」 + 「%」 로
     #   쪼개 읽어서 값을 못 건진다 (실전 화면에서 확인, 2026-09-24). 이 숫자는 게임이 직접
     #   띄운 값이라 **막대(±1~2%)보다 정확**해서 버리기 아깝다. 그래서 큰 화면에서 패들로
-    #   읽을 때는 **윈도우로 한 번 더 읽어 그 숫자만** 쓴다 — 0.19초 더 든다.
-    raw_pct = _ocr_windows(path, 1) if (_paddle() and w >= SMALL_W) else raw
+    #   읽을 때는 **윈도우로 한 번 더 읽어 그 숫자만** 쓴다 (바로 위에서 나란히 돌렸다).
+    raw_pct = side_pct[0] if side_pct else raw
     lines = message_lines(raw, w, h)
     # ★ **지금 대전 화면인가를 먼저 가린다.** 선출 화면과 「상태 확인」 화면은 상대 여섯 칸을
     #   세로로 쌓아 보여 주는데, 그 분홍 칸을 HP 막대로 잘못 읽었다 (2026-09-23 실전 한 판에서
@@ -737,9 +753,20 @@ class Board(object):
         return None
 
 
+# 문구 한 줄이 랭크를 몇 칸 움직이나
+RANK_STEP = {"능력하락": -1, "능력크게하락": -2, "능력상승": 1, "능력크게상승": 2}
+
 # 읽었지만 창에 칸이 없어 계산에 못 넣는 것 — 그렇다고 적는다
 _NO_FIELD = {
     "능력하락": "능력이 떨어짐", "하품": "하품(다음 턴 잠듦)", "앙코르": "앙코르",
+    "능력상승": "능력이 올라감", "능력크게상승": "능력이 크게 올라감",
+    "능력크게하락": "능력이 크게 떨어짐",
+    "독데미지": "독 데미지", "맹독퍼짐": "맹독에 걸림", "체력회복": "체력이 회복됨",
+    "혼란풀림": "혼란이 풀림", "도구드러남": "도구가 드러남", "탈벗음": "탈이 벗겨짐",
+    "비시작": "비가 내리기 시작", "비끝": "비가 그침",
+    "풀필드시작": "그래스필드 시작", "풀필드끝": "그래스필드 끝",
+    "효과별로": "효과가 별로", "급소": "급소에 맞음", "대전중지": "대전이 중지됨",
+    "이미가득": "체력이 이미 가득",
     "이미졸림": "이미 졸린 상태", "잠듦": "잠듦", "자는중": "잠든 중", "깸": "깨어남",
     "길동무": "길동무", "모래바람시작": "모래바람 시작", "모래바람끝": "모래바람 끝",
     "모래바람데미지": "모래바람 데미지", "스텔스록깔림": "상대 쪽 스텔스록",
@@ -914,16 +941,20 @@ def apply(board, ev, dex):
 def _apply_mid(board, ev, kind, side, name):
     """랭크 · 상태이상 · 날씨 · 압정 칸에 넣는 일 (2026-09-23). 해당 없으면 None."""
     import battle
-    if kind == "능력하락":
+    # ★ **올라간 쪽도 넣는다.** 전에는 떨어진 것만 넣었다 — 상대가 칼춤을 쳐도 창은
+    #   모른 채 계산했다 (실전 기록 「상대 따라큐의 공격이 크게 올라갔다!」, 2026-09-24).
+    if kind in RANK_STEP:
+        step = RANK_STEP[kind]
+        word = "상승" if step > 0 else "하락"
         key = battle.STAT_WORD.get(ev.get("stat"))
         i = board.find(side, name)
         active = board.my_active if side == "me" else board.opp_active
         if key is None or i is None:
-            return [(False, "%s %s: %s 하락 — 누구인지·무엇인지 못 맞춤" % (_who(side), name, ev.get("stat")))]
+            return [(False, "%s %s: %s %s — 누구인지·무엇인지 못 맞춤" % (_who(side), name, ev.get("stat"), word))]
         if i != active:
-            return [(False, "%s %s: %s 하락 — 나와 있는 놈이 아니라 안 넣음" % (_who(side), name, ev.get("stat")))]
+            return [(False, "%s %s: %s %s — 나와 있는 놈이 아니라 안 넣음" % (_who(side), name, ev.get("stat"), word))]
         r = board.ranks.setdefault(side, {})
-        r[key] = max(-6, r.get(key, 0) - 1)
+        r[key] = max(-6, min(6, r.get(key, 0) + step))
         return [(True, "%s %s: %s 랭크 %+d" % (_who(side), name, ev["stat"], r[key]))]
     if kind in ("하품", "잠듦", "자는중", "깸"):
         i = board.find(side, name)
@@ -941,6 +972,30 @@ def _apply_mid(board, ev, kind, side, name):
             row["status"] = "잠듦"
         now = row["status"] or "없음"
         return [(True, "%s %s: 상태 %s" % (_who(side), name, now))]
+    # 실전 기록에서 자주 나온 것들 (2026-09-24) — 칸이 있는 것은 넣는다.
+    if kind in ("맹독퍼짐", "독데미지"):
+        i = board.find(side, name)
+        if i is None:
+            return [(False, "%s: %s 파티에 없음 — 칸을 확인하세요" % (name, _who(side)))]
+        row = (board.my if side == "me" else board.opp)[i]
+        if kind == "맹독퍼짐":
+            row["status"] = "맹독"
+        elif row.get("status") in (None, "", "없음"):
+            # 「독에 의한 데미지」 만으로는 독과 맹독을 못 가른다 — **약한 쪽으로** 둔다.
+            row["status"] = "독"
+        else:
+            return [(True, "%s %s: 독 데미지 (이미 %s)" % (_who(side), name, row["status"]))]
+        return [(True, "%s %s: 상태 %s" % (_who(side), name, row["status"]))]
+    if kind in ("비시작", "비끝"):
+        board.weather = "비" if kind == "비시작" else "없음"
+        if kind == "비시작":
+            board.weather_turns = 5
+        return [(True, "날씨 %s" % board.weather)]
+    if kind in ("풀필드시작", "풀필드끝"):
+        board.terrain = "그래스필드" if kind == "풀필드시작" else "없음"
+        if kind == "풀필드시작":
+            board.terrain_turns = 5
+        return [(True, "필드 %s" % board.terrain)]
     if kind == "모래바람시작":
         board.weather, board.weather_turns = "모래바람", 5
         return [(True, "날씨 모래바람 5턴 (보송보송바위면 8턴 — 남은 턴은 확인하세요)")]

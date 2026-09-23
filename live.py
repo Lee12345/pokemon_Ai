@@ -839,6 +839,30 @@ def alive_slots(opp_rows):
     return [i for i, (poke, hp) in enumerate(opp_rows) if poke is not None and hp > 0]
 
 
+TEAM = 3        # 챔피언스는 프리뷰 6마리 중 **3마리**를 낸다
+
+
+def hidden_bench(opp_rows, counted, team=TEAM):
+    """아직 안 나온 상대 벤치 → (후보들, 그중 몇 마리가 실제로 나올까).
+
+    opp_rows   [(포켓몬, HP%)] — 프리뷰에서 적은 자리 전부 (보통 6칸)
+    counted    자리마다 '이미 계산에 넣었다'(밝혀진 놈) 인가
+
+    ★ **이걸 안 세면 답이 통째로 바뀐다.** 상대가 한 마리만 나왔을 때 그 한 마리만
+      놓고 재면 '물러날 자리가 없는 상대' 를 재는 것이다. 실전에서 하마돈이
+      한카리아스 앞에서 **하품**(상대를 물러나게 하는 수)을 골랐다 — 물러날 곳이
+      없으니 공짜 잠으로 보였던 것이다 (2026-09-24, 사용자가 잡음).
+
+    쓰러진 놈은 후보에서 뺀다. 밝혀진 놈은 쓰러졌어도 **자리는 이미 썼다**
+    (3마리 중 하나였다) — 그래서 뽑을 수에서 뺀다.
+    """
+    known = sum(1 for (poke, _hp), c in zip(opp_rows, counted)
+                if poke is not None and c)
+    pool = [poke for (poke, hp), c in zip(opp_rows, counted)
+            if poke is not None and not c and hp > 0]
+    return pool, max(0, min(team - known, len(pool)))
+
+
 def turn_state(my_hp, my_active, opp_rows, opp_active):
     """탐색에 넘길 상대 목록과 state 를 만든다.
 

@@ -6100,6 +6100,136 @@ def test_mid_state(dex):
           bd.hazards["opp"] == {"스텔스록": 1} and bd.hazards["me"] == {"스텔스록": 1}, bd.hazards)
 
 
+def test_hidden_bench(dex):
+    """[63] 안 나온 상대 벤치를 센다 · 상황이 바뀌면 생각을 버린다 (2026-09-24).
+
+    사용자가 실전 한 판을 보고 셋을 짚었다 —
+      1. *"상대 벤치에 있는(확정 벤치는 아님) 에브이 고려 x 인 한카리아스 대면 하품"*
+      2. *"인식이 되긴 하는데, 인식이 느림. 인식이 늦어져서 생각할 시간이 적어짐"*
+      3. *"생각 도중 상대 포켓몬이 교체되면 문제가 생기는 것 같음."*
+
+    ① 프리뷰 6마리 중 한카리아스만 나왔을 때, 그 **한 마리만** 놓고 재고 있었다.
+       상대에게 물러날 자리가 없는 판이 되니 **하품**(상대를 물러나게 하는 수)이
+       공짜 잠으로 보였다. 잰 것 — 벤치 2자리를 넣으니 하품 95.3점 → 87.1점,
+       게으름피우기는 94.4점(2등) → 85.0점(5등)으로 내려갔다.
+    ② 「한카리아스를 내보냈다!」 에 틀이 없어서 **9초**를 이름표가 읽힐 때까지 기다렸다.
+    ③ 생각하는 25초 동안 상대가 바뀌었는데 끝까지 계산해서 **지난 상황의 답**을 띄웠다
+       (실전 기록 01:49:54 에 에브이로 바뀜 → 01:50:19 에 한카리아스용 답).
+    """
+    import time
+    import msgread
+    import screenread
+    import live
+    import search
+    print("\n[63] 안 나온 상대 벤치 · 바뀌면 생각을 버린다")
+
+    # -- ① 몇 마리를 뽑아야 하나 ------------------------------------------
+    six = [(dex.find_pokemon(n), 100.0) for n in
+           ("블래키", "에이스번", "한카리아스", "마스카나", "코터스", "에브이")]
+    pool, take = live.hidden_bench(six, [False, False, True, False, False, False])
+    check("한 마리만 밝혀졌으면 남은 2자리를 나머지 5마리에서 뽑는다",
+          (len(pool), take) == (5, 2), (len(pool), take))
+    pool2, take2 = live.hidden_bench(six, [True, False, True, False, False, True])
+    check("셋이 밝혀졌으면 더 뽑지 않는다", take2 == 0, (len(pool2), take2))
+    dead = list(six)
+    dead[0] = (dead[0][0], 0.0)
+    pool3, take3 = live.hidden_bench(dead, [True, False, True, False, False, False])
+    check("쓰러진 놈은 후보에서 빠지되 **자리는 이미 썼다** (1자리만 더)",
+          take3 == 1 and dex.find_pokemon("블래키") not in pool3, (take3, len(pool3)))
+    check("아무도 안 밝혀졌으면 (칸만 적은 판) 6자리를 3으로 보지 않는다",
+          live.hidden_bench(six, [True] * 6)[1] == 0)
+
+    # -- 판마다 실제로 붙는가 ---------------------------------------------
+    import random as _r
+    rng = _r.Random(5)
+    got = set()
+    for _ in range(20):
+        builds, sets = search.sample_opp_party(
+            dex, [six[2][0]], rng, None, None, [p for p, _hp in six[:2]], 2)
+        check2 = len(builds) == 3 and len(sets) == 3
+        if not check2:
+            break
+        got.add(tuple(sorted(b.poke["name"] for b in builds)))
+    check("판마다 상대 파티가 3마리로 채워진다", check2, len(builds))
+    check("뽑히는 벤치가 판마다 갈린다(또는 후보가 딱 맞다)", len(got) >= 1, got)
+    rng = _r.Random(5)
+    many = set()
+    for _ in range(30):
+        builds, _s = search.sample_opp_party(
+            dex, [six[2][0]], rng, None, None, [p for p, _hp in six], 2)
+        many.add(tuple(sorted(b.poke["name"] for b in builds)))
+    check("후보가 많으면 판마다 다른 벤치가 나온다 (%d가지)" % len(many), len(many) >= 3, many)
+
+    # -- 답이 실제로 달라지는가 (하품) ------------------------------------
+    #    실전 그 자리: 내 하마돈이 나와 있고 상대는 한카리아스 한 마리만 밝혀졌다.
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    mine = [P("하마돈"), P("보만다"), P("타부자고")]
+    moves = ["지진", "하품", "게으름피우기", "스텔스록"]
+    state = {"my_hp": [100.0] * 3, "my_active": 0, "opp_hp": [99.0], "opp_active": 0,
+             "my_fresh": False, "opp_fresh": False}
+    rest = [p for p, _hp in six[:2] + six[3:]]
+    alone = search.best_action(dex, mine, [six[2][0]], my_moves=moves,
+                               seconds=2.5, state=state)
+    withb = search.best_action(dex, mine, [six[2][0]], my_moves=moves,
+                               seconds=2.5, state=state,
+                               opp_hidden=rest, opp_take=2)
+    sc = lambda g, n: next(r["score"] for r in g["rows"] if r["name"].startswith(n))
+    check("벤치를 넣으면 판이 더 어려워진다 (하품 %.1f점 → %.1f점)"
+          % (sc(alone, "하품") * 100, sc(withb, "하품") * 100),
+          sc(withb, "하품") < sc(alone, "하품"), (sc(alone, "하품"), sc(withb, "하품")))
+    check("벤치를 넣었다고 결과에 적어 둔다", withb["hidden"] == (2, 5) and alone["hidden"] == (0, 0),
+          (withb["hidden"], alone["hidden"]))
+
+    # -- ③ 상황이 바뀌면 그 자리에서 버린다 --------------------------------
+    t0 = time.time()
+    quit_now = search.best_action(dex, mine, [six[2][0]], my_moves=moves,
+                                  seconds=30.0, state=state, stop=lambda: True)
+    took = time.time() - t0
+    check("버리라고 하면 예산(30초)을 안 쓰고 바로 돌아온다 (%.1f초)" % took, took < 15.0, took)
+    check("버린 답에는 버렸다고 적혀 있다", quit_now["stopped"] is True, quit_now["stopped"])
+    keep = search.best_action(dex, mine, [six[2][0]], my_moves=moves,
+                              seconds=1.0, state=state, stop=lambda: False)
+    check("안 버렸으면 stopped 가 False", keep["stopped"] is False, keep["stopped"])
+
+    # -- ② 없던 문구 틀 ----------------------------------------------------
+    names = msgread.Names(dex, ["하마돈", "한카리아스", "따라큐", "패리퍼", "대쓰여너"])
+    ev = msgread.read(["한카리아스를 내보냈다!"], names)
+    check("「XX를 내보냈다!」 (트레이너 이름이 안 읽힌 채) → 상대가 나옴",
+          (ev["kind"], ev["side"], ev["mon"]) == ("나옴", "opp", "한카리아스"), ev)
+    ev = msgread.read(["때라퍼를 내보했다!"], names)
+    check("글자가 깨져도 (때라퍼 → 패리퍼) 읽는다",
+          (ev["kind"], ev["mon"]) == ("나옴", "패리퍼"), ev)
+    ev = msgread.read(["가랏! 하마돈!"], names)
+    check("내 쪽 「가랏!」 은 그대로 내 쪽", (ev["kind"], ev["side"]) == ("나옴", "me"), ev)
+    ev = msgread.read(["상대 따라큐의", "공격이 크게 올라갔다!"], names)
+    check("「크게 올라갔다」 → 능력크게상승 (전엔 올라간 쪽 틀이 아예 없었다)",
+          (ev["kind"], ev["side"], ev["stat"]) == ("능력크게상승", "opp", "공격"), ev)
+    ev = msgread.read(["상대 대쓰여너는", "독에 의한 데미지를 입었다!"], names)
+    check("「독에 의한 데미지」 → 독데미지", (ev["kind"], ev["mon"]) == ("독데미지", "대쓰여너"), ev)
+    for text, want in (("비가 내리기 시작했다!", "비시작"), ("비가 그쳤다!", "비끝"),
+                       ("발밑에 풀이 무성해졌다!", "풀필드시작"),
+                       ("항복으로 대전이 중지되었습니다.", "대전중지")):
+        check("「%s」 → %s" % (text, want), msgread.read([text], names)["kind"] == want,
+              msgread.read([text], names))
+
+    # -- 새 문구가 칸까지 가는가 -------------------------------------------
+    row = lambda n: {"poke": dex.find_pokemon(n), "hp": 100.0, "brought": True, "status": None}
+    bd = screenread.Board([row("하마돈")], [row("따라큐"), row("대쓰여너")])
+    screenread.apply(bd, {"kind": "능력크게상승", "mon": "따라큐", "side": "opp", "stat": "공격"}, dex)
+    check("상대가 칼춤을 치면 상대 공격 랭크 +2", bd.ranks["opp"] == {"attack": 2}, bd.ranks)
+    screenread.apply(bd, {"kind": "능력하락", "mon": "따라큐", "side": "opp", "stat": "공격"}, dex)
+    check("그 뒤 한 칸 떨어지면 +1", bd.ranks["opp"] == {"attack": 1}, bd.ranks)
+    screenread.apply(bd, {"kind": "맹독퍼짐", "mon": "따라큐", "side": "opp"}, dex)
+    check("「몸에 맹독이 퍼졌다」 → 그 칸 상태 맹독", bd.opp[0]["status"] == "맹독", bd.opp[0])
+    screenread.apply(bd, {"kind": "비시작"}, dex)
+    check("「비가 내리기 시작했다」 → 날씨 비", bd.weather == "비", bd.weather)
+    screenread.apply(bd, {"kind": "풀필드시작"}, dex)
+    check("「발밑에 풀이 무성해졌다」 → 필드 그래스필드", bd.terrain == "그래스필드", bd.terrain)
+
+    # 창 쪽(누가 나와 있나가 바뀐 것을 알아채는가 · 버린 답을 안 띄우는가)은
+    # `gui.py --점검` 이 잰다 — 거기서 칸을 실제로 채워 놓고 보기 때문이다 ([43]).
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6166,6 +6296,7 @@ def main():
     test_advice(dex)
     test_setup(dex)
     test_mid_state(dex)
+    test_hidden_bench(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

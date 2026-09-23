@@ -65,6 +65,12 @@ def engine():
         # ! 한국어 모델은 **PP-OCRv5 에만** 있다 (v6 의 52개 말 목록에 한국어가 없다).
         _ENGINE = RapidOCR(params={
             "Global.log_level": "error",
+            # ★ **글자가 뒤집혔나 보는 모델(cls)은 끈다.** 게임 글자는 절대 뒤집히지 않는다.
+            #   견줘 보니 **더 빠르고 더 잘 읽는다** (2026-09-24, 저장해 둔 12장으로) —
+            #   실전 OBS 한 장이 9줄 → 11줄(「상태 확인」·「로그 확인」 이 새로 읽힘),
+            #   선출 화면의 트레이너 이름이 「를HAE」 → 「랭크배틀」·「와꾸대장」 으로 바뀌었다.
+            #   「상태 확인」 은 그 화면인지 가리는 데 쓰는 낱말이라 이게 중요하다.
+            "Global.use_cls": False,
             "Det.ocr_version": OCRVersion.PPOCRV5,
             "Det.model_type": ModelType.MOBILE,
             "Rec.ocr_version": OCRVersion.PPOCRV5,

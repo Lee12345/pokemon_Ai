@@ -898,6 +898,11 @@ class App(object):
         self.opp_known = True
         self.asked_at = None        # 언제부터 생각하기 시작했나 (답에 걸린 시간을 적으려고)
         self.ask_again = None       # 생각하는 동안 바뀐 것 — 끝나면 다시 묻는다
+        # ★ **생각하는 동안 나와 있는 놈이 바뀌었나.** 바뀌었으면 하던 계산을 버린다 —
+        #   25초를 더 써 봐야 지난 상황의 답이다 (2026-09-24, 사용자가 짚음).
+        self.stale = False
+        self.asked_sig = None       # 물어볼 때 누가 나와 있었나
+        self.hidden_n = (0, 0)      # 판마다 새로 뽑아 붙인 상대 벤치 (몇, 몇 중에서)
         self.last_got = None        # 마지막으로 읽은 것 (디버그·「이거 틀렸어」 가 쓴다)
         self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
@@ -1283,6 +1288,12 @@ class App(object):
         self.guessed_opp = not shown
         rows = [(sl.poke if sl in use else None, sl.hp_pct())
                 for sl in self.opp_slots]
+        # ★ **안 나온 상대도 센다.** 밝혀진 놈만 넣으면 '물러날 자리가 없는 상대' 를
+        #   재게 된다 — 그래서 하마돈이 한카리아스 앞에서 하품을 골랐다 (2026-09-24).
+        #   3마리에서 모자란 자리를 **프리뷰의 나머지 중에서 판마다 새로 뽑아** 채운다.
+        all_rows = [(sl.poke, sl.hp_pct()) for sl in self.opp_slots]
+        hidden, take = live.hidden_bench(all_rows, [sl in use for sl in self.opp_slots])
+        self.hidden_n = (take, len(hidden))
         opp_pokes, state, why = live.turn_state(
             my_hp, idx, rows, self.opp_active.get())
         if why:
@@ -1302,6 +1313,8 @@ class App(object):
         self.opp_fresh.set(False)
 
         self.busy = True
+        self.stale = False
+        self.asked_sig = self.who_sig()
         self.asked_at = time.time()
         self.go.config(text="생각하는 중...", state="disabled")
         # 이름 뒤에 조사를 붙이지 않는다 — 「다크펫 를」 처럼 틀어진다 (받침이 있고 없고)
@@ -1319,21 +1332,39 @@ class App(object):
         if extra:
             self.say("넘긴 판 상태: " + extra)
 
-        args = (party, opp_pokes, ev, secs, state, idx)
+        args = (party, opp_pokes, ev, secs, state, idx, hidden, take)
         if self.headless:
             self._work(*args)
         else:
             threading.Thread(target=self._work, args=args,
                              daemon=True).start()
 
-    def _work(self, party, opp_pokes, ev, secs, state, idx):
+    def who_sig(self):
+        """지금 **누가 나와 있나** 한 덩어리로. 이게 바뀌면 하던 생각은 버린다.
+
+        HP 가 조금 깎인 것으로는 안 버린다 — 그 정도로 답이 뒤집히지는 않고,
+        매 장 버리면 답이 영영 안 나온다. 바뀐 놈·바뀐 자리만 본다.
+        """
+        def nm(slots, idx):
+            i = idx.get() if hasattr(idx, "get") else idx
+            sl = slots[i] if 0 <= i < len(slots) else None
+            return (sl.poke or {}).get("name") if sl else None
+        return (self.my_active.get(), self.opp_active.get(),
+                nm(self.slots, self.my_active), nm(self.opp_slots, self.opp_active))
+
+    def _work(self, party, opp_pokes, ev, secs, state, idx, hidden=None, take=0):
         try:
             got = search.best_action(
                 self.dex, [b for b, _m in party], opp_pokes,
                 my_moves=party[idx][1] or None, evidence=ev,
-                seconds=secs, state=state)
-            text = self._format(got, len(opp_pokes),
-                                guessed_opp=self.guessed_opp)
+                seconds=secs, state=state,
+                opp_hidden=hidden, opp_take=take,
+                # ★ **생각하는 동안 나와 있는 놈이 바뀌면 그 생각은 버린다.**
+                #   끝까지 계산해 봐야 지난 상황의 답이다 (2026-09-24).
+                stop=lambda: self.stale)
+            text = None if got.get("stopped") else self._format(
+                got, len(opp_pokes) + take, guessed_opp=self.guessed_opp,
+                hidden=(take, len(hidden or ())))
         except Exception:
             import traceback
             text = "문제가 생겼습니다:\n%s" % traceback.format_exc()
@@ -1688,6 +1719,21 @@ class App(object):
             lines = [ln for ln in (text or "").splitlines() if ln.strip()][:4]
         return "\n".join(lines[:7])
 
+    def warm_up(self):
+        """계산 장치를 미리 한 번 돌려 둔다 (뒤에서). 답이 아니라 **표를 채우는 것**이 목적이다.
+
+        짧게 물어도 `best_action` 은 덥히는 판을 먼저 돌리므로 그것으로 충분하다.
+        실패해도 아무 일 없다 — 그냥 첫 답이 예전처럼 느려질 뿐이다.
+        """
+        try:
+            party = [b for b, _m in self.party()]
+            if not party:
+                return
+            foes = [sl.poke for sl in self.opp_slots if sl.poke] or [party[0].poke]
+            search.best_action(self.dex, party, foes[:1], seconds=0.1)
+        except Exception:
+            pass
+
     def toggle_follow(self):
         if self.following:
             self.following = False
@@ -1705,6 +1751,11 @@ class App(object):
                 self.say("따라가기를 못 켰습니다 — %s" % e, clear=True)
                 return
         self.following = True
+        # ★ **미리 덥힌다.** 첫 물음은 표(기술 점수·도구 규칙·특성 규칙)를 처음 채우느라
+        #   **4~5초**가 더 걸린다 (잰 것: 「5초」 로 물었는데 10.3초, 두 번째는 10초에 10.0초).
+        #   판이 시작되기 전에 뒤에서 한 번 돌려 두면 그 값을 첫 답에서 안 낸다.
+        if not self.headless:
+            threading.Thread(target=self.warm_up, daemon=True).start()
         self.go_follow.config(text="따라가기 멈춤")
         self.say("따라갑니다 — OBS 「창 프로젝터(미리 보기)」 를 띄워 두세요.\n"
                  "읽은 것을 그때그때 보여 드리고, 판이 바뀌면 둘 수를 다시 알려 드립니다.\n"
@@ -1771,6 +1822,11 @@ class App(object):
         #   올 때까지 **지난 상황의 답**이 떠 있었다 (사용자: "판단시간이 너무너무 길어짐").
         if self.busy:
             self.ask_again = got["kind"]
+            # 나와 있는 놈이 바뀌었으면 **하던 생각을 그 자리에서 버린다.**
+            # 그래야 25초를 마저 쓰지 않고 새 상황을 바로 본다.
+            if self.who_sig() != self.asked_sig:
+                self.stale = True
+                self.set_state("상황이 바뀌었습니다 — 생각을 다시 합니다", BAR)
             return
         self._ask_for(got["kind"])
 
@@ -1870,6 +1926,21 @@ class App(object):
         self.after_busy()
 
     def _show(self, text):
+        # ★ text 가 None 이면 **상황이 바뀌어 버린 생각**이다. 지난 상황의 답을 띄우면
+        #   사용자가 그걸 보고 둔다 — 제일 나쁜 고장이다. 띄우지 말고 바로 다시 묻는다.
+        if text is None:
+            self.set_state("상황이 바뀌었습니다 — 다시 생각합니다", BAR)
+            self.say("─ 생각하는 동안 나와 있는 놈이 바뀌어서 그 답을 버렸습니다. 다시 봅니다.")
+            self.go.config(text="무엇을 둘까?", state="normal")
+            if self.watcher is not None:
+                try:
+                    self.watcher.note("답 » (버림) 생각하는 동안 나와 있는 놈이 바뀌었습니다")
+                except Exception:
+                    pass
+            if self.ask_again is None:
+                self.ask_again = "대전"
+            self.after_busy()
+            return
         self.last_short = self.short_advice(text)
         self.set_state(*self._done_state(text, "답이 나왔습니다"))
         self.show_overlay(self.last_short)
@@ -1878,7 +1949,7 @@ class App(object):
         self.go.config(text="무엇을 둘까?", state="normal")
         self.after_busy()
 
-    def _format(self, got, n_foes=1, guessed_opp=False):
+    def _format(self, got, n_foes=1, guessed_opp=False, hidden=(0, 0)):
         rows = got["rows"]
         full = [r for r in rows if not r["dropped"]] or rows
         top = max(full, key=lambda r: r["score"])
@@ -1920,7 +1991,14 @@ class App(object):
             L.append("! 끝까지 못 보고 끊었습니다 — 초를 늘려 보세요")
         if got["guessed"]:
             L.append("! 내 기술을 사용률로 짐작했습니다")
-        if n_foes < 2:
+        take, pool = hidden if hidden else (0, 0)
+        if take:
+            # **모르는 벤치를 어떻게 셌는지 말한다.** 안 말하면 사용자는 상대 한 마리만
+            # 놓고 잰 줄로 읽는다 (그게 전에 하던 것이다).
+            L.append("· 아직 안 나온 상대 %d자리는 프리뷰의 나머지 %d마리 중에서"
+                     % (take, pool))
+            L.append("  판마다 새로 뽑아 넣었습니다 (누구인지는 모르니까)")
+        elif n_foes < 2:
             L.append("! 상대를 한 마리만 넣었습니다. 벤치를 아는 만큼")
             L.append("  적으면 답이 달라집니다 (한 수에서 64%p 움직였습니다)")
         if guessed_opp:
@@ -2507,6 +2585,51 @@ def check():
     app.after_busy()        # 생각이 끝났다 — 여기서 바로 다시 물어야 한다
     if "=>" not in app.out.get("1.0", "end"):
         bad.append("생각이 끝난 뒤에 다시 안 물음")
+    # ★ **생각 도중에 나와 있는 놈이 바뀌면 그 생각을 버린다** (2026-09-24, 사용자가 짚음:
+    #   "생각 도중 상대 포켓몬이 교체되면 문제가 생기는 것 같음"). 실전 기록에서 01:49:54 에
+    #   상대가 에브이로 바뀌었는데 01:50:19 에 **한카리아스용 답**이 떴다.
+    app.busy, app.following = True, True
+    app.stale = False
+    app.asked_sig = app.who_sig()
+    app._after_follow(app.board(), {"trouble": None, "notes": [], "changed": True,
+                                    "kind": "대전", "lines": []})
+    if app.stale:
+        bad.append("아무것도 안 바뀌었는데 생각을 버림")
+    was = app.opp_active.get()
+    app.opp_active.set(0 if was else 1)
+    app._after_follow(app.board(), {"trouble": None, "notes": [], "changed": True,
+                                    "kind": "대전", "lines": []})
+    if not app.stale:
+        bad.append("나와 있는 상대가 바뀌었는데 하던 생각을 안 버림")
+    app.opp_active.set(was)
+    # HP 만 깎인 것으로는 안 버린다 — 매 장 버리면 답이 영영 안 나온다
+    sig = app.who_sig()
+    app.opp_slots[was].hp.set("40")
+    if app.who_sig() != sig:
+        bad.append("HP 가 깎인 것만으로 '상황이 바뀌었다' 로 봄")
+    # 버린 답은 **띄우지 않는다** (지난 상황의 답을 보고 두면 제일 나쁘다)
+    app.last_short = "▶ 지난 답"
+    app.busy, app.following = True, False
+    # ! 맨 줄을 **다른 말로 덮어 놓고** 본다. 바로 위에서 이미 「상황이 바뀌었습니다」 를
+    #   띄웠기 때문에, 그냥 보면 _show 를 일부러 고장 내도 그 줄에 속아 통과한다
+    #   (2026-09-23 의 「생각하는 중」 과 똑같은 함정이다).
+    app.set_state("시험 — 아직 아무 말도 안 했다", DIM)
+    app._show(None)
+    if app.last_short != "▶ 지난 답" or "바뀌었" not in (app.state_now[0] or ""):
+        bad.append("버린 생각을 그냥 띄우거나 까닭을 안 말함 (%r)" % (app.state_now,))
+    # ★ **안 나온 상대를 어떻게 셌는지 말한다.** 안 말하면 사용자는 상대 한 마리만 놓고
+    #   잰 줄로 읽는다 (그게 2026-09-24 까지 하던 것이다).
+    one = lambda n, s: {"action": ("기술", dex.find_move(n)), "name": n, "score": s,
+                        "order": "「%s」을 쓰세요" % n, "n": 100, "dropped": False}
+    fake_got = {"rows": [one("지진", 0.8), one("하품", 0.6)], "spent": 1.0, "rollouts": 200,
+                "shallow": False, "guessed": False, "thin": [], "opp_guess": [],
+                "opp_mega": 0.0, "warnings": [], "stopped": False, "hidden": (2, 5)}
+    said = app._format(fake_got, 3, hidden=(2, 5))
+    if "아직 안 나온 상대 2자리" not in said or "5마리" not in said:
+        bad.append("안 나온 상대 벤치를 어떻게 셌는지 안 적음 (%r)" % said)
+    if "! 상대를 한 마리만" in app._format(fake_got, 3, hidden=(2, 5)):
+        bad.append("벤치를 넣었는데도 '한 마리만 넣었다' 고 말함")
+    app.stale = False           # 뒤의 점검이 이 깃발에 걸리지 않게 되돌려 둔다
     app.following = False
     # ★ **지금 무엇을 하는 중인지**를 작은 창 맨 줄이 말해야 한다 (2026-09-23, 사용자 요구).
     #   답만 떠 있으면 그게 방금 읽은 판의 답인지 아까 것인지 알 수가 없다.
