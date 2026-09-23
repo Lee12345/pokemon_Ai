@@ -64,12 +64,24 @@ def _hp_signature(got):
 class Watcher(object):
     """한 판을 따라간다. `source` 는 `.grab() -> (사진 자리, 너비, 높이, 점들)` 이면 된다."""
 
-    def __init__(self, source=None, title=None):
+    def __init__(self, source=None, title=None, log=None):
         self.source = source if source is not None else screenread.Window(
             title or screenread.PROJECTOR)
         self.reset()
         self.frames = 0
         self.trouble = None
+        # 판이 끝난 뒤 "뭘 어떻게 읽었나" 를 다시 볼 수 있게 남긴다 (창은 글이 밀려 올라간다)
+        self.log = log
+        self._say("─── 시작 %s ───" % time.strftime("%Y-%m-%d %H:%M:%S"))
+
+    def _say(self, text):
+        if not self.log:
+            return
+        try:
+            with open(self.log, "a", encoding="utf-8") as f:
+                f.write("%s  %s\n" % (time.strftime("%H:%M:%S"), text))
+        except OSError:
+            self.log = None     # 못 쓰면 조용히 그만둔다 — 기록 때문에 따라가기가 멈추면 안 된다
 
     def reset(self):
         """새 판. 넣은 것을 잊는다 (안 잊으면 다음 판에서 같은 일을 안 넣는다)."""
@@ -93,6 +105,7 @@ class Watcher(object):
         except Exception as e:
             self.trouble = "화면을 못 찍었습니다 — %s" % e
             out["trouble"] = self.trouble
+            self._say("! " + self.trouble)
             self._forget()
             return out
         self.frames += 1
@@ -102,6 +115,7 @@ class Watcher(object):
             self.trouble = ("신호가 없습니다 (화면의 %.0f%% 가 까맣습니다) — "
                             "캡처보드나 게임기를 봐 주세요" % (share * 100))
             out["trouble"] = self.trouble
+            self._say("! " + self.trouble)
             self._forget()
             return out
         self.trouble = None
@@ -122,6 +136,8 @@ class Watcher(object):
                 out["changed"] = True
             self.applied_hp = hp_sig
         self.pending, self.pending_hp = sig, hp_sig
+        for ok, text in out["notes"]:
+            self._say("%s %s" % ("O" if ok else "-", text))
         return out
 
     def _put(self, board, got, dex):

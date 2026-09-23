@@ -1398,15 +1398,18 @@ class App(object):
             return
         if self.watcher is None:
             import watch
+            # 읽은 것을 파일에도 남긴다 — 창은 글이 밀려 올라가서 판이 끝나면 앞부분을 못 본다
+            log = paths.mine("대전기록", "따라간기록_%s.txt" % time.strftime("%m%d_%H%M"))
             try:
-                self.watcher = watch.Watcher()
+                self.watcher = watch.Watcher(log=log)
             except Exception as e:
                 self.say("따라가기를 못 켰습니다 — %s" % e, clear=True)
                 return
         self.following = True
         self.go_follow.config(text="따라가기 멈춤")
         self.say("따라갑니다 — OBS 「창 프로젝터(미리 보기)」 를 띄워 두세요.\n"
-                 "읽은 것을 그때그때 보여 드리고, 판이 바뀌면 둘 수를 다시 알려 드립니다.",
+                 "읽은 것을 그때그때 보여 드리고, 판이 바뀌면 둘 수를 다시 알려 드립니다.\n"
+                 "(읽은 것은 %s 에도 남습니다)" % (self.watcher.log or "(기록 없음)"),
                  clear=True)
         if self.headless:
             self.follow_once()
@@ -1444,8 +1447,14 @@ class App(object):
         self.say("─ 읽었습니다 (%s 화면)" % got["kind"])
         for ok, text in got["notes"]:
             self.say("   %s %s" % ("✓" if ok else "○", text))
-        # 칸이 바뀌었으니 둘 수를 다시 묻는다. 이미 생각하는 중이면 다음 바퀴에 묻는다.
-        if not self.busy:
+        # 칸이 바뀌었으니 다시 묻는다. 이미 생각하는 중이면 다음 바퀴에 묻는다.
+        # ★ **선출 화면이면 「어떤 3마리」 를, 대전 화면이면 「무엇을 둘까」 를** 묻는다.
+        #   선출 화면에서 둘 수를 물으면 아무 쓸모가 없다 — 그때 둘 수는 '어떤 3마리' 다.
+        if self.busy:
+            return
+        if got["kind"] == "선출":
+            self.ask_pick(clear=False)
+        else:
             self.ask(clear=False)
 
     def _apply_screens(self, got):
@@ -1481,20 +1490,23 @@ class App(object):
         self.say("\n".join(lines), clear=True)
 
     # -- 선출 -------------------------------------------------------------
-    def ask_pick(self):
-        """팀 프리뷰 — 내 6마리 중 어떤 3마리를 낼까."""
+    def ask_pick(self, clear=True):
+        """팀 프리뷰 — 내 6마리 중 어떤 3마리를 낼까.
+
+        `clear=False` 는 따라가기에서 쓴다 — 방금 보여 준 「읽었습니다」 를 지우면 안 된다.
+        """
         if self.busy:
             return
         party = self.party()
         foes = self.opp_party()
         if len(party) < pick.PICK:
             self.say("내 파티를 %d마리 이상 채우세요 (지금 %d)."
-                     % (pick.PICK, len(party)), clear=True)
+                     % (pick.PICK, len(party)), clear=clear)
             return
         if len(foes) < pick.PICK:
             self.say("상대를 %d마리 이상 적으세요 (지금 %d). 팀 프리뷰에서"
                      " 본 6마리를 다 적으면 제일 정확합니다."
-                     % (pick.PICK, len(foes)), clear=True)
+                     % (pick.PICK, len(foes)), clear=clear)
             return
         try:
             secs = max(10.0, float(self.pick_secs.get()))
@@ -1502,7 +1514,7 @@ class App(object):
             secs = 45.0
         self.busy = True
         self.go_pick.config(text="고르는 중...", state="disabled")
-        self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=True)
+        self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=clear)
         args = ([b for b, _m in party], [p for p, _hp in foes], secs)
         if self.headless:
             self._work_pick(*args)
@@ -1629,6 +1641,12 @@ def check():
 
     dex = calc.Dex()
     app = App(dex, headless=True)
+    # ★ **저장해 둔 파티를 먼저 비운다.** 창은 켤 때 `내기록/내파티.txt` 를 읽는데, 점검이 그걸
+    #   그대로 두면 **사용자가 무엇을 저장해 뒀느냐에 따라 점검이 통과했다 실패했다** 한다
+    #   (2026-09-23: 사용자가 6마리를 저장하자 「파티가 두 마리로 안 잡힙니다: 5」 로 깨졌다).
+    #   점검은 남의 파일에 기대면 안 된다.
+    for sl in app.slots:
+        sl.clear()
     slot = app.slots[0]
 
     # ① 포켓몬을 고르면 특성·기술 후보가 그놈 것으로 바뀌는가
