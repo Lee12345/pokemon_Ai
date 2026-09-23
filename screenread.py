@@ -354,6 +354,33 @@ def _ocr_file(tmp, scale):
     return lines
 
 
+def crop_lines(w, h, px, box, scale=1):
+    """화면의 한 칸만 잘라서 글자를 읽는다 → [줄]. 좌표는 안 돌려준다 (그 칸 안이 전부다).
+
+    ★ **통째로 읽으면 엔진이 화면 전체를 보느라 문구를 놓친다.** 저장해 둔 실전 화면으로
+      재 봤다 (2026-09-23) — 「상대 개굴닌자는 / 악타입이 됐다!」 가 통째로는 아랫줄만
+      읽혀 **못 읽음**, 문구 칸만 잘라 읽으니 두 줄이 다 나와 **0.92 로 맞았다.**
+    ★ 값: OBS 한 장(2448x1377)에서 잘라내기 0.001 + 저장 0.020 + 읽기 0.013 = **0.035초.**
+      (통째로 읽는 데 0.144초 드는 것과 견주면 4분의 1이다.)
+    """
+    x0, y0, x1, y1 = box
+    cw, ch, cpx = pngio.crop(w, h, px, int(w * x0), int(h * y0), int(w * x1), int(h * y1))
+    if cw <= 0 or ch <= 0:
+        return []
+    tmp = os.path.join(tempfile.gettempdir(), "screenread_%d_cut.png" % os.getpid())
+    pngio.write_png(tmp, cw, ch, cpx)
+    try:
+        got = ocr(tmp, scale)
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    # 한글이 두 자 이상인 줄만 (시계·표시 조각을 뺀다 — message_lines 와 같은 규칙)
+    return [t for _x, _y, t in sorted(got, key=lambda r: r[1])
+            if len(re.findall(r"[가-힣]", t)) >= 2]
+
+
 def message_lines(lines, w, h):
     """글자 인식 줄들 → 문구 칸 줄만, 위에서부터."""
     x0, y0, x1, y1 = MSG_BOX
@@ -400,8 +427,23 @@ def read_screen(path, dex, names, img=None):
         out = {"kind": "상태확인", "lines": lines, "event": None, "stack": stack, "raw": big}
         out.update(status_screen(big, w, h, names))
         return out
+    # ★ **못 읽었을 때만** 문구 칸을 잘라 2배로 키워 한 번 더 읽는다.
+    #
+    #   글자가 보이는데 틀에 안 맞은 장이 그 대상이다. 큰 화면(OBS 2448)은 통째로 1배로
+    #   읽으므로 문구 글자가 작다 — 「패리퍼를 내보냈다」 가 「때라퍼를 내보했다」 로 깨진 적이
+    #   있다 (2026-09-23). 작은 화면(SMALL_W 아래)은 이미 통째로 2배로 읽으므로 그대로 둔다.
+    #   드는 값: 문구 칸 2배 읽기 **0.131초** (통째 0.331초의 40%). 못 읽은 장에만 낸다.
+    #   ★ 둘 중 **더 닮은 쪽**을 고르므로 나빠질 수는 없다.
+    event = msgread.read(lines, names) if lines else None
+    if (battle_like and lines and w >= SMALL_W
+            and (event is None or event.get("kind") == "못 읽음")):
+        cut = crop_lines(w, h, px, MSG_BOX, 2)
+        if cut and cut != lines:
+            ev2 = msgread.read(cut, names)
+            if event is None or ev2.get("score", 0.0) > event.get("score", 0.0):
+                lines, event = cut, ev2
     out = {"kind": "대전", "lines": lines,
-           "event": msgread.read(lines, names) if lines else None,
+           "event": event,
            "opp_hp": hpread.measure(w, h, px) if battle_like else None,
            "opp_hp_text": opp_hp_text(raw, w, h) if battle_like else None,
            "stack": stack,

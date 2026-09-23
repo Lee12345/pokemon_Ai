@@ -5338,6 +5338,22 @@ def test_screenread(dex):
     check("선출 화면 사진은 선출로 읽는다 (6마리)", got["kind"] == "선출" and len(got["opp"]) == 6,
           got["kind"])
 
+    # ★ **문구 칸만 잘라 읽기** (2026-09-23, `crop_lines`).
+    #
+    # ! 여기서 한 번 헛짚었다. 1배로 통째 읽기와 견줘서 "잘라 읽으면 못 읽던 것을 읽는다"
+    #   고 했는데, **작은 화면은 원래 2배로 통째 읽는다** (SMALL_W). 파이프라인이 안 쓰는
+    #   방식을 기준으로 재고 좋아졌다고 말한 것이다 — CLAUDE.md §1 그대로다.
+    #   그래서 지금은 **못 읽은 장에만** 큰 화면에서 잘라 2배로 다시 읽고, 둘 중 더 닮은
+    #   쪽을 고른다 (나빠질 수는 없다). 진짜 이득은 **OBS 실전 화면**으로 재야 안다 —
+    #   그래서 못 읽은 장을 `내기록/못읽은화면` 에 남긴다.
+    f = scr("대전_스위치_타입바뀜.jpg")
+    w, h, px = pngio_read(f)
+    cut = screenread.crop_lines(w, h, px, screenread.MSG_BOX, 2)
+    check("문구 칸만 잘라 읽어도 두 줄이 다 나온다 (개굴닌자 · 악타입)",
+          len(cut) >= 2 and any("개굴" in t for t in cut), cut)
+    check("자른 칸에는 문구 밖 글자(시계·HP 숫자)가 안 섞인다",
+          all(len(t) < 30 for t in cut), cut)
+
     # ── 실전 한 판에서 배운 것 (2026-09-23, OBS 캡처 903프레임) ──────────────
     #
     # ★ **막대를 못 찾은 것을 「0%」 로 돌려주고 있었다.** 쓰러지면 상대 칸이 사라지므로 진짜
@@ -5660,6 +5676,42 @@ def test_watch(dex):
     outs = [w.step(bd, dex, names) for _ in range(watch.RECENT + 2)]
     check("너무 멀리 떨어져 다시 나온 것은 새로 센다 (%d장 뒤)" % watch.RECENT,
           not outs[-1]["changed"], [o["changed"] for o in outs])
+
+    # ★ **글자는 보이는데 틀에 안 맞은 장은 사진으로 남긴다** (2026-09-23).
+    #   글자 인식을 더 손볼지는 **실전 화면으로 재야** 안다. 저장해 둔 화면에는 OBS 대전
+    #   장면이 한 장도 없어서, 한 번은 파이프라인이 쓰지도 않는 방식을 기준으로 재고
+    #   "좋아졌다" 고 말했다. 그러니 못 읽은 장이 남아야 다음에 견줄 수 있다.
+    import paths as pathsmod
+    hard = scr("대전_스위치_HP62.jpg")
+    # 저장해 둔 화면 중에는 '글자는 읽혔는데 틀에 안 맞는' 장이 없다 (그게 이 자료의 구멍이다).
+    # 그래서 읽은 결과만 그런 것으로 바꿔 끼워 **그 갈래가 실제로 도는지** 본다.
+    real_read = screenread.read_screen
+    screenread.read_screen = lambda *a, **k: {
+        "kind": "대전", "lines": ["무슨무슨 알 수 없는 문구"], "event": {"kind": "못 읽음"},
+        "opp_hp": None, "opp_hp_text": None, "stack": 0, "opp_name": None, "my_hp": None}
+    w = watch.Watcher(Replay([hard]))
+    w.kept, before = 0, set(os.listdir(pathsmod.mine("못읽은화면")))
+    try:
+        w.step(blank(), dex, names)
+    finally:
+        screenread.read_screen = real_read
+    now = set(os.listdir(pathsmod.mine("못읽은화면"))) - before
+    check("못 읽은 장을 사진으로 남긴다", len(now) == 1 and w.kept == 1, (now, w.kept))
+    for f in now:
+        os.remove(os.path.join(pathsmod.mine("못읽은화면"), f))
+    # 한 판이 900장이라 **몇 장까지만** 남긴다 (전부 남기면 디스크가 찬다)
+    w.kept = watch.KEEP_MAX
+    w._said_lines = None
+    screenread.read_screen = lambda *a, **k: {
+        "kind": "대전", "lines": ["또 알 수 없는 문구"], "event": {"kind": "못 읽음"},
+        "opp_hp": None, "opp_hp_text": None, "stack": 0, "opp_name": None, "my_hp": None}
+    try:
+        w.step(blank(), dex, names)
+    finally:
+        screenread.read_screen = real_read
+    check("정한 수를 넘으면 더 안 남긴다 (%d장)" % watch.KEEP_MAX,
+          not (set(os.listdir(pathsmod.mine("못읽은화면"))) - before),
+          os.listdir(pathsmod.mine("못읽은화면")))
 
     # 새 판 — 잊어야 같은 일을 다시 넣는다
     w = watch.Watcher(Replay([scr("대전_아이패드_풍선.jpg")]))

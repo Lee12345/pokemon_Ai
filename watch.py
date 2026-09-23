@@ -42,6 +42,9 @@ NO_SIGNAL = 0.80        # 이만큼 까만 화면이면 신호가 없는 것으�
 #   로 읽어서, **상대가 누구를 냈는지 영영 못 넣었다** (2026-09-23, 따라간기록_0923_2137).
 #   문구는 2~3초(서너 장) 떠 있으므로 그 안에서 두 번이면 같은 장면이다.
 RECENT = 4
+# 못 읽은 장을 한 판에 이만큼까지 사진으로 남긴다 (글자 인식을 손볼 때 견줄 자료)
+KEEP_MAX = 40
+
 
 def _signature(got):
     """읽은 것을 짧은 열쇠로 — 이게 두 번 같으면 믿는다. 믿을 게 없으면 None."""
@@ -99,11 +102,27 @@ class Watcher(object):
         """
         self._say(text)
 
+    def _keep(self, path, w, h, px):
+        """못 읽은 장을 사진으로 남긴다 (한 판에 `KEEP_MAX` 장까지).
+
+        한 판이 900프레임이라 전부 남기면 디스크가 금방 찬다. **못 읽은 것만, 몇 장만.**
+        """
+        if self.kept >= KEEP_MAX:
+            return
+        try:
+            out = paths.mine("못읽은화면", "%s_%03d.png" % (time.strftime("%m%d_%H%M"),
+                                                          self.kept + 1))
+            pngio.write_png(out, w, h, px)
+            self.kept += 1
+        except (OSError, ValueError):
+            self.kept = KEEP_MAX        # 한 번 실패하면 그만둔다 — 기록 때문에 멈추면 안 된다
+
     def reset(self):
         """새 판. 넣은 것을 잊는다 (안 잊으면 다음 판에서 같은 일을 안 넣는다)."""
         self.applied = self.applied_hp = None
         self.recent = []            # 최근 몇 장의 열쇠 (두 번째로 보이면 믿는다)
         self.recent_hp = []
+        self.kept = 0               # 못 읽어서 남겨 둔 사진 수
         self._said_lines = None
 
     def _forget(self):
@@ -171,6 +190,12 @@ class Watcher(object):
             ev = got.get("event") or {}
             self._say("문구 「%s」 → %s" % (" / ".join(out["lines"]),
                                         ev.get("kind") or "못 읽음"))
+            # ★ **글자는 보이는데 틀에 안 맞은 장은 사진으로 남긴다.**
+            #   글자 인식을 더 손볼지(칸을 잘라 키우기 · 다른 엔진) 는 **실전 화면으로 재야**
+            #   안다. 저장해 둔 화면에는 OBS 대전 장면이 한 장도 없어서, 한 번은 파이프라인이
+            #   쓰지도 않는 방식을 기준으로 재고 "좋아졌다" 고 말했다 (2026-09-23).
+            if not ev.get("kind") or ev.get("kind") == "못 읽음":
+                self._keep(path, w, h, px)
         for ok, text in out["notes"]:
             self._say("%s %s" % ("O" if ok else "-", text))
         return out
