@@ -61,6 +61,7 @@ class Worker(object):
         self.lines = None
         self.fell_back = None
         self.used = 0
+        self.reply = None       # 마지막으로 받은 「OK …」 줄 (창 크기 등이 붙어 온다)
 
     def start(self):
         """켜져 있으면 True. 한 번 못 켠 뒤로는 다시 안 해 본다 (대전 중에 매번 1초를 버리면 안 된다)."""
@@ -131,7 +132,8 @@ class Worker(object):
                 break
             if ok is None:
                 ok = row
-        if ok != "OK":
+        self.reply = ok
+        if ok is None or not ok.startswith("OK"):
             # 그 한 번만 실패한 것일 수도 있다 (사진이 깨졌다든가) → 일꾼은 살려 두고 예전 방식으로 해 본다.
             return False
         self.used += 1
@@ -172,6 +174,93 @@ def _bar(path):
     return "|" in path
 
 
+# ── 창 찍기 (OBS 창 프로젝터) ───────────────────────────────────────────
+#
+# 사용자는 캡처보드 화면을 **OBS** 로 본다 (2026-09-23). OBS 미리보기 위에서 우클릭 →
+# 「창 프로젝터(미리 보기)」 를 띄우면 **그 창 속이 곧 게임 화면**이다. 그 창만 찍으면
+# OBS 의 단추·목록이 안 섞이므로 자리를 찾을 필요가 없다.
+#
+# 잰 것 (2026-09-23, OBS 30.1.2 본 창 1923x1233): PrintWindow 한 번 **19ms**, PNG 저장까지 35ms.
+# ★ 창을 앞으로 끌어올리지 않는다 (`tools/창사진.ps1` 과 다른 점) — 실전 중에 초점을 뺏으면 안 된다.
+#   가려져 있어도 그려진다. OBS 미리보기가 그래픽카드로 그려져서 새까맣게 나올까 걱정했는데
+#   **멀쩡히 나온다** (실제로 찍어서 확인함).
+PROJECTOR = "프로젝터"          # 창 프로젝터 제목에 들어가는 말
+
+
+def shot(title, out=None, box=None):
+    """창 하나를 찍어 (PNG 자리, 창 속 크기) 를 돌려준다 (제목줄·테두리 뺀 속만).
+
+    `box` 를 주면 **파워셸에서** 그 자리만 잘라 저장한다. 파이썬에서 자르고 PNG 를 다시 쓰면
+    2448x1377 한 장에 0.36초가 더 든다 (2026-09-23 에 잼) — 찍는 것보다 비싸다.
+    못 찍으면 RuntimeError.
+    """
+    if out is None:
+        out = os.path.join(tempfile.gettempdir(), "screenshot_%d.png" % os.getpid())
+    if _bar(title) or _bar(out):
+        raise RuntimeError("창 제목이나 저장 자리에 '|' 가 있으면 못 찍는다")
+    cmd = "shot|%s|%s" % (title, out)
+    if box is not None:
+        cmd += "|%d|%d|%d|%d" % tuple(box)
+    if not (USE_WORKER and _WORKER.ask(cmd)):
+        raise RuntimeError("창을 못 찍었다 (%s) — %s"
+                           % (title, _WORKER.reply or _WORKER.fell_back or "그런 창이 없거나 최소화됨"))
+    part = (_WORKER.reply or "").split()
+    size = (int(part[1]), int(part[2])) if len(part) >= 3 else None
+    return out, size
+
+
+class Window(object):
+    """창 하나를 계속 찍어 읽는다 (OBS 창 프로젝터).
+
+    창 프로젝터는 창 비율이 영상 비율과 다르면 **까만 띠**를 넣는다. 그대로 두면 문구 칸 자리를
+    화면 비율로 찾는 것이 통째로 어긋난다 → 잘라 낸다. 잘라 낼 자리는 **창 크기가 그대로면
+    한 번만** 찾는다 (찾는 데 0.03초, 창을 다시 찍는 데 0.16초). 창 크기가 바뀌면 다시 찾는다.
+    """
+
+    def __init__(self, title=PROJECTOR, out=None):
+        self.title = title
+        self.out = out or os.path.join(tempfile.gettempdir(), "screenshot_%d.png" % os.getpid())
+        self.box = None         # 창 속에서 잘라 낼 자리
+        self.raw_size = None    # 그때의 창 속 크기
+        self.size = None        # 잘라 낸 뒤 크기
+
+    def grab(self):
+        """한 장 찍어 (PNG 자리, 너비, 높이, 점들)."""
+        if self.box is not None:
+            path, raw = shot(self.title, self.out, self.box)
+            if raw == self.raw_size:
+                w, h, px = pngio.read_png(path)
+                self.size = (w, h)
+                return path, w, h, px
+            self.box = None     # 창 크기가 바뀌었다 → 다시 찾는다
+        path, raw = shot(self.title, self.out)
+        w, h, px = pngio.read_png(path)
+        box = pngio.trim_black(w, h, px)
+        self.raw_size = raw
+        if box == (0, 0, w, h):
+            self.box, self.size = None, (w, h)
+            return path, w, h, px
+        self.box = box
+        path, _ = shot(self.title, self.out, box)
+        w, h, px = pngio.read_png(path)
+        self.size = (w, h)
+        return path, w, h, px
+
+    def read(self, dex, names):
+        """한 장 찍어 바로 읽는다 → `read_screen` 과 같은 모양 + 'shot'·'size'·'trimmed'."""
+        path, w, h, _px = self.grab()
+        got = read_screen(path, dex, names)
+        got["shot"] = path
+        got["size"] = (w, h)
+        got["trimmed"] = self.box
+        return got
+
+
+def read_window(title, dex, names, out=None):
+    """창 하나를 찍어 바로 읽는다 (한 번만 쓸 때. 계속 읽으려면 `Window` 를 쓴다)."""
+    return Window(title, out).read(dex, names)
+
+
 # ── 사진 ───────────────────────────────────────────────────────────────
 def image_size(path):
     """PNG·JPG 의 (너비, 높이) — 머리만 읽는다."""
@@ -210,6 +299,9 @@ def to_png(path):
                    capture_output=True)
     return out
 
+
+# 고른 빨간 띠가 이만큼 쌓여 있으면 대전 화면이 아니다 (선출 화면 · 「상태 확인」 화면)
+STACK_MIN = 3
 
 SMALL_W = 1600          # 이보다 좁은 화면은 2배로 키워 읽는다
 # 잰 것: 스위치 화면(1341x749)에서 문구 칸 두 줄 중 한 줄만 읽혔고, 2배로 키우니 두 줄 다 (2026-09-22).
@@ -278,8 +370,9 @@ def read_screen(path, dex, names):
     import msgread
     png = to_png(path)
     w, h, px = pngio.read_png(png)
+    bands = artmatch.panel_bands(w, h, px)
     try:
-        found = artmatch.identify(w, h, px)
+        found = artmatch.identify(w, h, px, bands=bands) if artmatch.pick_six(bands) else None
     except ValueError:
         found = None
     if found:
@@ -292,11 +385,21 @@ def read_screen(path, dex, names):
     import hpread
     raw = ocr(path, 2 if w < SMALL_W else 1)
     lines = message_lines(raw, w, h)
+    # ★ **지금 대전 화면인가를 먼저 가린다.** 선출 화면과 「상태 확인」 화면은 상대 여섯 칸을
+    #   세로로 쌓아 보여 주는데, 그 분홍 칸을 HP 막대로 잘못 읽었다 (2026-09-23 실전 한 판에서
+    #   막대가 잡힌 240프레임 중 절반 가까이가 거짓이었다). 잰 것 — **대전 화면은 고른 띠가
+    #   0~1개, 선출·상태확인 화면은 3~6개.** 그래서 3개 이상이면 HP 를 아예 안 잰다.
+    stack = artmatch.stack_size(bands)
+    battle_like = stack < STACK_MIN
     out = {"kind": "대전", "lines": lines,
            "event": msgread.read(lines, names) if lines else None,
-           "opp_hp": hpread.measure(w, h, px),
+           "opp_hp": hpread.measure(w, h, px) if battle_like else None,
+           "opp_hp_text": opp_hp_text(raw, w, h) if battle_like else None,
+           "stack": stack,
            "opp_name": opp_name_line(raw, w, h, names),
-           "my_hp": my_hp_numbers(raw, w, h)}
+           "my_hp": my_hp_numbers(raw, w, h),
+           # 글자 인식이 읽은 줄 **전부** — 문구 칸 밖(상대 HP %·기술 PP 등)을 보려면 필요하다
+           "raw": raw}
     return out
 
 
@@ -321,6 +424,51 @@ def my_hp_numbers(lines, w, h):
             if 0 < full and cur <= full:
                 return cur, full
     return None
+
+
+# 상대 HP % 글자 자리: 오른쪽 위 (OBS 캡처 2448x1377 에서 x 0.91 · y 0.25).
+# 아이패드 녹화에서는 여기 글자가 읽혔고 유튜브 스위치 화면(1341x749)에서는 못 읽었다 — 화면이
+# 커지면 읽힌다. **막대와 맞대 보는 데 쓴다.** 어느 한쪽만 믿지 않는다.
+OPP_PCT_BOX = (0.65, 0.0, 1.0, 0.50)
+
+
+def opp_hp_text(lines, w, h):
+    """상대 HP 를 글자로 읽은 % 또는 None. 100 을 넘으면 버린다 (실전에서 109·199·799 가 나왔다)."""
+    for x, y, t in lines:
+        if not _in(OPP_PCT_BOX, x, y, w, h):
+            continue
+        m = re.search(r"(\d{1,3})\s*%", t)
+        if m:
+            v = int(m.group(1))
+            if 0 < v <= 100:
+                return v
+    return None
+
+
+# 막대와 글자가 이만큼까지 다른 것은 봐준다 (실전 83번 비교에서 맞는 짝은 전부 ±1 안이었다)
+HP_AGREE = 5
+
+
+def combine_hp(bar, text):
+    """막대와 글자를 맞대 본다 → (HP% 또는 None, 알림 또는 None).
+
+    실전 한 판(903프레임, 2026-09-23)에서 잰 것:
+    - 둘 다 읽힌 83프레임 중 **진짜 대전 화면에서는 ±1** 로 붙었다 (86.3/86 · 67.8/68 · 55.9/56 …).
+    - **글자는 9번 100% 를 넘었다** (109 · 199 · 799) 그리고 47% 를 「7」 로 읽었다.
+    - **막대는 100% 를 한 번도 안 넘었다.** 대신 대전 화면이 아닌 곳에서 헛것을 봤다.
+    → 어느 한쪽이 나은 게 아니라 **서로의 잘못을 잡아 준다.** 크게 다르면 **고르지 않고 말한다.**
+    """
+    b = bar["hp"] if bar else None
+    if b is None and text is None:
+        return None, None
+    if text is None:
+        return b, None
+    if b is None:
+        return float(text), "막대를 못 재서 글자(%d%%)만 썼습니다 — 확인해 주세요" % text
+    if abs(b - text) <= HP_AGREE:
+        return b, None                  # 막대가 더 잘게 나온다
+    return None, ("상대 HP 가 막대로는 %.0f%%, 글자로는 %d%% 입니다 — 달라서 안 넣었습니다"
+                  % (b, text))
 
 
 def opp_name_line(lines, w, h, names):
@@ -543,7 +691,10 @@ def apply_hp(board, res):
     """
     out = []
     m = res.get("opp_hp")
-    if m:
+    hp, why_hp = combine_hp(m, res.get("opp_hp_text"))
+    if why_hp and hp is None:
+        out.append((False, why_hp))
+    if hp is not None:
         i = board.opp_active
         named = res.get("opp_name")
         if named:
@@ -554,12 +705,16 @@ def apply_hp(board, res):
                 out.append((True, "상대 이름 칸이 %s — 나와 있는 상대를 그쪽으로" % named[0]))
         row = board.opp[i] if 0 <= i < len(board.opp) else None
         if row is None or row["poke"] is None:
-            out.append((False, "상대 HP %.0f%% 를 쟀지만 나와 있는 상대 칸이 비어 있음" % m["hp"]))
+            out.append((False, "상대 HP %.0f%% 를 쟀지만 나와 있는 상대 칸이 비어 있음" % hp))
         else:
-            row["hp"] = round(m["hp"], 1)
+            row["hp"] = round(hp, 1)
             row["brought"] = True
-            out.append((True, "상대 %s: HP %.0f%% (막대로 잼)" % (row["poke"]["name"], m["hp"])))
-        if m.get("warn"):
+            how = "막대와 글자가 맞음" if (m and res.get("opp_hp_text")) else (
+                "막대로 잼" if m else "글자로 읽음")
+            out.append((True, "상대 %s: HP %.0f%% (%s)" % (row["poke"]["name"], hp, how)))
+        if why_hp:
+            out.append((False, "상대 HP: " + why_hp))
+        if m and m.get("warn"):
             out.append((False, "상대 HP: " + m["warn"]))
     mine = res.get("my_hp")
     if mine:

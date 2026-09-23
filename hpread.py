@@ -198,8 +198,16 @@ def measure(w, h, px):
     # (위쪽 사분위를 쓰니 87% 가 65% 에서 멈췄고, 13% · 4% 는 막대 줄보다 막대 아닌 줄이 많아 0 이 됐다.)
     # 가장 긴 줄 하나만 쓰면 튀는 한 줄에 흔들린다.
     fill = fills[-2] if len(fills) > 1 else fills[-1]
-    hp = max(0.0, min(100.0, (fill - FILL_OFFSET * Sf) / (BAR_LEN * Sf) * 100.0)) if fill else 0.0
-    return {"hp": hp, "fill": fill, "scale": Sf, "rows": len(fills), "warn": why}
+    # ★ 막대를 못 찾았으면 **「0%」 가 아니라 「못 읽음」** 이다 (2026-09-23 실전에서 고침).
+    #   쓰러지면 상대 칸이 화면에서 사라지므로 **진짜 0% 는 화면에 안 나온다.** 그런데 0.0 을
+    #   돌려주고 있었다 → 실전 903프레임에서 막대가 잡힌 240개 중 **104개(43%)가 0%** 였고
+    #   전부 거짓이었다 (메뉴·선출·상태확인 화면의 분홍 띠를 막대로 본 것). 조용히 틀리는 자리였다.
+    if not fill:
+        return None
+    hp = (fill - FILL_OFFSET * Sf) / (BAR_LEN * Sf) * 100.0
+    if hp <= 0.0 or hp > 105.0:         # 말이 안 되는 값은 내놓지 않는다
+        return None
+    return {"hp": min(100.0, hp), "fill": fill, "scale": Sf, "rows": len(fills), "warn": why}
 
 
 def main(argv):

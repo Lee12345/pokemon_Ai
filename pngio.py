@@ -134,6 +134,37 @@ def crop(w, h, rgba, x0, y0, x1, y1):
     return x1 - x0, y1 - y0, out
 
 
+def trim_black(w, h, rgba, dark=10, most=0.25):
+    """가장자리의 **줄 전체가 거의 까만** 줄·칸을 잘라 낸 (x0, y0, x1, y1).
+
+    OBS 창 프로젝터는 창 비율이 영상 비율과 다르면 위아래(또는 좌우)에 까만 띠를 넣는다.
+    그 띠를 그대로 두면 문구 칸 자리를 화면 비율로 찾는 것이 다 어긋난다.
+    - `dark`: 이 값 이하면 까만 것으로 본다 (영상 압축으로 0 이 아니라 2~3 이 되기도 한다).
+    - `most`: 한쪽에서 이만큼 넘게는 안 자른다 — **게임 화면이 진짜로 어두운 장면**일 때
+      화면을 파먹으면 안 된다. 넘으면 아예 안 자르고 통째로 돌려준다.
+    """
+    def dark_row(y):
+        base = y * w * 4
+        return all(rgba[base + x * 4 + c] <= dark for x in range(0, w, 3) for c in (0, 1, 2))
+
+    def dark_col(x):
+        return all(rgba[(y * w + x) * 4 + c] <= dark for y in range(0, h, 3) for c in (0, 1, 2))
+
+    y0, y1 = 0, h
+    while y0 < y1 and dark_row(y0):
+        y0 += 1
+    while y1 > y0 and dark_row(y1 - 1):
+        y1 -= 1
+    x0, x1 = 0, w
+    while x0 < x1 and dark_col(x0):
+        x0 += 1
+    while x1 > x0 and dark_col(x1 - 1):
+        x1 -= 1
+    if x1 - x0 < w * (1 - most) or y1 - y0 < h * (1 - most):
+        return 0, 0, w, h
+    return x0, y0, x1, y1
+
+
 def opaque_box(w, h, rgba, cut=16):
     """투명하지 않은 점(알파 > cut)을 다 담는 가장 작은 네모. 다 투명하면 None."""
     xs, ys = [], []

@@ -70,58 +70,94 @@ def _runs(flags, min_len, max_gap):
     return out
 
 
-# 선출 화면인지 **싸게** 먼저 본다 — 4줄·8칸 걸러 보니 아래 화면 8장에서 (2026-09-23):
-#   선출 화면 2장  66.3% · 71.4%      ← 상대 칸의 빨간 띠가 오른쪽 절반을 가로지른다
-#   대전 화면 6장   4.1% ~ 34.5%      ← 분홍 이름 칸과 빨간 HP 막대뿐이다
-# 그래서 45% 로 가른다 (양쪽에 10%p 넘는 여유). 이게 없으면 **대전 화면인데도** 칸을 찾느라
-# 사진 한 장에 0.42초를 버린다. 걸러 보는 값이라 이 앞선 검사 자체는 0.03초면 끝난다.
-PANEL_GATE = 0.45
+# ★ 여기에 '싸게 먼저 걸러 보기' 를 넣었다가 **실전에서 선출 화면을 통째로 놓쳤다** (2026-09-23).
+#   「가장 붉은 가로줄이 오른쪽 절반의 몇 할인가」 로 갈랐는데, 검사용 선출 사진 2장이 **오른쪽
+#   절반만 잘라 둔 것**이라 66~71% 로 보였다. 진짜 전체 화면(2448x1377)에서는 **34%** 라 대전
+#   화면(4~35%)과 구별이 안 된다. 잘라 둔 자료에 맞춘 문턱이었다.
+#   → 걸러 보기를 **없앴다.** 아래 '띠가 6개인가' 자체가 열 화면을 다 제대로 가른다.
+#   대신 줄 훑기를 **화면 너비에 안 흔들리게** 바꿔서 (칸 약 150개만 본다) 걸러 보기 없이도
+#   빠르다: 2448x1377 선출 화면 240ms → 36ms, 대전 화면 20~70ms 에 멈춘다. 띠 자리는 그대로다.
+ROW_COLS = 150          # 줄마다 훑어볼 칸 수 (화면이 넓어도 이만큼만)
+
+# ★ **「띠가 여섯이면 선출」 로는 모자란다.** 선출 화면 오른쪽 아래의 **「대기 중」 단추**도 빨간
+#   띠다. 실전 한 판(2026-09-23)에서 잰 높이 — 진짜 칸은 **146~150**, 단추는 **91~100**.
+#   그래서 위 칸 하나를 놓치고 단추를 여섯 번째로 센 프레임들이 있었다
+#   (예: 높이 [100, 147, 147, 148, 147, 93] 를 여섯 칸으로 받아들임). 그대로 뒀으면
+#   **조용히 엉뚱한 여섯 마리**를 읽었을 것이다.
+# → 여섯 칸은 **높이가 서로 고르고 틈도 고르다.** 그걸 확인한다.
+PANEL_HEIGHT_TOL = 0.10     # 여섯 칸 높이는 서로 이 안에 (잰 것 146~150 = ±1.5%)
+PANEL_GAP_MAX = 0.25        # 칸 사이 틈은 칸 높이의 이만큼까지 (잰 것 10~15 = 0.07~0.10 H)
 
 
-def looks_like_panels(w, h, px):
-    """선출 화면처럼 보이나 — 가장 붉은 가로줄이 오른쪽 절반의 몇 할인지."""
+def pick_six(bands):
+    """띠들 중 **높이와 틈이 고른 여섯 개**를 고른다. 그런 여섯이 딱 하나가 아니면 None.
+
+    딱 하나가 아니면 멈추는 게 맞다 — 여섯 칸처럼 보이는 것이 둘이면 어느 쪽인지 모른다.
+    """
+    hits = []
+    for i in range(len(bands) - 5):
+        six = bands[i:i + 6]
+        hs = [b - a for a, b in six]
+        mid = sorted(hs)[3]
+        if any(abs(v - mid) > mid * PANEL_HEIGHT_TOL for v in hs):
+            continue
+        if any(not 0 <= six[j + 1][0] - six[j][1] <= mid * PANEL_GAP_MAX for j in range(5)):
+            continue
+        hits.append(six)
+    return hits[0] if len(hits) == 1 else None
+
+
+def panel_bands(w, h, px):
+    """오른쪽 절반에서 빨간 가로 띠들 [(y0, y1)]. 선출 칸도, 대전 화면의 이름 칸도 여기 걸린다."""
     x_from = w // 2
-    xs = range(x_from, w, 8)
-    cols = len(xs)
-    if not cols:
-        return 0.0
-    best = 0
-    for y in range(0, h, 4):
-        base = y * w * 4
-        n = 0
-        for x in xs:
-            i = base + x * 4
-            if is_panel(px[i], px[i + 1], px[i + 2]):
-                n += 1
-        if n > best:
-            best = n
-    return best / float(cols)
-
-
-def find_panels(w, h, px):
-    """상대 6칸 [(x0, y0, x1, y1)]. 못 찾으면 ValueError."""
-    share = looks_like_panels(w, h, px)
-    if share < PANEL_GATE:
-        raise ValueError("상대 칸의 빨간 띠가 안 보인다 (가장 붉은 줄이 %.0f%%) — 선출 화면이 아닌 듯"
-                         % (share * 100))
-    x_from = w // 2
+    step = max(1, (w - x_from) // ROW_COLS)
     rows = []
     for y in range(h):
         base = y * w * 4
         n = 0
-        for x in range(x_from, w, 2):
+        for x in range(x_from, w, step):
             i = base + x * 4
             if is_panel(px[i], px[i + 1], px[i + 2]):
                 n += 1
         rows.append(n)
     cut = max(rows) * 0.35
-    bands = _runs([n > cut for n in rows], min_len=max(2, h // 100), max_gap=max(1, h // 150))
+    return _runs([n > cut for n in rows], min_len=max(2, h // 100), max_gap=max(1, h // 150))
+
+
+def stack_size(bands):
+    """높이와 틈이 고른 띠가 **이어진 가장 긴 묶음**의 크기.
+
+    실전 한 판(2026-09-23)에서 잰 것 — **대전 화면은 0~1**, 선출 화면과 상태 확인 화면은 **3~6**.
+    (둘 다 상대 여섯 칸을 세로로 쌓아 보여 준다.) 그래서 이 수로 「지금 대전 화면인가」 를 가른다.
+    """
+    best = 0
+    for i in range(len(bands)):
+        for j in range(i + 1, len(bands) + 1):
+            hs = [b - a for a, b in bands[i:j]]
+            mid = sorted(hs)[len(hs) // 2]
+            if not mid:
+                continue
+            if any(abs(v - mid) > mid * PANEL_HEIGHT_TOL for v in hs):
+                continue
+            if any(not 0 <= bands[k + 1][0] - bands[k][1] <= mid * PANEL_GAP_MAX
+                   for k in range(i, j - 1)):
+                continue
+            best = max(best, j - i)
+    return best
+
+
+def find_panels(w, h, px, bands=None):
+    """상대 6칸 [(x0, y0, x1, y1)]. 못 찾으면 ValueError."""
+    x_from = w // 2
+    if bands is None:
+        bands = panel_bands(w, h, px)
     if not bands:
         raise ValueError("상대 칸의 빨간 바탕을 못 찾았다 — 선출 화면이 맞나?")
-    tall = max(b - a for a, b in bands)
-    bands = [(a, b) for a, b in bands if b - a >= tall * 0.6]
-    if len(bands) != 6:
-        raise ValueError("상대 칸이 6개가 아니라 %d개로 보인다: %s" % (len(bands), bands))
+    six = pick_six(bands)
+    if six is None:
+        raise ValueError("고른 여섯 칸을 못 찾았다 — 띠 %d개 (높이 %s)"
+                         % (len(bands), [b - a for a, b in bands]))
+    bands = six
     # 가로 범위: 바탕색이 띠 높이의 절반 넘게 차는 열의 **처음부터 끝까지**.
     # (가장 긴 구간만 잡으면 그림이 바탕을 가로막아 그림 오른쪽만 칸으로 잡힌다 — 처음에 그랬다)
     # 여섯 칸은 가로 범위가 같으므로 가운데값으로 맞춘다 — 한 칸에 레이저가 걸려도 안 흔들린다.
@@ -292,13 +328,13 @@ def _gender_ok(form, gender):
     return other not in (form or "")
 
 
-def identify(w, h, px, top=3):
+def identify(w, h, px, top=3, bands=None):
     """상대 6칸 → [(칸, 성별, [(점수, key), …])]."""
     arts = art_grids()
     with open(os.path.join(ART, "index.json"), encoding="utf-8") as f:
         forms = {k: v["form"] for k, v in json.load(f)["art"].items()}
     out = []
-    for panel in find_panels(w, h, px):
+    for panel in find_panels(w, h, px, bands):
         gender = read_gender(w, h, px, panel)
         screen = _screen_grid(w, h, px, panel)
         ranked = sorted(((_score(screen, a), k) for k, a in arts.items()

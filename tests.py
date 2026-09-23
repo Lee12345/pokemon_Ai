@@ -5052,8 +5052,8 @@ def test_artmatch(dex):
                 artmatch.find_panels(cw, ch, cpx)
                 stopped = False
             except ValueError as e:
-                stopped = "6개가 아니라 5개" in str(e)
-            check("마지막 칸이 잘린 화면은 '6개가 아니라 5개' 로 멈춘다", stopped)
+                stopped = "고른 여섯 칸을 못 찾았다" in str(e)
+            check("마지막 칸이 잘린 화면은 멈춘다 — 조용히 5마리로 읽지 않는다", stopped)
 
     # PNG 읽기·쓰기
     tmp = os.path.join(here, "data", "screens", "_검사.png")
@@ -5292,6 +5292,93 @@ def test_screenread(dex):
     check("선출 화면 사진은 선출로 읽는다 (6마리)", got["kind"] == "선출" and len(got["opp"]) == 6,
           got["kind"])
 
+    # ── 실전 한 판에서 배운 것 (2026-09-23, OBS 캡처 903프레임) ──────────────
+    #
+    # ★ **막대를 못 찾은 것을 「0%」 로 돌려주고 있었다.** 쓰러지면 상대 칸이 사라지므로 진짜
+    #   0% 는 화면에 안 나온다. 실전에서 막대가 잡힌 240프레임 중 **104개(43%)가 0%** 였고
+    #   전부 거짓이었다 (메뉴·선출·상태확인 화면의 분홍 띠). 조용히 틀리는 자리였다.
+    w, h, px = pngio_read(scr("대전_아이패드_폴터가이스트.jpg"))
+    check("막대를 못 찾으면 0% 가 아니라 '못 읽음' 이다", hpread.measure(w, h, px) is None)
+    # ★ 글자로 읽은 % 와 막대를 **맞대 본다.** 실전에서 둘 다 읽힌 83프레임 중 진짜 대전 화면에서는
+    #   ±1 로 붙었고(86.3/86 · 67.8/68 · 55.9/56 …), 글자는 9번 100% 를 넘었다(109 · 199 · 799).
+    cb = screenread.combine_hp
+    check("막대와 글자가 붙으면 막대를 쓴다 (86.3 / 86)", cb({"hp": 86.3}, 86) == (86.3, None))
+    check("막대만 있으면 막대", cb({"hp": 67.8}, None) == (67.8, None))
+    got_v, got_w = cb(None, 68)
+    check("글자만 있으면 쓰되 알린다", got_v == 68.0 and got_w and "글자" in got_w, (got_v, got_w))
+    got_v, got_w = cb({"hp": 0.5}, 68)
+    check("크게 다르면 **고르지 않고 말한다** (막대 0.5 / 글자 68)",
+          got_v is None and got_w and "달라서" in got_w, (got_v, got_w))
+    check("둘 다 없으면 아무 말도 안 한다", cb(None, None) == (None, None))
+    # 말이 안 되는 글자 % 는 아예 안 받는다 (실전에서 109 · 199 · 799 · 「7」 이 나왔다)
+    big = [(2300, 300, "109%"), (2300, 300, "799%")]
+    check("100% 를 넘는 글자 % 는 버린다", screenread.opp_hp_text(big, 2448, 1377) is None,
+          screenread.opp_hp_text(big, 2448, 1377))
+    check("자리가 맞고 100 이하면 받는다",
+          screenread.opp_hp_text([(2300, 300, "68%")], 2448, 1377) == 68)
+    check("왼쪽 아래 글자는 상대 HP 가 아니다",
+          screenread.opp_hp_text([(200, 1300, "68%")], 2448, 1377) is None)
+
+    # ★ **진짜 게임기 화면** (OBS 창 프로젝터 2448x1377). 검사용 선출 사진 2장이 '오른쪽 절반만
+    #   잘라 둔 것' 이라 실제와 모양이 달랐고, 그 때문에 실전에서 선출 화면을 통째로 놓쳤다.
+    #   이 한 장이 그 재발을 막는다 — 자르지 않은 전체 화면이다.
+    real = ["갸라도스", "팬텀", "조로아크", "초염몽", "엘레이드", "루카리오"]
+    got = screenread.read_screen(scr("선출_실전OBS.jpg"), dex, names)
+    keys = [o["key"] for o in got.get("opp", [])]
+    want = [dex.find_pokemon(n)["key"] for n in real]
+    check("실전 OBS 선출 화면(자르지 않은 전체): 6마리 전부 맞힘",
+          got["kind"] == "선출" and keys == want,
+          (got["kind"], [(a, b) for a, b in zip(real, keys) if b not in want]))
+    check("실전 OBS 선출 화면: 성별 6칸 (암암수수수수)",
+          [o["gender"] for o in got.get("opp", [])] == ["암컷", "암컷", "수컷", "수컷", "수컷", "수컷"],
+          [o["gender"] for o in got.get("opp", [])])
+
+    # ★ **「대기 중」 단추도 빨간 띠다.** 선출 화면 오른쪽 아래에 있고 높이가 91~100 —
+    #   진짜 칸(146~150)과 다르다. 「띠가 여섯이면 선출」 이었을 때 **위 칸 하나를 놓치고
+    #   단추를 여섯 번째로 세는** 프레임들이 있었다 (실전 150프레임 중 여러 장).
+    #   그대로 뒀으면 조용히 엉뚱한 여섯 마리를 읽었을 것이다.
+    import artmatch as am
+    real6 = [(196, 343), (356, 504), (518, 664), (678, 826), (838, 986), (1000, 1147)]
+    check("고른 여섯 칸은 고른다", am.pick_six(real6) == real6)
+    button = [(404, 504), (518, 665), (678, 825), (838, 986), (999, 1146), (1160, 1253)]
+    check("위 칸을 놓치고 「대기 중」 단추를 센 여섯은 **안** 받는다 (높이 100·147·147·147·147·93)",
+          am.pick_six(button) is None, am.pick_six(button))
+    check("진짜 여섯 칸 + 단추가 같이 보이면 여섯 칸 쪽을 고른다",
+          am.pick_six(real6 + [(1160, 1253)]) == real6, am.pick_six(real6 + [(1160, 1253)]))
+    check("다섯 개뿐이면 안 받는다", am.pick_six(real6[:5]) is None)
+
+    # ★ **지금 대전 화면인가.** 선출 화면과 「상태 확인」 화면은 상대 여섯 칸을 세로로 쌓아
+    #   보여 준다. 그 분홍 칸을 HP 막대로 잘못 읽고 있었다 (실전 한 판에서 대전 시작 전
+    #   73프레임 중 41장이 거짓 HP). 잰 것 — 대전 화면 0~1, 선출·상태확인 3~6.
+    stacks = {}
+    for f in ("대전_아이패드_HP87.jpg", "대전_스위치_HP62.jpg", "선출_실전OBS.jpg",
+              "상태확인_실전OBS.jpg"):
+        w, h, px = pngio_read(scr(f))
+        stacks[f] = am.stack_size(am.panel_bands(w, h, px))
+    check("대전 화면은 쌓인 띠가 %d 이하, 선출·상태확인 화면은 %d 이상"
+          % (screenread.STACK_MIN - 1, screenread.STACK_MIN),
+          max(stacks["대전_아이패드_HP87.jpg"], stacks["대전_스위치_HP62.jpg"])
+          < screenread.STACK_MIN
+          <= min(stacks["선출_실전OBS.jpg"], stacks["상태확인_실전OBS.jpg"]), stacks)
+    got = screenread.read_screen(scr("상태확인_실전OBS.jpg"), dex, names)
+    check("「상태 확인」 화면에서는 HP 를 아예 안 잰다 (예전엔 분홍 칸을 막대로 읽었다)",
+          got.get("opp_hp") is None and got.get("opp_hp_text") is None,
+          (got.get("opp_hp"), got.get("opp_hp_text")))
+    got = screenread.read_screen(scr("대전_아이패드_HP87.jpg"), dex, names)
+    check("대전 화면에서는 그대로 잰다 (87%)",
+          got.get("opp_hp") and abs(got["opp_hp"]["hp"] - 87) <= 2,
+          got.get("opp_hp"))
+    # 실제로 거짓 HP 를 만들던 그 프레임 — 선출 화면인데 「!」 뱃지와 「대기 중」 단추가 겹쳐
+    # 여섯 칸을 못 세고 대전 화면으로 넘어간다. 여기서 HP 를 내놓으면 안 된다.
+    w, h, px = pngio_read(scr("선출대기_실전OBS.jpg"))
+    bands = am.panel_bands(w, h, px)
+    check("「대기 중」 이 겹친 선출 화면은 여섯 칸으로 안 받는다 (띠 높이 %s)"
+          % [b - a for a, b in bands], am.pick_six(bands) is None)
+    got = screenread.read_screen(scr("선출대기_실전OBS.jpg"), dex, names)
+    check("그 화면에서 HP 를 내놓지 않는다 (예전엔 48% 같은 거짓 값이 나왔다)",
+          got.get("opp_hp") is None and got.get("opp_hp_text") is None,
+          (got.get("opp_hp"), got.get("opp_hp_text")))
+
 
 def test_read_speed(dex):
     """[59] 사진 읽기를 빠르게 한 것이 **답을 안 바꿨나** (2026-09-23).
@@ -5342,19 +5429,25 @@ def test_read_speed(dex):
     check("빠른 색 판정이 예전 판과 같은 답 (%d색 중 다른 것 %d개, 전부 경계)" % (n_seen, n_diff),
           not far, far[:3])
 
-    # ② 선출 화면 가려내기 — 이게 틀리면 대전 화면을 선출로 읽거나 그 반대가 된다.
-    shares = {}
+    # ② 선출 화면과 대전 화면을 제대로 가르나 — 이름이 「선출」 로 시작하는 사진만 6칸이어야 한다.
+    #   ★ 여기 한 번 '싸게 걸러 보기' 를 넣었다가 **실전에서 선출 화면을 통째로 놓쳤다** (§10).
+    #     검사용 선출 사진 2장이 오른쪽 절반만 잘라 둔 것이라 문턱이 실제와 안 맞았다.
+    #     그래서 지금은 걸러 보기 없이 `find_panels` 하나로만 가른다.
+    #   여섯 칸으로 읽혀야 하는 화면만 적는다. 「선출대기_실전OBS.jpg」 는 선출 화면이지만
+    #   「!」 뱃지와 「대기 중」 단추가 겹쳐 여섯 칸이 안 세지는 프레임이다 — **못 읽는 게 맞다**
+    #   (그 전에는 단추를 칸으로 세어 엉뚱한 여섯을 읽었다).
+    six_ok = {"선출_스위치.png", "선출_아이패드.png", "선출_실전OBS.jpg"}
+    wrong = []
     for f in sorted(os.listdir(os.path.join(here, "data", "screens"))):
         w, h, px = pngio.read_png(screenread.to_png(os.path.join(here, "data", "screens", f)))
-        shares[f] = artmatch.looks_like_panels(w, h, px)
-    pre = [v for k, v in shares.items() if k.startswith("선출")]
-    bat = [v for k, v in shares.items() if k.startswith("대전")]
-    check("선출 화면 %d장은 가려내기를 넘고(가장 낮은 것 %.0f%%) 대전 화면 %d장은 못 넘는다(가장 높은 것 %.0f%%)"
-          % (len(pre), min(pre) * 100, len(bat), max(bat) * 100),
-          min(pre) > artmatch.PANEL_GATE > max(bat), sorted(shares.items(), key=lambda kv: kv[1]))
-    check("가려내기 값(%.0f%%)이 양쪽에서 10%%p 넘게 떨어져 있다" % (artmatch.PANEL_GATE * 100),
-          min(pre) - artmatch.PANEL_GATE > 0.10 and artmatch.PANEL_GATE - max(bat) > 0.10,
-          (round(max(bat), 3), round(min(pre), 3)))
+        try:
+            n = len(artmatch.find_panels(w, h, px))
+        except ValueError:
+            n = 0
+        if (n == 6) != (f in six_ok):
+            wrong.append((f, n))
+    check("화면 사진 %d장을 선출(6칸)과 그 밖으로 제대로 가른다"
+          % len(os.listdir(os.path.join(here, "data", "screens"))), not wrong, wrong)
 
     # ③ 외워 둔 것과 **아예 안 외우고 잰 것**이 같은가. 열쇠를 잘못 잡으면 다른 말에 같은 답을 준다.
     #   ! 처음엔 '외운 값끼리' 대 봤는데, 그러면 열쇠를 앞 글자만으로 잡아도 안 걸린다 (일부러
