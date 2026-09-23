@@ -5338,6 +5338,40 @@ def test_screenread(dex):
     check("선출 화면 사진은 선출로 읽는다 (6마리)", got["kind"] == "선출" and len(got["opp"]) == 6,
           got["kind"])
 
+    # ── 실전 OBS 대전 화면 (2026-09-24) ─────────────────────────────────────
+    #
+    # ★ **그전까지 저장해 둔 화면에 OBS 대전 장면이 한 장도 없었다.** 그래서 글자 인식을
+    #   견줄 때 파이프라인이 쓰지도 않는 방식을 기준으로 재고 "좋아졌다" 고 말했다.
+    #   이 한 장이 실전에서 제일 중요한 것들을 다 담고 있다 — 양쪽 이름표 · 내 HP 숫자 ·
+    #   상대 HP % 글자 · HP 막대.
+    import ocrkr
+    f = scr("대전_실전OBS.jpg")
+    names12 = msgread.Names(dex, ["하마돈", "보만다", "더시마사리", "마폭시", "고릴타",
+                                  "타부자고", "저승갓숭", "패리퍼", "대도각참", "메타그로스"])
+    got = screenread.read_screen(f, dex, names12)
+    check("실전 OBS 화면을 대전으로 본다", got["kind"] == "대전", got["kind"])
+    check("내 HP 숫자 164/164 를 읽는다", got["my_hp"] == (164, 164), got["my_hp"])
+    # 상대 HP: 글자 11% 와 막대가 ±5 안에서 맞아야 한다 (맞으면 글자를 쓴다)
+    hp, why = screenread.combine_hp(got["opp_hp"], got["opp_hp_text"])
+    check("상대 HP 11% (글자와 막대가 맞는다)", hp is not None and abs(hp - 11) <= 2 and why is None,
+          (got["opp_hp_text"], got["opp_hp"] and round(got["opp_hp"]["hp"], 1), hp, why))
+    if ocrkr.available():
+        # ★ **이름표를 읽는 것이 판을 가른다.** 윈도우 내장은 실전 40장에서 상대 이름 칸을
+        #   한 번도 못 읽었고, 그래서 상대가 바뀐 것을 23초 동안 몰랐다 (2026-09-23).
+        check("상대 이름표 저승갓숭 · 내 이름표 타부자고 (패들 모델)",
+              got["opp_name"] and got["opp_name"][0] == "저승갓숭"
+              and got["my_name"] and got["my_name"][0] == "타부자고",
+              (got["opp_name"], got["my_name"]))
+        check("그래서 who 가 양쪽을 다 집는다",
+              got["who"] == [("me", "타부자고"), ("opp", "저승갓숭")], got["who"])
+        # ! `cv2.imread` 는 한글 경로를 못 연다 — 조용히 None 을 돌려줘서 글자 인식이
+        #   통째로 안 돌고 있었다 (2026-09-24). 한글 경로 + 키워 읽기를 같이 시험한다.
+        got2 = ocrkr.read(scr("선출_스위치.png"), 2)
+        check("한글이 든 경로도 읽는다 (cv2.imread 대신 imdecode)",
+              got2 is not None and len(got2) > 0, got2 is None)
+    else:
+        print("  (이름표는 못 쟀다 — rapidocr 가 없어 윈도우 내장으로 읽었다)")
+
     # ★ **문구 칸만 잘라 읽기** (2026-09-23, `crop_lines`).
     #
     # ! 여기서 한 번 헛짚었다. 1배로 통째 읽기와 견줘서 "잘라 읽으면 못 읽던 것을 읽는다"

@@ -251,6 +251,47 @@ def _match(tokens, text, names, memo, pos=0, ti=0):
     return best
 
 
+WHO_MIN = 0.75         # 문구 앞머리의 이름은 이만큼 닮아야 '그놈이 나와 있다' 로 본다
+WHO_GAP = 0.08         # 그리고 2등보다 이만큼은 앞서야 한다 (비슷한 이름끼리 헷갈리면 안 넣는다)
+WHO_LEN = 8            # 앞에서 이만큼까지만 이름 후보로 본다
+
+
+def who(lines, pool):
+    """문구 줄 **앞머리의 이름** → ('me'|'opp', 이름) 또는 None.
+
+    ★ **틀에 안 맞아도 이름은 쓸 수 있다.** 실전에서 「상대 패리퍼들 / 독에 의한데미지를
+      입었다!」 가 '못 읽음' 으로 통째로 버려졌고, 그 23초 동안 창은 **이미 들어간
+      저승갓숭**을 나와 있는 상대로 잡고 있었다 (2026-09-23, 따라간기록_0923_2335).
+      문구를 못 알아들어도 **누가 나와 있는지는 그 한 줄에 적혀 있다.**
+
+    ★ **2등과의 차이까지 본다.** 닮은 정도만 보면 「크Ä/까자리」 같은 깨진 글자가
+      아무 이름에나 붙는다. 이 판의 12마리 중 확실히 앞서는 것만 쓴다.
+
+    `pool` 은 이 판에 나온 이름들(`Names.here`). 어느 쪽인지는 **「상대」 가 붙었나**로
+    가른다 — 양쪽에 같은 종이 있어도(내 보만다 · 상대 보만다) 그래서 안 헷갈린다.
+    """
+    if not pool:
+        return None
+    for line in (lines or []):
+        text = re.sub(r"^[^가-힣]+", "", line or "")
+        side = "me"
+        if len(text) > 2 and sim(text[:2], "상대") >= 0.7:
+            side, text = "opp", text[2:].lstrip()
+        if len(text) < 2:
+            continue
+        scores = [(max(sim(text[:L], name)
+                       for L in range(2, min(WHO_LEN, len(text)) + 1)), name)
+                  for name in pool]
+        if not scores:
+            continue
+        scores.sort(reverse=True)
+        top = scores[0]
+        second = scores[1][0] if len(scores) > 1 else 0.0
+        if top[0] >= WHO_MIN and top[0] - second >= WHO_GAP:
+            return side, top[1]
+    return None
+
+
 def read(lines, names):
     """문구 칸 한 번(한두 줄) → {'kind': …, …} 또는 {'kind': '못 읽음', 'text': …}."""
     raw = " / ".join(lines) if isinstance(lines, (list, tuple)) else lines

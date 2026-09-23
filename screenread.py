@@ -39,7 +39,10 @@ import pngio
 HERE = os.path.dirname(os.path.abspath(__file__))
 OCR_SCRIPT = os.path.join(HERE, "tools", "글자읽기.ps1")
 WORKER_SCRIPT = os.path.join(HERE, "tools", "화면일꾼.ps1")
-MSG_BOX = (0.0, 0.70, 0.35, 0.90)       # 왼쪽 · 위 · 오른쪽 · 아래 (화면에 대한 몫)
+# 문구 칸. **아래를 0.90 에서 0.86 으로 좁혔다** (2026-09-24) — 패들 모델로 바꾸니 왼쪽
+# 아래 **내 이름표**(「타부자고 164/164」, y 0.87~0.93)까지 또렷이 읽혀서 문구에 섞였다.
+# 이름표는 따로 읽는다 (`MY_NAME_BOX`) — 그게 **누가 나와 있나**의 제일 확실한 증거다.
+MSG_BOX = (0.0, 0.70, 0.35, 0.86)       # 왼쪽 · 위 · 오른쪽 · 아래 (화면에 대한 몫)
 
 
 # ── 파워셸 일꾼 — 한 번 켜 두고 계속 시킨다 ─────────────────────────────
@@ -307,7 +310,33 @@ SMALL_W = 1600          # 이보다 좁은 화면은 2배로 키워 읽는다
 # 잰 것: 스위치 화면(1341x749)에서 문구 칸 두 줄 중 한 줄만 읽혔고, 2배로 키우니 두 줄 다 (2026-09-22).
 
 
+# ★ **글자 인식은 PaddleOCR 모델(`ocrkr`)이 먼저다** (2026-09-24, 사용자가 정함).
+#   없으면 윈도우 내장으로 되돌아간다 — 개발 컨테이너·빌드 서버에는 없다.
+#   견준 값은 `ocrkr` 맨 위에 적어 뒀다 (이름 칸: 윈도우 40장 중 0장 / 패들은 읽는다,
+#   대신 장당 0.19초 → 0.9초).
+USE_PADDLE = True
+
+
 def ocr(path, scale=1):
+    """글자 인식 → [(x, y, 글)] (좌표는 **원래 사진** 기준).
+
+    `scale` 을 주면 그만큼 키워서 읽는다 (작은 글자는 키워야 읽힌다). 큰 화면(실전 OBS)은
+    1배 그대로 읽는다 — `read_screen` 이 화면 너비로 가른다 (`SMALL_W`).
+    """
+    # ★ **작은 화면(scale 2)은 윈도우 내장으로 읽는다.** 견줘 보니 갈렸다 (2026-09-24) —
+    #   큰 실전 화면(OBS 2448)은 패들이 훨씬 낫고(이름 칸 40장 중 0 → 전부), 옛 스위치
+    #   녹화(1346)는 윈도우가 낫다 (「172/191」 을 패들은 「1727191」, 「악타입이 됐다」 를
+    #   「0」 으로 읽었다 — 키워도 마찬가지였다). 그래서 **각자 나은 자리에서** 쓴다.
+    if USE_PADDLE and scale == 1:
+        import ocrkr
+        if ocrkr.available():
+            got = ocrkr.read(path, scale)
+            if got is not None:
+                return got
+    return _ocr_windows(path, scale)
+
+
+def _ocr_windows(path, scale=1):
     """윈도우 기본 글자 인식 → [(x, y, 글)] (좌표는 **원래 사진** 기준). 결과는 임시 폴더에."""
     src = os.path.abspath(path)
     tmp = os.path.join(tempfile.gettempdir(), "screenread_%d_ocr%s"
@@ -352,6 +381,16 @@ def _ocr_file(tmp, scale):
         except OSError:
             pass
     return lines
+
+
+def to_jpg(src, dst, quality=70):
+    """PNG 를 JPG 로 (일꾼이 한다). 2448x1377 한 장이 **6MB → 0.4MB.** 못 하면 False.
+
+    남길 사진은 전부 이걸 거친다 — 못 읽은 장 40개를 PNG 로 남겼더니 246MB 였다.
+    """
+    if _bar(src) or _bar(dst):
+        return False
+    return bool(USE_WORKER and _WORKER.ask("jpg|%s|%s|%d" % (src, dst, quality)))
 
 
 def crop_lines(w, h, px, box, scale=1):
@@ -414,6 +453,11 @@ def read_screen(path, dex, names, img=None):
         return {"kind": "선출", "opp": opp}
     import hpread
     raw = ocr(path, 2 if w < SMALL_W else 1)
+    # ★ **상대 HP % 글자만은 윈도우 내장이 낫다.** 패들 모델은 「11%」 를 「11 9」 + 「%」 로
+    #   쪼개 읽어서 값을 못 건진다 (실전 화면에서 확인, 2026-09-24). 이 숫자는 게임이 직접
+    #   띄운 값이라 **막대(±1~2%)보다 정확**해서 버리기 아깝다. 그래서 큰 화면에서 패들로
+    #   읽을 때는 **윈도우로 한 번 더 읽어 그 숫자만** 쓴다 — 0.19초 더 든다.
+    raw_pct = _ocr_windows(path, 1) if (_paddle() and w >= SMALL_W) else raw
     lines = message_lines(raw, w, h)
     # ★ **지금 대전 화면인가를 먼저 가린다.** 선출 화면과 「상태 확인」 화면은 상대 여섯 칸을
     #   세로로 쌓아 보여 주는데, 그 분홍 칸을 HP 막대로 잘못 읽었다 (2026-09-23 실전 한 판에서
@@ -422,8 +466,10 @@ def read_screen(path, dex, names, img=None):
     stack = artmatch.stack_size(bands)
     battle_like = stack < STACK_MIN
     if not battle_like and is_status(raw, w, h):
-        # 글자가 작아 2배로 키워야 읽힌다 — 이 화면일 때만 한 번 더 읽는다
-        big = ocr(path, STATUS_SCALE)
+        # 글자가 작아 2배로 키워야 읽힌다 — 이 화면일 때만 한 번 더 읽는다.
+        # ★ **패들 모델은 1배로도 읽는다** (오히려 2배가 덜 읽혔다: 이름 3개 대 2개).
+        #   그래서 다시 안 읽는다 — 장당 0.8초를 아낀다.
+        big = raw if _paddle() else ocr(path, STATUS_SCALE)
         out = {"kind": "상태확인", "lines": lines, "event": None, "stack": stack, "raw": big}
         out.update(status_screen(big, w, h, names))
         return out
@@ -434,20 +480,28 @@ def read_screen(path, dex, names, img=None):
     #   있다 (2026-09-23). 작은 화면(SMALL_W 아래)은 이미 통째로 2배로 읽으므로 그대로 둔다.
     #   드는 값: 문구 칸 2배 읽기 **0.131초** (통째 0.331초의 40%). 못 읽은 장에만 낸다.
     #   ★ 둘 중 **더 닮은 쪽**을 고르므로 나빠질 수는 없다.
+    #   ★ **패들 모델로 읽을 때는 안 한다** — 그 모델은 문구 칸을 통째로도 또렷이 읽는다
+    #     (「크Ä/까자리」 가 「더시마사리」 로). 한 번 더 읽으면 0.4초만 더 든다.
     event = msgread.read(lines, names) if lines else None
-    if (battle_like and lines and w >= SMALL_W
+    if (battle_like and lines and w >= SMALL_W and not _paddle()
             and (event is None or event.get("kind") == "못 읽음")):
         cut = crop_lines(w, h, px, MSG_BOX, 2)
         if cut and cut != lines:
             ev2 = msgread.read(cut, names)
             if event is None or ev2.get("score", 0.0) > event.get("score", 0.0):
                 lines, event = cut, ev2
+    opp_nm = opp_name_line(raw, w, h, names)
+    mine_name = my_name_line(raw, w, h, names)
     out = {"kind": "대전", "lines": lines,
            "event": event,
+           # 틀에 안 맞아도 **이름은 쓴다** — 누가 나와 있는지는 그 한 줄에 적혀 있다.
+           # 이름표(화면 구석)가 있으면 그게 더 확실하다 — 앞에 놓는다.
+           "who": _who_list(mine_name, opp_nm, msgread.who(lines, names.here)),
            "opp_hp": hpread.measure(w, h, px) if battle_like else None,
-           "opp_hp_text": opp_hp_text(raw, w, h) if battle_like else None,
+           "opp_hp_text": opp_hp_text(raw_pct, w, h) if battle_like else None,
            "stack": stack,
-           "opp_name": opp_name_line(raw, w, h, names),
+           "opp_name": opp_nm,
+           "my_name": mine_name,
            "my_hp": my_hp_numbers(raw, w, h),
            # 글자 인식이 읽은 줄 **전부** — 문구 칸 밖(상대 HP %·기술 PP 등)을 보려면 필요하다
            "raw": raw}
@@ -457,6 +511,8 @@ def read_screen(path, dex, names, img=None):
 # 내 HP 는 「172/191」 처럼 숫자로 나온다 — 글자 인식이 잘 읽는다 (아이패드 145/215, 스위치 172/191).
 # 자리: 왼쪽 아래 (아이패드 x 0.14·y 0.95, 스위치 x 0.13·y 0.94).
 MY_HP_BOX = (0.0, 0.80, 0.40, 1.0)
+# 내 이름표 (그 위 줄) — 「타부자고」. 잰 자리: x 0.08 · y 0.87 (OBS 2448x1377).
+MY_NAME_BOX = (0.0, 0.84, 0.32, 0.97)
 # 상대 이름 칸: 오른쪽 위 (아이패드 x 0.83·y 0.04, 스위치 x 0.83·y 0.05)
 OPP_NAME_BOX = (0.60, 0.0, 1.0, 0.15)
 
@@ -546,11 +602,23 @@ NAME_MIN = 0.72                         # 이만큼 닮아야 그 포켓몬 이�
 BROUGHT = 3                             # 챔피언스 싱글 — 6마리에서 3마리를 낸다
 
 
+# 「상태 확인」 화면 머리글 — **엔진마다 다른 글자를 읽는다.**
+# 윈도우 내장은 오른쪽 위 「상태 확인」 을, 패들 모델은 그 아래 「스테이터스」 를 읽는다
+# (2026-09-24, 같은 사진을 둘로 읽어 봄). 둘 다 **그 화면에만 있는 말**이라 둘 다 받는다.
+STATUS_WORDS = ("상태확인", "스테이터스")
+# 그 말이 있는 자리 — 오른쪽 위. **패들이 읽는 「스테이터스」 는 x 0.58** 이라 0.6 부터
+# 보던 칸에서 빠졌다 (2026-09-24). 0.45 부터 본다. 다른 화면 10장에서 헛것은 없었다.
+STATUS_WORD_BOX = (0.45, 0.0, 1.0, 0.14)
+
+
 def is_status(lines, w, h):
     """「상태 확인」 화면인가. 실전 프레임에서 27/27 맞고 대전·선출 화면에서는 한 번도 안 걸렸다."""
     import msgread
     for x, y, t in lines:
-        if _in(STATUS_BOX, x, y, w, h) and msgread.sim(msgread.normalize(t), "상태확인") > 0.7:
+        if not _in(STATUS_WORD_BOX, x, y, w, h):
+            continue
+        body = msgread.normalize(t)
+        if any(msgread.sim(body, word) > 0.7 for word in STATUS_WORDS):
             return True
     return False
 
@@ -578,13 +646,51 @@ def status_screen(lines, w, h, names):
     return {"mine": got, "opp_hp": opp_hp_text(lines, w, h)}
 
 
+def my_name_line(lines, w, h, names):
+    """**내 이름표**에서 읽힌 이름 → (이름, 점수, 읽힌 글) 또는 None.
+
+    ★ 왼쪽 아래 이름표는 「타부자고 / 164/164」 처럼 이름과 HP 가 같이 있다. 패들 모델은
+      이걸 또렷이 읽는다 (윈도우 내장은 「* 티부Ⅹ/고」 였다). **누가 나와 있나**를 문구가
+      아니라 화면에서 바로 아는 길이다 — 고릴타가 죽었는데 고릴타로 바꾸라던 일(2026-09-23)
+      이 여기서 갈린다.
+    """
+    return _name_in_box(MY_NAME_BOX, lines, w, h, names)
+
+
 def opp_name_line(lines, w, h, names):
     """상대 이름 칸에서 읽힌 이름 → (이름, 점수, 읽힌 글) 또는 None. 이 판 포켓몬에서만 맞춘다."""
+    return _name_in_box(OPP_NAME_BOX, lines, w, h, names)
+
+
+NAME_PLATE_MIN = 0.72       # 이름표는 이만큼 닮아야 '그놈이 나와 있다' 로 쓴다
+
+
+def _paddle():
+    """지금 패들 모델로 읽고 있나."""
+    if not USE_PADDLE:
+        return False
+    import ocrkr
+    return ocrkr.available()
+
+
+def _who_list(mine_name, opp_nm, from_lines):
+    """[(어느 쪽, 이름)] — **확실한 것부터.** 이름표가 문구보다 확실하다."""
+    out = []
+    if mine_name and mine_name[1] >= NAME_PLATE_MIN:
+        out.append(("me", mine_name[0]))
+    if opp_nm and opp_nm[1] >= NAME_PLATE_MIN:
+        out.append(("opp", opp_nm[0]))
+    if from_lines and from_lines not in out:
+        out.append(from_lines)
+    return out
+
+
+def _name_in_box(box, lines, w, h, names):
     import msgread
     pool = names.here or []
     best = None
     for x, y, t in lines:
-        if not _in(OPP_NAME_BOX, x, y, w, h) or "%" in t:
+        if not _in(box, x, y, w, h) or "%" in t or "/" in t:
             continue
         body = msgread.normalize(t)
         if len(body) < 2 or not pool:
@@ -610,6 +716,8 @@ class Board(object):
         #   다크펫을 냈는데 **1번 망나뇽의 HP 로 넣고 있었다** (2026-09-23, 사용자가 잡음).
         #   조용히 엉뚱한 놈에게 HP 를 붙이느니 **모른다고 말하고 안 넣는다.**
         self.opp_active_known = True
+        # 마지막으로 「돌아와!」 를 본 내 포켓몬 — **말없이 사라진 것과 가르려고** 들고 있는다
+        self.left_ok = None
         self.my_fresh = my_fresh
         self.opp_fresh = opp_fresh
         self.seen = seen if seen is not None else {}
@@ -663,6 +771,57 @@ def _switch_to(board, side, i):
     return True
 
 
+FAINT_HP = 15.0     # 이 아래인 놈이 「돌아와」 없이 사라졌으면 쓰러진 것으로 본다
+
+
+def _switch_me(board, j):
+    """나와 있는 내 포켓몬을 j 로 — **말없이 바뀌었고 앞엣놈이 빈사였으면 쓰러진 것으로 본다.**
+
+    ★ 실전에서 고릴타가 HP 3% 로 싸우다 쓰러졌는데 「고릴타는 쓰러졌다!」 를 글자로 못 읽어서,
+      창이 그 뒤로도 **죽은 고릴타로 교체하라**고 다섯 번 권했다 (2026-09-23, 사용자가 잡음).
+      교체로 나간 것이면 「돌아와!」 가 뜬다 — 그게 없이 다른 놈이 나와 있으면 쓰러진 것이다.
+    ★ 문턱을 낮게(15%) 둔 것은 **틀렸을 때가 더 나쁘기 때문**이다. 멀쩡한 놈을 죽었다고
+      하면 그놈이 계산에서 빠진다. 그래서 거의 확실할 때만 넣고, 넣었다고 말한다.
+    """
+    was = board.my_active
+    if not _switch_to(board, "me", j):
+        return []
+    row = board.my[was] if 0 <= was < len(board.my) else None
+    if not (row and row.get("poke") and 0 < row["hp"] <= FAINT_HP):
+        return []
+    if row["poke"]["name"] == board.left_ok:
+        return []                       # 「돌아와」 를 봤다 — 제 발로 들어간 것이다
+    hp, row["hp"] = row["hp"], 0.0
+    return [(True, "내 %s 가 HP %.0f%% 에서 「돌아와」 없이 사라졌습니다 — 쓰러진 것으로 "
+                   "봅니다 (아니면 칸을 고쳐 주세요)" % (row["poke"]["name"], hp))]
+
+
+def apply_who(board, who):
+    """문구에 적힌 이름으로 **누가 나와 있는지** 정한다 → [(넣었나, 한 줄)].
+
+    ★ 틀에 안 맞은 문구라도 이름은 쓴다 — 「상대 패리퍼들 / 독에 의한데미지를 입었다!」 가
+      통째로 버려져서, 창이 23초 동안 이미 들어간 저승갓숭을 상대로 잡고 있었다 (2026-09-23).
+    """
+    if not who:
+        return []
+    if who and isinstance(who[0], str):      # ("me", "고릴타") 하나만 준 것도 받는다
+        who = [who]
+    out = []
+    for side, name in who:
+        j = board.find(side, name)
+        if j is None:
+            continue
+        if side == "me":
+            out += _switch_me(board, j)
+            continue
+        if _switch_to(board, "opp", j):
+            out.append((True, "화면에 「상대 %s」 — 나와 있는 상대를 그쪽으로" % name))
+        elif not board.opp_active_known:
+            board.opp_active_known = True
+            out.append((True, "화면에 「상대 %s」 — 나와 있는 상대로 확인" % name))
+    return out
+
+
 def apply(board, ev, dex):
     """일어난 일 하나를 판에 넣는다 → [(넣었나, 한 줄)]."""
     import live
@@ -687,8 +846,11 @@ def apply(board, ev, dex):
         if not rows[i]["brought"]:
             rows[i]["brought"] = True
             changed.append("냈다")
-        if _switch_to(board, side, i):
+        moved = _switch_me(board, i) if side == "me" else (
+            [(True, "")] if _switch_to(board, "opp", i) else [])
+        if moved:
             changed.append("나와 있음")
+            out += [n for n in moved if n[1]]
         if kind == "나옴":
             if side == "me":
                 board.my_fresh = True
@@ -711,6 +873,8 @@ def apply(board, ev, dex):
             elif move:
                 out.append((True, "내 %s: 기술 %s" % (name, move)))
         return out
+    if kind == "들어감" and side == "me" and name:
+        board.left_ok = name        # 제 발로 들어갔다 — 쓰러진 것으로 보면 안 된다
     if kind in ("쓰러짐", "되살아남"):
         i = board.find(side, name)
         if i is None:
@@ -846,7 +1010,7 @@ def apply_hp(board, res):
         same = [j for j, r in enumerate(board.my) if r.get("maxhp") == full]
         if len(same) == 1 and same[0] != i:
             i = same[0]
-            _switch_to(board, "me", i)
+            out += _switch_me(board, i)
             out.append((True, "최대 HP %d 가 내 %s 와 같다 — 나와 있는 내 포켓몬을 그쪽으로"
                         % (full, board.my[i]["poke"]["name"])))
         elif 0 <= i < len(board.my):

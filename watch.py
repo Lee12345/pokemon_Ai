@@ -81,6 +81,7 @@ class Watcher(object):
         self.reset()
         self.frames = 0
         self.trouble = None
+        self.last_path = None
         # 판이 끝난 뒤 "뭘 어떻게 읽었나" 를 다시 볼 수 있게 남긴다 (창은 글이 밀려 올라간다)
         self.log = log
         self._say("─── 시작 %s ───" % time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -106,13 +107,15 @@ class Watcher(object):
         """못 읽은 장을 사진으로 남긴다 (한 판에 `KEEP_MAX` 장까지).
 
         한 판이 900프레임이라 전부 남기면 디스크가 금방 찬다. **못 읽은 것만, 몇 장만.**
+        ★ **JPG 로 남긴다** — PNG 로 40장을 남겼더니 246MB 였다 (장당 6MB). JPG 는 0.4MB.
         """
         if self.kept >= KEEP_MAX:
             return
+        # ! 이름에 점이 없으면 `paths.mine` 이 **폴더**로 보고 만들어 버린다 (한 번 당했다).
+        jpg = paths.mine("못읽은화면", "%s_%03d.jpg" % (time.strftime("%m%d_%H%M"), self.kept + 1))
         try:
-            out = paths.mine("못읽은화면", "%s_%03d.png" % (time.strftime("%m%d_%H%M"),
-                                                          self.kept + 1))
-            pngio.write_png(out, w, h, px)
+            if not screenread.to_jpg(path, jpg):
+                pngio.write_png(jpg[:-4] + ".png", w, h, px)
             self.kept += 1
         except (OSError, ValueError):
             self.kept = KEEP_MAX        # 한 번 실패하면 그만둔다 — 기록 때문에 멈추면 안 된다
@@ -142,7 +145,7 @@ class Watcher(object):
            "kind": 화면 종류, "size": (너비, 높이), "lines": 문구 줄들}
         """
         out = {"trouble": None, "notes": [], "changed": False,
-               "kind": None, "size": None, "lines": []}
+               "kind": None, "size": None, "lines": [], "event": None, "who": None}
         try:
             path, w, h, px = self.source.grab()
         except Exception as e:
@@ -165,6 +168,18 @@ class Watcher(object):
         got = screenread.read_screen(path, dex, names, img=(w, h, px))
         out["kind"] = got.get("kind")
         out["lines"] = got.get("lines") or []
+        out["event"] = got.get("event")
+        out["who"] = got.get("who")
+        self.last_path = path       # 창의 「이거 틀렸어」 가 이 장을 사진으로 남긴다
+
+        # ★ **누가 나와 있나는 곧바로 넣는다 — 두 번 안 기다린다.** 이름이 이 판 열두 마리
+        #   중 확실히 앞설 때만 나오므로(`msgread.who`) 헛것이 적고, 틀려도 다음 장에 고쳐진다.
+        #   기다리면 '이미 들어간 놈' 으로 계산이 도는 시간이 길어진다 — 실전에서 **23초**
+        #   동안 죽은 저승갓숭을 상대로 놓고 답을 냈다 (2026-09-23).
+        who_notes = screenread.apply_who(board, got.get("who"))
+        if who_notes:
+            out["notes"] += who_notes
+            out["changed"] = True
 
         sig = _signature(got)
         if sig is not None and sig in self.recent and sig != self.applied:

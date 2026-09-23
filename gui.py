@@ -898,6 +898,7 @@ class App(object):
         self.opp_known = True
         self.asked_at = None        # 언제부터 생각하기 시작했나 (답에 걸린 시간을 적으려고)
         self.ask_again = None       # 생각하는 동안 바뀐 것 — 끝나면 다시 묻는다
+        self.last_got = None        # 마지막으로 읽은 것 (디버그·「이거 틀렸어」 가 쓴다)
         self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
                                   font=FONT_S, anchor="w")
@@ -1040,7 +1041,22 @@ class App(object):
         tk.Checkbutton(rs, text="추천 작은 창", variable=self.on_top, command=self.apply_on_top,
                        bg=CARD, fg=TEXT, selectcolor=FIELD, activebackground=CARD,
                        activeforeground=TEXT, font=FONT_S).pack(side="left", padx=(6, 0))
-        tk.Label(rs, text="사진: 선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 순서대로) /"
+        # ★ **디버그 — 지금 무엇을 보고 무엇을 아는지 파일로 흘린다** (사용자 요구, 2026-09-23:
+        #   "디버그세션을 만들어서 즉각적인 피드백이 가능하도록 해줘").
+        #   켜 두면 장마다 `내기록/디버그/지금.txt` 를 덮어쓴다. 판이 도는 중에도 그 파일만
+        #   보면 창이 **무엇을 읽었고 칸이 어떻게 차 있는지** 그대로 보인다.
+        self.debug = tk.IntVar(value=0)
+        tk.Checkbutton(rs, text="디버그 기록", variable=self.debug,
+                       bg=CARD, fg=TEXT, selectcolor=FIELD, activebackground=CARD,
+                       activeforeground=TEXT, font=FONT_S).pack(side="left", padx=(6, 0))
+        # ★ **틀린 순간을 한 번에 집는다.** 지금 화면 사진 + 칸 상태 + 마지막 답을 한 묶음으로
+        #   남긴다. 판을 하다가 이상하면 바로 누르면 된다 — 나중에 그 한 묶음만 보면 된다.
+        self.wrong_why = tk.StringVar()
+        tk.Button(rs, text="이거 틀렸어", command=self.mark_wrong,
+                  bg=WARN, fg="#1b1b26", relief="flat", font=FONT_B).pack(side="left", padx=(6, 0))
+        tk.Entry(rs, textvariable=self.wrong_why, width=18, bg=FIELD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat", font=FONT_S).pack(side="left", padx=(3, 0))
+        tk.Label(rs, text="사진: 선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 /"
                  " 따라가기: OBS 「창 프로젝터」 를 계속 읽습니다",
                  bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(6, 0))
 
@@ -1542,6 +1558,86 @@ class App(object):
         if kind is not None and self.following:
             self._ask_for(kind)
 
+    # -- 디버그 — 지금 무엇을 보고 무엇을 아는지 -----------------------------
+    #
+    # ★ 사용자 요구 (2026-09-23): *"디버그세션을 만들어서 즉각적인 피드백이 가능하도록
+    #   해줘."* 판이 끝나고 기록을 뒤지는 것으로는 늦다. **도는 중에** 창이 무엇을 읽었고
+    #   칸이 어떻게 차 있는지 파일 하나만 보면 되게 한다.
+    DEBUG_NOW = ("디버그", "지금.txt")
+
+    def board_text(self, got=None):
+        """지금 창이 아는 것 전부를 글로 — 디버그 파일과 「이거 틀렸어」 가 같이 쓴다."""
+        L = ["시각 %s" % time.strftime("%Y-%m-%d %H:%M:%S")]
+        if self.watcher is not None:
+            L.append("읽은 장 %d개 · 기록 %s" % (self.watcher.frames, self.watcher.log or "없음"))
+        if got:
+            L.append("화면 %s %s" % (got.get("kind"), got.get("size") or ""))
+            L.append("문구 「%s」" % " / ".join(got.get("lines") or []))
+            ev = got.get("event") or {}
+            L.append("문구 풀이 %s  (닮은 정도 %s)" % (ev.get("kind") or "못 읽음", ev.get("score")))
+            L.append("이름으로 본 나와 있는 놈 %s" % (got.get("who"),))
+            if got.get("trouble"):
+                L.append("! %s" % got["trouble"])
+        L.append("── 내 파티 (나와 있음 %d번)" % (self.my_active.get() + 1))
+        for i, sl in enumerate(self.slots):
+            if sl.poke is None:
+                continue
+            L.append("  %d %-10s HP %5.1f%%  %s%s%s"
+                     % (i + 1, sl.poke["name"], sl.hp_pct(),
+                        "냈다 " if sl.brought.get() else "", 
+                        "[나와 있음] " if i == self.my_active.get() else "",
+                        sl.status.get() if sl.status.get() != NO_STATUS else ""))
+        L.append("── 상대 (나와 있음 %d번 · 누가 나와 있는지 %s)"
+                 % (self.opp_active.get() + 1, "안다" if self.opp_known else "**모른다**"))
+        for i, sl in enumerate(self.opp_slots):
+            if sl.poke is None:
+                continue
+            L.append("  %d %-10s HP %5.1f%%  %s%s%s"
+                     % (i + 1, sl.poke["name"], sl.hp_pct(),
+                        "밝혀짐 " if sl.brought.get() else "",
+                        "[나와 있음] " if i == self.opp_active.get() else "",
+                        ", ".join(self.seen.get(sl.poke["name"], []))))
+        L.append("생각 중: %s%s" % (self.busy,
+                                  " (%.1f초째)" % (time.time() - self.asked_at)
+                                  if self.busy and self.asked_at else ""))
+        L.append("마지막 답: %s" % " | ".join((self.last_short or "아직 없음").splitlines()))
+        return "\n".join(L)
+
+    def debug_dump(self, got):
+        """켜 두면 **장마다** 지금 상태를 파일 하나에 덮어쓴다 (판이 도는 중에도 볼 수 있게)."""
+        if not self.debug.get():
+            return False
+        try:
+            with open(paths.mine(*self.DEBUG_NOW), "w", encoding="utf-8") as f:
+                f.write(self.board_text(got) + "\n")
+        except OSError:
+            return False
+        return True
+
+    def mark_wrong(self):
+        """「이거 틀렸어」 — 지금 화면 사진 + 칸 상태 + 마지막 답을 한 묶음으로 남긴다."""
+        stamp = time.strftime("%m%d_%H%M%S")
+        why = (self.wrong_why.get() or "").strip()
+        text = ("틀렸다고 누름 — %s\n%s"
+                % (why or "(까닭은 안 적으셨습니다)", self.board_text(self.last_got)))
+        where = paths.mine("디버그", "틀림_%s.txt" % stamp)
+        try:
+            with open(where, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+        except OSError as e:
+            self.say("틀린 순간을 못 남겼습니다 — %s" % e)
+            return False
+        shot = getattr(self.watcher, "last_path", None)
+        if shot:
+            import screenread
+            screenread.to_jpg(shot, paths.mine("디버그", "틀림_%s.jpg" % stamp))
+        if self.watcher is not None:
+            self.watcher.note("★ 틀렸다고 누름 — %s (틀림_%s)" % (why or "까닭 없음", stamp))
+        self.wrong_why.set("")
+        self.say("★ 틀린 순간을 남겼습니다 — %s" % where)
+        self.set_state("★ 틀린 순간을 남겼습니다 (%s)" % stamp, BAR)
+        return True
+
     def cant(self, text, clear):
         """물어볼 수 없을 때 — 큰 창에 까닭을 적고 **작은 창에도 그 까닭을** 띄운다.
 
@@ -1641,6 +1737,8 @@ class App(object):
     SPIN = (".", "..", "...")   # 돌아가는 표시 — 멈춘 것과 아무 일 없는 것을 가른다
 
     def _after_follow(self, bd, got):
+        self.last_got = got
+        self.debug_dump(got)
         if got["trouble"]:
             if got["trouble"] != self.follow_said:
                 self.say("! " + got["trouble"])
@@ -2441,6 +2539,36 @@ def check():
         os.remove(black)
     except OSError:
         pass
+
+    # ★ **디버그 — 지금 무엇을 보고 무엇을 아는지** (2026-09-23, 사용자 요구:
+    #   "디버그세션을 만들어서 즉각적인 피드백이 가능하도록 해줘").
+    import paths as pathsmod
+    now_file = pathsmod.mine(*app.DEBUG_NOW)
+    if os.path.exists(now_file):
+        os.remove(now_file)
+    app.debug.set(0)
+    app.debug_dump(app.last_got)
+    if os.path.exists(now_file):
+        bad.append("디버그를 껐는데도 파일을 씀")
+    app.debug.set(1)
+    app.debug_dump(app.last_got)
+    got_now = open(now_file, encoding="utf-8").read() if os.path.exists(now_file) else ""
+    if "내 파티" not in got_now or "상대" not in got_now or "마지막 답" not in got_now:
+        bad.append("디버그 파일에 지금 상태가 안 들어감 (%r)" % got_now[:120])
+    app.wrong_why.set("따라큐를 못 읽음")
+    app.mark_wrong()
+    marks = [f for f in os.listdir(pathsmod.mine("디버그")) if f.startswith("틀림_")]
+    if not marks:
+        bad.append("「이거 틀렸어」 가 아무것도 안 남김")
+    else:
+        one = open(os.path.join(pathsmod.mine("디버그"), sorted(marks)[-1]),
+                   encoding="utf-8").read()
+        if "따라큐를 못 읽음" not in one or "내 파티" not in one:
+            bad.append("틀린 순간 기록에 까닭이나 칸 상태가 없음 (%r)" % one[:120])
+        for f in marks:
+            os.remove(os.path.join(pathsmod.mine("디버그"), f))
+    app.debug.set(0)
+    os.remove(now_file)
 
     # ★ 추천 작은 창 — 게임을 가리지 않고 **답만** 구석에 띄운다 (2026-09-23).
     #   처음엔 이 창을 통째로 「항상 위에」 로 올렸는데 게임 화면을 덮어서 더 나빠졌다.
