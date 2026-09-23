@@ -5641,6 +5641,26 @@ def test_watch(dex):
     got = w.step(bd, dex, names)        # 이어짐 — 이게 '두 장째' 면 안 된다
     check("끊겼다 이어지면 세던 것을 버리고 다시 센다", not got["changed"], got)
 
+    # ★ **두 번은 잇달아서일 필요가 없다.** 글자 인식은 장마다 다르게 깨진다 — 실전에서
+    #   「…패리퍼를 내보냈다!」 를 한 장은 제대로, 다음 장은 「때라퍼를 내보했다!」 로 읽어서
+    #   상대가 누구를 냈는지 **영영 못 넣었다** (2026-09-23, 따라간기록_0923_2137).
+    #   사이에 못 읽은 장이 끼어도 최근 몇 장 안에서 두 번이면 믿는다.
+    shot = scr("대전_아이패드_풍선.jpg")
+    other = scr("대전_아이패드_HP87.jpg")      # 문구가 다른 화면 (사이에 끼우는 장)
+    w = watch.Watcher(Replay([shot, other, shot]))
+    bd = blank()
+    one = w.step(bd, dex, names)
+    mid = w.step(bd, dex, names)
+    two = w.step(bd, dex, names)
+    check("사이에 다른 장이 끼어도 같은 것이 두 번 보이면 믿는다",
+          not one["changed"] and two["changed"], (one["changed"], mid["changed"], two["changed"]))
+    # 그래도 **한 번 본 것은 안 믿는다** — 창이 멀어지면 잊는다
+    w = watch.Watcher(Replay([shot] + [other] * watch.RECENT + [shot]))
+    bd = blank()
+    outs = [w.step(bd, dex, names) for _ in range(watch.RECENT + 2)]
+    check("너무 멀리 떨어져 다시 나온 것은 새로 센다 (%d장 뒤)" % watch.RECENT,
+          not outs[-1]["changed"], [o["changed"] for o in outs])
+
     # 새 판 — 잊어야 같은 일을 다시 넣는다
     w = watch.Watcher(Replay([scr("대전_아이패드_풍선.jpg")]))
     bd = blank()

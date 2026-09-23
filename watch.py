@@ -11,8 +11,10 @@
 사진 한 장을 읽는 것(`screenread`)과 **한 판을 따라가는 것**은 다르다. 실전 두 판을
 기록해 보니(2026-09-23, 903 + 832 프레임) 따라가려면 세 가지가 더 필요했다 —
 
-1. **두 장 연속 같을 때만 믿는다.** 연출 중간에 찍힌 장면은 HP 막대가 줄어드는 도중이고
+1. **두 번 보일 때만 믿는다.** 연출 중간에 찍힌 장면은 HP 막대가 줄어드는 도중이고
    문구도 한 글자씩 나온다. 같은 값이 두 번 나와야 그 값이 자리를 잡은 것이다.
+   **잇달아서일 필요는 없다** — 글자 인식은 장마다 다르게 깨지므로 최근 몇 장(`RECENT`)
+   안에서 두 번이면 믿는다.
 2. **같은 일을 두 번 넣지 않는다.** 한 문구가 몇 초씩 떠 있으므로 같은 장면이 대여섯 번
    읽힌다. 「지진!」 을 여섯 번 넣으면 안 된다.
 3. **신호가 없으면 말한다.** 캡처보드가 끊기면 까만 화면에 알림창만 뜬다. 그냥 '아무것도
@@ -33,7 +35,13 @@ import pngio
 import screenread
 
 NO_SIGNAL = 0.80        # 이만큼 까만 화면이면 신호가 없는 것으로 본다
-
+# **같은 것이 두 번 보이면 믿는다 — 잇달아서가 아니라 최근 이만큼 안에서.**
+#
+# ! 처음엔 '바로 앞 장과 같을 때' 만 믿었다. 그런데 글자 인식은 장마다 다르게 깨진다.
+#   실전에서 「…패리퍼를 내보냈다!」 를 한 장은 제대로 읽고 다음 장은 「때라퍼를 내보했다!」
+#   로 읽어서, **상대가 누구를 냈는지 영영 못 넣었다** (2026-09-23, 따라간기록_0923_2137).
+#   문구는 2~3초(서너 장) 떠 있으므로 그 안에서 두 번이면 같은 장면이다.
+RECENT = 4
 
 def _signature(got):
     """읽은 것을 짧은 열쇠로 — 이게 두 번 같으면 믿는다. 믿을 게 없으면 None."""
@@ -93,13 +101,20 @@ class Watcher(object):
 
     def reset(self):
         """새 판. 넣은 것을 잊는다 (안 잊으면 다음 판에서 같은 일을 안 넣는다)."""
-        self.pending = self.applied = None
-        self.pending_hp = self.applied_hp = None
+        self.applied = self.applied_hp = None
+        self.recent = []            # 최근 몇 장의 열쇠 (두 번째로 보이면 믿는다)
+        self.recent_hp = []
         self._said_lines = None
 
     def _forget(self):
         """화면을 못 읽었으면 **기다리던 것을 버린다** — 끊긴 앞뒤 두 장을 같다고 보면 안 된다."""
-        self.pending = self.pending_hp = None
+        self.recent = []
+        self.recent_hp = []
+
+    @staticmethod
+    def _push(seen, sig):
+        seen.append(sig)
+        del seen[:-RECENT]
 
     def step(self, board, dex, names):
         """한 장 찍어 읽고, 믿을 만한 것만 판에 넣는다.
@@ -133,18 +148,21 @@ class Watcher(object):
         out["lines"] = got.get("lines") or []
 
         sig = _signature(got)
-        if sig is not None and sig == self.pending and sig != self.applied:
+        if sig is not None and sig in self.recent and sig != self.applied:
             out["notes"] += self._put(board, got, dex)
             self.applied = sig
             out["changed"] = True
         hp_sig = _hp_signature(got)
-        if hp_sig is not None and hp_sig == self.pending_hp and hp_sig != self.applied_hp:
+        if hp_sig is not None and hp_sig in self.recent_hp and hp_sig != self.applied_hp:
             notes = screenread.apply_hp(board, got)
             if notes:
                 out["notes"] += notes
                 out["changed"] = True
             self.applied_hp = hp_sig
-        self.pending, self.pending_hp = sig, hp_sig
+        # **못 읽은 장도 한 자리를 차지한다** (None 을 넣는다) — 그래야 창이 '최근 네 장'
+        # 이지 '최근에 읽힌 네 장' 이 아니다. 한참 전 장면이 다시 맞아떨어지면 안 된다.
+        self._push(self.recent, sig)
+        self._push(self.recent_hp, hp_sig)
         # ★ **읽은 문구를 그대로 남긴다 — 일로 못 바꿨어도.** 실전 한 판에서 문구를 한 줄도
         #   못 잡았는데, 기록에 넣은 것만 적혀 있어서 **글자를 못 읽은 건지 틀을 못 맞춘 건지
         #   알 수가 없었다** (2026-09-23). 원인을 찾으려면 날것이 남아야 한다.

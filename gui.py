@@ -665,6 +665,8 @@ class OppSlot(object):
         따로 체크하게 만들면 잊어버리고, 그러면 계산에서 빠진다."""
         if self.poke is not None:
             self.brought.set(True)
+        # 사람이 직접 골랐다 — 이제 누가 나와 있는지 안다
+        self.app.opp_known = True
         self.app.draw_seen()
         self.app.redraw_opp_states()
 
@@ -888,6 +890,12 @@ class App(object):
                  bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w")
         self.opp_active = tk.IntVar(value=0)
         self.opp_fresh = tk.BooleanVar(value=True)
+        # ★ **누가 나와 있는지 아는가 — 한 장이 아니라 판 내내 들고 있어야 한다.**
+        #   `board()` 가 매 장 새 Board 를 만드는데 Board 는 이 값을 True 로 시작한다.
+        #   그래서 선출 화면이 「아직 모른다」 로 꺼 놔도 **다음 장에서 바로 되살아나**
+        #   1번 칸에 HP 를 넣었다. 실전에서 패리퍼가 나왔는데 대도각참으로 봤다
+        #   (2026-09-23, 따라간기록_0923_2137).
+        self.opp_known = True
         self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
                                   font=FONT_S, anchor="w")
@@ -1148,6 +1156,12 @@ class App(object):
         if not filled:
             self.opp_state.config(text="상대를 아직 안 적었습니다.", fg=DIM)
             return
+        # 누가 나와 있는지 모르면 **그것부터** 말한다 — 그 상태로는 답을 못 낸다
+        if not self.opp_known:
+            self.opp_state.config(
+                text="프리뷰 %d마리 적음 · ! 누가 먼저 나오는지 아직 모릅니다 —"
+                     " 나온 놈의 「나와 있음」 을 눌러 주세요" % len(filled), fg=WARN)
+            return
         self.opp_state.config(
             text="프리뷰 %d마리 적음 · 그중 %d마리가 밝혀짐 (%s)"
                  % (len(filled), len(shown),
@@ -1235,6 +1249,14 @@ class App(object):
         # ★ **이번 턴은 '밝혀진 놈' 으로만 센다.** 프리뷰에서 본 6마리를
         #    전부 넣으면 상대가 6마리를 낸 판을 재게 된다 — 실제로는
         #    3마리만 나온다. 하나도 안 켰으면 적은 것 전부로 본다.
+        # ★ **누가 나와 있는지 모르면 답하지 않는다.** 선출 화면을 읽으면 6마리는 알지만
+        #   먼저 나오는 놈은 모른다. 그때 1번 칸을 상대로 놓고 계산하면 **엉뚱한 놈을 놓고**
+        #   답을 내놓는다 — 실전에서 패리퍼가 나왔는데 대도각참으로 계산했다 (2026-09-23).
+        if not self.opp_known:
+            self.cant("나와 있는 상대를 아직 모릅니다 — 상대 칸에서 「나와 있음」 을 골라 주세요."
+                      "\n(선출 화면의 6마리는 읽었지만 누가 먼저 나오는지는 문구나 이름 칸을"
+                      " 읽어야 압니다.)", clear)
+            return
         shown = [sl for sl in self.opp_slots if sl.revealed()]
         use = shown if shown else [sl for sl in self.opp_slots if sl.poke]
         self.guessed_opp = not shown
@@ -1315,6 +1337,7 @@ class App(object):
         bd = screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
                               bool(self.my_fresh.get()), bool(self.opp_fresh.get()),
                               self.seen, self.opp_items, self.opp_abilities)
+        bd.opp_active_known = self.opp_known
         bd.ranks = {side: {k: _int(v) for k, v in self.ranks[side].items()} for side in ("me", "opp")}
         # 판에서는 '자동' 을 None 으로 둔다
         auto = lambda v: None if v in ("", AUTO) else v
@@ -1348,6 +1371,7 @@ class App(object):
         # 나와 있음 → (바뀌었으면 랭크 0) → 판의 랭크 → 막 나옴 순서
         self.my_active.set(bd.my_active)
         self.opp_active.set(bd.opp_active)
+        self.opp_known = bd.opp_active_known
         for side in ("me", "opp"):
             for k, var in self.ranks[side].items():
                 var.set(str(bd.ranks.get(side, {}).get(k, 0)))
@@ -2330,6 +2354,26 @@ def check():
         bad.append("따라가기가 선출 화면의 상대 6마리를 칸에 안 넣음 (%s)" % got6)
     if "읽었습니다" not in app.out.get("1.0", "end"):
         bad.append("따라가기가 '읽었습니다' 를 안 보여 줌")
+    # ★ **'누가 나와 있는지 모른다' 가 다음 장까지 살아 있어야 한다.** `board()` 는 장마다
+    #   새 Board 를 만드는데 Board 는 그 값을 True 로 시작한다. 그래서 선출 화면이 꺼 놔도
+    #   바로 되살아나 1번 칸을 상대로 놓고 계산했다 — 실전에서 패리퍼가 나왔는데 대도각참으로
+    #   봤다 (2026-09-23, 따라간기록_0923_2137).
+    if app.opp_known:
+        bad.append("선출을 읽었는데 '나와 있는 상대를 안다' 로 남아 있음")
+    if app.board().opp_active_known:
+        bad.append("다음 장의 판에서 '누가 나와 있는지 모른다' 가 되살아남")
+    if "모릅니다" not in app.opp_state.cget("text"):
+        bad.append("'누가 먼저 나오는지 모른다' 가 창에 안 적힘 (%r)" % app.opp_state.cget("text"))
+    # 그 상태에서는 **답하지 않고 까닭을 말한다** (엉뚱한 놈을 놓고 계산하면 안 된다)
+    app.busy = False
+    app.say("", clear=True)
+    app.ask()
+    if "나와 있는 상대를 아직 모릅니다" not in app.out.get("1.0", "end"):
+        bad.append("누가 나와 있는지 모르는데 그냥 답을 내놓음")
+    # 사람이 「나와 있음」 을 누르면 다시 안다
+    app.opp_slots[3].on_active()
+    if not app.opp_known or not app.board().opp_active_known:
+        bad.append("「나와 있음」 을 눌러도 '모른다' 가 안 풀림")
     # ★ **지금 무엇을 하는 중인지**를 작은 창 맨 줄이 말해야 한다 (2026-09-23, 사용자 요구).
     #   답만 떠 있으면 그게 방금 읽은 판의 답인지 아까 것인지 알 수가 없다.
     #   읽은 뒤에는 **무엇을 읽었는지**가 같이 적혀야 한다 (다크펫을 망나뇽으로 읽은 적이 있다).
