@@ -727,7 +727,12 @@ class App(object):
         self.watcher = None         # 따라가기 (watch.Watcher) — 처음 켤 때 만든다
         self.follow_said = None     # 같은 알림을 되풀이하지 않으려고
         self.overlay = self.overlay_text = None   # 추천만 띄우는 작은 창
+        self.overlay_state = None                 # 그 창 맨 위 「지금 무엇을 하는 중」 줄
         self.last_short = None                    # 거기 띄울 몇 줄
+        # ★ 창을 꺼도 **마지막 상태는 들고 있는다** — 작은 창을 나중에 켜면 그때 것을 띄운다.
+        #   (그리고 작은 창이 없어도 검사가 상태를 볼 수 있다.)
+        self.state_now = ("아직 안 읽었습니다", DIM)
+        self.states = []            # 지나간 상태 줄 (점검이 **차례**를 볼 수 있게)
         self.slots = []
         self.opp_slots = []
         # 상대 이름 -> 본 기술 목록. **상대마다 따로 쌓는다** —
@@ -1198,7 +1203,7 @@ class App(object):
             return
         party = self.party()
         if not party:
-            self.say("먼저 왼쪽에 파티를 채우세요.", clear=clear)
+            self.cant("먼저 왼쪽에 파티를 채우세요.", clear)
             return
         def num(var, default):
             try:
@@ -1216,8 +1221,7 @@ class App(object):
                               sl.hp_pct(), bool(sl.brought.get())))
         mine = live.my_turn_state(mine_rows, self.my_active.get())
         if mine["why"]:
-            self.say("%s — 왼쪽 「이번 판」 줄을 확인하세요." % mine["why"],
-                     clear=clear)
+            self.cant("%s — 왼쪽 「이번 판」 줄을 확인하세요." % mine["why"], clear)
             return
         party = mine["party"]
         idx = mine["my_active"]
@@ -1238,8 +1242,7 @@ class App(object):
         opp_pokes, state, why = live.turn_state(
             my_hp, idx, rows, self.opp_active.get())
         if why:
-            self.say("%s — 상대를 고르세요 (HP 0 은 쓰러진 것으로 봅니다)."
-                     % why, clear=clear)
+            self.cant("%s — 상대를 고르세요 (HP 0 은 쓰러진 것으로 봅니다)." % why, clear)
             return
         secs = max(1.0, num(self.secs, 10))
         ev = live.evidence_map(self.seen, opp_pokes, self.opp_items, self.opp_abilities)
@@ -1256,6 +1259,9 @@ class App(object):
 
         self.busy = True
         self.go.config(text="생각하는 중...", state="disabled")
+        # 이름 뒤에 조사를 붙이지 않는다 — 「다크펫 를」 처럼 틀어진다 (받침이 있고 없고)
+        self.set_state("생각하는 중… 상대 %s / %.0f초"
+                       % (opp_pokes[oi]["name"], secs), BAR)
         # 화면에 찍는 것도 **넘긴 값 그대로** 쓴다. 따로 다시 세면
         # 화면과 계산이 갈라진다 — 이 저장소가 늘 고장 나는 방식이다.
         said = ", ".join("%s %.0f%%" % (p["name"], hp)
@@ -1404,7 +1410,12 @@ class App(object):
     #
     # 게임 화면(OBS 창 프로젝터)을 전체화면으로 두면 이 창이 뒤에 깔린다. 그렇다고 이 창을
     # 통째로 위에 올리면 **게임이 안 보인다.** 그래서 **추천만 담은 작은 창**을 구석에 띄운다.
-    OVERLAY_SIZE = (460, 210)
+    #
+    # 맨 위 한 줄은 **지금 무엇을 하는 중인가** 다. 사용자가 요구했다 (2026-09-23) —
+    # *"인식했으면 인식했다고, 생각중이면 생각중이라고 띄워줘. ai가 인식을 한건지
+    # 어떻게한건지 모르겠어."* 답만 떠 있으면 그 답이 **방금 읽은 판의 답인지 아까
+    # 것인지** 알 수가 없다.
+    OVERLAY_SIZE = (460, 250)
 
     def apply_on_top(self):
         """작은 창을 켜고 끈다. 가짜 tkinter 에는 Toplevel·attributes 가 없을 수 있으니 조용히 넘어간다."""
@@ -1415,7 +1426,7 @@ class App(object):
                     self.overlay.destroy()
                 except Exception:
                     pass
-                self.overlay = self.overlay_text = None
+                self.overlay = self.overlay_text = self.overlay_state = None
             return False
         if self.overlay is not None:
             return True
@@ -1432,6 +1443,9 @@ class App(object):
             except Exception:
                 sw = 1920
             top.geometry("%dx%d+%d+%d" % (w, h, max(0, sw - w - 40), 40))
+            head = tk.Label(top, text="", bg=CARD, fg=DIM, anchor="w",
+                            padx=10, pady=5, font=("Malgun Gothic", 11, "bold"))
+            head.pack(fill="x")
             body = tk.Text(top, bg=BG, fg=TEXT, relief="flat", padx=10, pady=8,
                            wrap="word", font=("Malgun Gothic", 13, "bold"))
             body.pack(fill="both", expand=True)
@@ -1439,9 +1453,42 @@ class App(object):
         except Exception:
             self.on_top.set(0)
             return False
-        self.overlay, self.overlay_text = top, body
+        self.overlay, self.overlay_text, self.overlay_state = top, body, head
+        self.set_state(*self.state_now)
         self.show_overlay(self.last_short or "판이 바뀌면 여기에 둘 수를 띄웁니다.")
         return True
+
+    def set_state(self, text, color=None):
+        """작은 창 맨 위에 **지금 무엇을 하는 중인지** 한 줄로 띄운다.
+
+        창이 꺼져 있어도 기억은 해 둔다 — 나중에 켜면 그때 것이 바로 보인다.
+        """
+        self.state_now = (text, color or DIM)
+        self.states.append(text)
+        del self.states[:-200]
+        if self.overlay_state is None:
+            return False
+        try:
+            self.overlay_state.config(text=text, fg=color or DIM)
+        except Exception:
+            return False
+        return True
+
+    @staticmethod
+    def _done_state(text, ok_word):
+        """계산이 끝났을 때 맨 위에 적을 줄. **터진 것을 '답이 나왔다' 로 적으면 안 된다.**"""
+        if (text or "").startswith("문제가 생겼습니다"):
+            return ("! 계산이 터졌습니다 — 큰 창을 보세요", WARN)
+        return ("✓ %s (%s)" % (ok_word, time.strftime("%H:%M:%S")), GOOD)
+
+    def cant(self, text, clear):
+        """물어볼 수 없을 때 — 큰 창에 까닭을 적고 **작은 창에도 그 까닭을** 띄운다.
+
+        ! 작은 창에 옛 답이 남은 채로 조용히 멈추면, 사용자는 그 답이 지금 판의
+          답인 줄 안다. 못 물었으면 못 물었다고 말해야 한다.
+        """
+        self.say(text, clear=clear)
+        self.set_state("! " + text.splitlines()[0][:40], WARN)
 
     def show_overlay(self, text):
         """작은 창에 글을 띄운다. 꺼져 있으면 아무것도 안 한다."""
@@ -1470,6 +1517,7 @@ class App(object):
             self.following = False
             self.go_follow.config(text="따라가기 시작")
             self.say("따라가기를 멈췄습니다.")
+            self.set_state("멈췄습니다 — 「따라가기 시작」 을 누르세요", DIM)
             return
         if self.watcher is None:
             import watch
@@ -1486,6 +1534,7 @@ class App(object):
                  "읽은 것을 그때그때 보여 드리고, 판이 바뀌면 둘 수를 다시 알려 드립니다.\n"
                  "(읽은 것은 %s 에도 남습니다)" % (self.watcher.log or "(기록 없음)"),
                  clear=True)
+        self.set_state("화면을 보는 중…", DIM)
         if self.headless:
             self.follow_once()
         else:
@@ -1509,19 +1558,34 @@ class App(object):
             self.root.after(0, lambda: self._after_follow(bd, got))
         return got
 
+    SPIN = (".", "..", "...")   # 돌아가는 표시 — 멈춘 것과 아무 일 없는 것을 가른다
+
     def _after_follow(self, bd, got):
         if got["trouble"]:
             if got["trouble"] != self.follow_said:
                 self.say("! " + got["trouble"])
                 self.follow_said = got["trouble"]
+            self.set_state("! " + got["trouble"].split(" — ")[0][:40], WARN)
             return
         self.follow_said = None
         if not got["changed"]:
+            # 바뀐 게 없는 장 — **살아 있다는 것만** 알린다.
+            # 생각하는 중이면 안 건드린다 (그 줄이 더 중요하다).
+            if not self.busy:
+                seen = "%s 화면" % got["kind"] if got["kind"] else "화면"
+                self.set_state("보는 중%-3s %s (%d장째)"
+                               % (self.SPIN[self.watcher.frames % len(self.SPIN)],
+                                  seen, self.watcher.frames), DIM)
             return
         self.set_board(bd)
         self.say("─ 읽었습니다 (%s 화면)" % got["kind"])
         for ok, text in got["notes"]:
             self.say("   %s %s" % ("✓" if ok else "○", text))
+        # ★ **무엇을 읽었는지**를 작은 창에도 적는다. 「읽었다」 만 띄우면 엉뚱한 것을
+        #   읽었을 때 알 길이 없다 — 다크펫을 망나뇽으로 읽은 적이 있다 (2026-09-23).
+        put = [t for ok, t in got["notes"] if ok]
+        self.set_state("✓ 읽었습니다 — %s"
+                       % (put[0][:40] if put else "%s 화면" % got["kind"]), GOOD)
         # 칸이 바뀌었으니 다시 묻는다. 이미 생각하는 중이면 다음 바퀴에 묻는다.
         # ★ **선출 화면이면 「어떤 3마리」 를, 대전 화면이면 「무엇을 둘까」 를** 묻는다.
         #   선출 화면에서 둘 수를 물으면 아무 쓸모가 없다 — 그때 둘 수는 '어떤 3마리' 다.
@@ -1575,13 +1639,13 @@ class App(object):
         party = self.party()
         foes = self.opp_party()
         if len(party) < pick.PICK:
-            self.say("내 파티를 %d마리 이상 채우세요 (지금 %d)."
-                     % (pick.PICK, len(party)), clear=clear)
+            self.cant("내 파티를 %d마리 이상 채우세요 (지금 %d)."
+                      % (pick.PICK, len(party)), clear)
             return
         if len(foes) < pick.PICK:
-            self.say("상대를 %d마리 이상 적으세요 (지금 %d). 팀 프리뷰에서"
-                     " 본 6마리를 다 적으면 제일 정확합니다."
-                     % (pick.PICK, len(foes)), clear=clear)
+            self.cant("상대를 %d마리 이상 적으세요 (지금 %d). 팀 프리뷰에서"
+                      " 본 6마리를 다 적으면 제일 정확합니다."
+                      % (pick.PICK, len(foes)), clear)
             return
         try:
             secs = max(10.0, float(self.pick_secs.get()))
@@ -1589,6 +1653,7 @@ class App(object):
             secs = 45.0
         self.busy = True
         self.go_pick.config(text="고르는 중...", state="disabled")
+        self.set_state("생각하는 중… 어떤 3마리를 낼까 (%.0f초)" % secs, BAR)
         self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=clear)
         args = ([b for b, _m in party], [p for p, _hp in foes], secs)
         if self.headless:
@@ -1612,6 +1677,7 @@ class App(object):
 
     def _show_pick(self, text):
         self.last_short = self.short_advice(text)
+        self.set_state(*self._done_state(text, "선출 답이 나왔습니다"))
         self.show_overlay(self.last_short)
         self.say(text)
         self.busy = False
@@ -1619,6 +1685,7 @@ class App(object):
 
     def _show(self, text):
         self.last_short = self.short_advice(text)
+        self.set_state(*self._done_state(text, "답이 나왔습니다"))
         self.show_overlay(self.last_short)
         self.say(text)
         self.busy = False
@@ -2197,6 +2264,7 @@ def check():
     shots = os.path.join(here, "data", "screens")
     # 같은 화면을 두 번씩 — **두 장 연속 같아야** 믿는다
     seq = [os.path.join(shots, "선출_실전OBS.jpg")] * 2
+    mark = len(app.states)      # 여기서부터 나온 상태 줄만 본다 (앞의 것에 속으면 안 된다)
     app.watcher = watchmod.Watcher(_Replay(seq))
     app.follow_once()
     app.follow_once()
@@ -2205,6 +2273,17 @@ def check():
         bad.append("따라가기가 선출 화면의 상대 6마리를 칸에 안 넣음 (%s)" % got6)
     if "읽었습니다" not in app.out.get("1.0", "end"):
         bad.append("따라가기가 '읽었습니다' 를 안 보여 줌")
+    # ★ **지금 무엇을 하는 중인지**를 작은 창 맨 줄이 말해야 한다 (2026-09-23, 사용자 요구).
+    #   답만 떠 있으면 그게 방금 읽은 판의 답인지 아까 것인지 알 수가 없다.
+    #   읽은 뒤에는 **무엇을 읽었는지**가 같이 적혀야 한다 (다크펫을 망나뇽으로 읽은 적이 있다).
+    # ! 처음엔 `app.states` 전체를 봤는데, 앞에서 「무엇을 둘까」 를 한 번 눌러 봤기 때문에
+    #   거기서 생긴 '생각하는 중' 이 남아 있어 **일부러 고장 내도 안 잡혔다.** 그래서 이번
+    #   따라가기에서 나온 줄만 본다.
+    seq_states = app.states[mark:]
+    if not any("읽었습니다" in s and "갸라도스" in s for s in seq_states):
+        bad.append("작은 창 맨 줄이 '무엇을 읽었나' 를 안 말함 (%r)" % (seq_states,))
+    if not any(s.startswith("생각하는 중") for s in seq_states):
+        bad.append("읽은 뒤에 '생각하는 중' 을 안 띄움 (%r)" % (seq_states,))
     # 한 장만 본 것은 **아직 안 믿는다**
     app.watcher = watchmod.Watcher(_Replay([os.path.join(shots, "대전_아이패드_풍선.jpg")] * 2))
     first = app.follow_once()
@@ -2219,6 +2298,8 @@ def check():
     app.follow_once()
     if "신호가 없습니다" not in app.out.get("1.0", "end"):
         bad.append("신호 없음(까만 화면)을 안 알림")
+    if "신호가 없습니다" not in app.state_now[0]:
+        bad.append("신호 없음을 작은 창 맨 줄이 안 알림 (%r)" % (app.state_now,))
     try:
         os.remove(black)
     except OSError:
@@ -2243,6 +2324,12 @@ def check():
         app.show_overlay("시험")
         if app.overlay is None or app.overlay_text is None:
             bad.append("추천 작은 창이 안 만들어짐")
+        # 창을 나중에 켜도 **그때까지의 상태**가 바로 보여야 한다
+        if app.overlay_state is None or app.overlay_state.cget("text") != app.state_now[0]:
+            bad.append("작은 창을 켰는데 맨 줄이 지금 상태를 안 띄움")
+        app.set_state("생각하는 중… 시험", BAR)
+        if app.overlay_state.cget("text") != "생각하는 중… 시험":
+            bad.append("작은 창 맨 줄이 안 바뀜")
         app.on_top.set(0)
         app.apply_on_top()
         if app.overlay is not None:
