@@ -466,6 +466,11 @@ def combine_hp(bar, text):
     - **글자는 9번 100% 를 넘었다** (109 · 199 · 799) 그리고 47% 를 「7」 로 읽었다.
     - **막대는 100% 를 한 번도 안 넘었다.** 대신 대전 화면이 아닌 곳에서 헛것을 봤다.
     → 어느 한쪽이 나은 게 아니라 **서로의 잘못을 잡아 준다.** 크게 다르면 **고르지 않고 말한다.**
+
+    ★ **둘이 맞으면 글자 쪽을 쓴다** (2026-09-23, 사용자: "1~2%정도 오차가 있는데 이건
+      생각보다 큰 문제이다"). 글자 % 는 **게임이 직접 띄운 수**라 오차가 없다. 막대는 잘 맞아도
+      1~2% 어긋난다 (86.3/86 · 73.4/74 · 67.8/68 · 55.9/56 …). 1~2% 는 「한 대 더 버티나」 를
+      뒤집을 수 있다. 글자를 못 읽었을 때만 막대를 쓴다.
     """
     b = bar["hp"] if bar else None
     if b is None and text is None:
@@ -473,9 +478,9 @@ def combine_hp(bar, text):
     if text is None:
         return b, None
     if b is None:
-        return float(text), "막대를 못 재서 글자(%d%%)만 썼습니다 — 확인해 주세요" % text
+        return float(text), None        # 게임이 띄운 수 — 막대보다 낫다
     if abs(b - text) <= HP_AGREE:
-        return b, None                  # 막대가 더 잘게 나온다
+        return float(text), None        # 둘이 맞는다 → 정확한 쪽(글자)을 쓴다
     return None, ("상대 HP 가 막대로는 %.0f%%, 글자로는 %d%% 입니다 — 달라서 안 넣었습니다"
                   % (b, text))
 
@@ -558,6 +563,11 @@ class Board(object):
         self.opp = opp
         self.my_active = my_active
         self.opp_active = opp_active
+        # ★ **누가 나와 있는지 아는가.** 선출 화면을 읽으면 6칸이 채워지지만 **누가 먼저
+        #   나올지는 모른다.** 그런데 `opp_active` 가 0(1번 칸)이라 실전에서 상대가 6번
+        #   다크펫을 냈는데 **1번 망나뇽의 HP 로 넣고 있었다** (2026-09-23, 사용자가 잡음).
+        #   조용히 엉뚱한 놈에게 HP 를 붙이느니 **모른다고 말하고 안 넣는다.**
+        self.opp_active_known = True
         self.my_fresh = my_fresh
         self.opp_fresh = opp_fresh
         self.seen = seen if seen is not None else {}
@@ -606,6 +616,7 @@ def _switch_to(board, side, i):
         board.my_active, board.my_fresh = i, True
     else:
         board.opp_active, board.opp_fresh = i, True
+        board.opp_active_known = True
     board.ranks[side] = {}
     return True
 
@@ -750,27 +761,36 @@ def apply_hp(board, res):
     (그리고 그놈이 나와 있는 것으로). 내 HP 는 나와 있는 내 칸에.
     """
     out = []
+    # ★ **이름 칸을 먼저 본다 — HP 가 있든 없든.** 예전에는 HP 를 넣을 때만 봐서, 문구를
+    #   못 읽은 판에서는 상대가 누구인지 영영 모른 채 1번 칸에 HP 를 쌓았다 (2026-09-23).
+    named = res.get("opp_name")
+    if named:
+        j = board.find("opp", named[0])
+        if j is not None:
+            if _switch_to(board, "opp", j):
+                out.append((True, "상대 이름 칸이 %s — 나와 있는 상대를 그쪽으로" % named[0]))
+            elif not board.opp_active_known:
+                board.opp_active_known = True
+                out.append((True, "상대 이름 칸이 %s — 나와 있는 상대로 확인" % named[0]))
     m = res.get("opp_hp")
     hp, why_hp = combine_hp(m, res.get("opp_hp_text"))
     if why_hp and hp is None:
         out.append((False, why_hp))
     if hp is not None:
         i = board.opp_active
-        named = res.get("opp_name")
-        if named:
-            j = board.find("opp", named[0])
-            if j is not None and j != i:
-                _switch_to(board, "opp", j)
-                i = j
-                out.append((True, "상대 이름 칸이 %s — 나와 있는 상대를 그쪽으로" % named[0]))
         row = board.opp[i] if 0 <= i < len(board.opp) else None
-        if row is None or row["poke"] is None:
+        if not board.opp_active_known:
+            # 누가 나와 있는지 모르면 **안 넣는다.** 엉뚱한 놈에게 붙이면 계산이 통째로 틀린다.
+            out.append((False, "상대 HP %.0f%% 를 읽었지만 **누가 나와 있는지 몰라** 안 넣었습니다"
+                        " — 상대 칸에서 나와 있는 놈을 골라 주세요" % hp))
+        elif row is None or row["poke"] is None:
             out.append((False, "상대 HP %.0f%% 를 쟀지만 나와 있는 상대 칸이 비어 있음" % hp))
         else:
             row["hp"] = round(hp, 1)
             row["brought"] = True
-            how = "막대와 글자가 맞음" if (m and res.get("opp_hp_text")) else (
-                "막대로 잼" if m else "글자로 읽음")
+            txt = res.get("opp_hp_text")
+            how = ("글자 %d%% (막대 %.0f%% 와 맞음)" % (txt, m["hp"])) if (m and txt) else (
+                "막대로 잼 — 글자를 못 읽어 1~2%% 오차가 있을 수 있음" if m else "글자로 읽음")
             out.append((True, "상대 %s: HP %.0f%% (%s)" % (row["poke"]["name"], hp, how)))
         if why_hp:
             out.append((False, "상대 HP: " + why_hp))
@@ -814,6 +834,8 @@ def apply_preview(board, found, dex):
                     % (i + 1, live.poke_label(poke), f["gender"] or "성별 표시 없음",
                        f["score"], warn)))
     board.opp_active, board.opp_fresh = 0, True
+    board.opp_active_known = False      # 6마리는 알지만 **누가 먼저 나오는지는 아직 모른다**
+    out.append((False, "누가 먼저 나오는지는 아직 모릅니다 — 문구나 상대 이름 칸을 읽으면 정합니다"))
     board.seen.clear()
     board.opp_items.clear()
     board.opp_abilities.clear()

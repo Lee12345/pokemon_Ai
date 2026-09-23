@@ -87,6 +87,7 @@ class Watcher(object):
         """새 판. 넣은 것을 잊는다 (안 잊으면 다음 판에서 같은 일을 안 넣는다)."""
         self.pending = self.applied = None
         self.pending_hp = self.applied_hp = None
+        self._said_lines = None
 
     def _forget(self):
         """화면을 못 읽었으면 **기다리던 것을 버린다** — 끊긴 앞뒤 두 장을 같다고 보면 안 된다."""
@@ -136,6 +137,14 @@ class Watcher(object):
                 out["changed"] = True
             self.applied_hp = hp_sig
         self.pending, self.pending_hp = sig, hp_sig
+        # ★ **읽은 문구를 그대로 남긴다 — 일로 못 바꿨어도.** 실전 한 판에서 문구를 한 줄도
+        #   못 잡았는데, 기록에 넣은 것만 적혀 있어서 **글자를 못 읽은 건지 틀을 못 맞춘 건지
+        #   알 수가 없었다** (2026-09-23). 원인을 찾으려면 날것이 남아야 한다.
+        if out["lines"] and out["lines"] != self._said_lines:
+            self._said_lines = out["lines"]
+            ev = got.get("event") or {}
+            self._say("문구 「%s」 → %s" % (" / ".join(out["lines"]),
+                                        ev.get("kind") or "못 읽음"))
         for ok, text in out["notes"]:
             self._say("%s %s" % ("O" if ok else "-", text))
         return out

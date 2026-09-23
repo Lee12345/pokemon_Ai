@@ -185,6 +185,26 @@ def find_ability(dex, poke, text):
     return None
 
 
+def is_mega_ability(dex, poke, text):
+    """그 포켓몬의 **메가 폼** 특성이면 True.
+
+    예전에 저장된 파티 파일에는 메가 특성이 적혀 있다 (`party_line` 이 그걸 고치기 전).
+    **메가스톤을 같이 든 줄에서만** 그냥 넘긴다 (`parse_extra`) — 그때는 도구를 보고 폼을
+    정하면서 그 특성이 저절로 붙으므로 적혀 있든 없든 결과가 같다.
+    스톤 없이 메가 특성이 적혀 있으면 **그건 진짜 잘못**이라 그대로 알린다
+    (보통 폼 가디안에 페어리스킨 — §5-2 의 그 결함. 처음에 무조건 넘기게 했다가
+    검사 두 개가 깨져서 알았다).
+    """
+    if poke is None or poke.get("isMega"):
+        return False
+    for p in dex.pokemon:
+        if p.get("isMega") and p["dexNo"] == poke["dexNo"]:
+            for ab in p.get("abilities") or ():
+                if ab["name"] == text:
+                    return True
+    return False
+
+
 def parse_extra(dex, text, poke=None):
     """기술 뒤에 적은 배분·성격·특성·도구를 읽는다.
 
@@ -192,6 +212,7 @@ def parse_extra(dex, text, poke=None):
     """
     sp = nature = ability = item = None
     unknown = []
+    maybe_mega = []             # 메가 특성처럼 보이는 말 — 도구를 다 읽고 나서 가린다
     for word in (text or "").replace(",", " ").split():
         # ! **쓰는 쪽(ev_text)이 쓰는 말은 읽는 쪽도 알아야 한다.** 노력치를
         #   비우면 '무투자' 라고 저장하는데 여기서 몰라서, 그 포켓몬 줄이
@@ -217,11 +238,22 @@ def parse_extra(dex, text, poke=None):
             if got:
                 ability = got
                 continue
+            if is_mega_ability(dex, poke, word):
+                # 메가스톤을 **같이 들었을 때만** 넘긴다. 그때는 폼이 특성을 정하므로
+                # 적혀 있든 없든 결과가 같다. 스톤이 없는데 메가 특성이 적혀 있으면
+                # 그건 진짜 잘못이다 (보통 폼 가디안에 페어리스킨 — §5-2 의 그 결함).
+                # 도구가 뒤에 적힐 수 있으니 **끝까지 다 읽고** 가린다.
+                maybe_mega.append(word)
+                continue
         kind, name = find_move_or_item(dex, word)
         if kind == "도구":
             item = name
             continue
         unknown.append(word)
+    if maybe_mega:
+        stone = dex.mega_by_item.get(item) if item else None
+        if not (stone and poke is not None and stone["dexNo"] == poke["dexNo"]):
+            unknown.extend(maybe_mega)      # 스톤 없이 메가 특성 — 진짜 잘못이다
     return sp, nature, ability, item, unknown
 
 
@@ -378,11 +410,20 @@ def ask_party(dex):
 
 
 def party_line(build, moves):
-    """한 마리를 파일에 적을 한 줄로."""
+    """한 마리를 파일에 적을 한 줄로.
+
+    ★ **메가 폼이면 특성을 안 적는다.** 메가는 특성이 하나로 정해져 있고, 다시 읽을 때
+    도구(메가스톤)를 보고 폼을 정하면서 그 특성이 저절로 붙는다 (`build_one`).
+    적어 두면 **읽는 쪽이 기본 폼에서 그 특성을 찾다가 못 찾는다** —
+    「'스카이스킨' 를 못 알아들어 빼고 읽었습니다」. **창이 쓴 줄을 창이 못 읽는 것**이다
+    (2026-09-23, 사용자 파티의 마폭시 '부유' · 보만다 '스카이스킨' 둘 다 이랬다).
+    CLAUDE.md §1 의 「쓰는 쪽과 읽는 쪽이 짝이 맞나 — 한 바퀴 돌려 본다」 그 자리다.
+    """
+    ability = "" if build.poke.get("isMega") else (build.ability or "")
     return u"%s %s | %s %s %s %s" % (
         poke_label(build.poke), ",".join(moves),
         build.nature["name"] if build.nature else "",
-        ev_text(build.sp), build.ability or "", build.item or "")
+        ev_text(build.sp), ability, build.item or "")
 
 
 def save_party_file(party, path=PARTY_FILE):

@@ -1014,6 +1014,13 @@ class App(object):
         self.go_follow = tk.Button(rs, text="따라가기 시작", command=self.toggle_follow,
                                    bg=LINE, fg=TEXT, relief="flat", font=FONT_B)
         self.go_follow.pack(side="left", padx=(6, 0))
+        # ★ **창 프로젝터를 전체화면으로 두면 이 창이 뒤에 깔려 왔다갔다해야 한다**
+        #   (사용자, 2026-09-23). 이 창을 늘 위에 띄우면 프로젝터 위에 겹쳐 놓고 볼 수 있다.
+        #   찍는 쪽은 가려져도 되므로(PrintWindow) 프로젝터를 덮어도 읽기에 지장이 없다.
+        self.on_top = tk.IntVar(value=0)
+        tk.Checkbutton(rs, text="항상 위에", variable=self.on_top, command=self.apply_on_top,
+                       bg=CARD, fg=TEXT, selectcolor=FIELD, activebackground=CARD,
+                       activeforeground=TEXT, font=FONT_S).pack(side="left", padx=(6, 0))
         tk.Label(rs, text="사진: 선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 순서대로) /"
                  " 따라가기: OBS 「창 프로젝터」 를 계속 읽습니다",
                  bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(6, 0))
@@ -1389,6 +1396,15 @@ class App(object):
     # 물어본다.** 사용자가 게임하면서 칸을 손으로 채우기 힘들다고 해서 시작한 일이다.
     # ★ 읽은 것은 **언제나 먼저 보여 준다** — 잘못 읽으면 조용히 틀리기 때문이다.
     FOLLOW_REST = 0.2       # 한 바퀴 돌고 쉬는 시간 (읽는 데 0.5초쯤 걸린다)
+
+    def apply_on_top(self):
+        """창을 늘 위에 띄울지. 가짜 tkinter 에는 attributes 가 없을 수 있으니 조용히 넘어간다."""
+        want = bool(self.on_top.get())
+        try:
+            self.root.attributes("-topmost", want)
+        except Exception:
+            return False
+        return want
 
     def toggle_follow(self):
         if self.following:

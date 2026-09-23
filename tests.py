@@ -3367,6 +3367,47 @@ def test_party_file(dex):
               and back[1][1] == ["지진", "하품"],
               [(b.name, b.ability, b.item, b.sp) for b, _m, _x in back])
 
+    # ④ ★ **메가스톤을 든 놈도 한 바퀴 돈다** (2026-09-23, 사용자 파티에서 터졌다).
+    #   창이 쓴 줄을 창이 못 읽고 있었다 — 메가스톤을 들면 빌드가 **메가 폼**이 되어
+    #   특성이 '스카이스킨/부유' 로 적히는데, 읽는 쪽은 그 특성을 **기본 폼**에서 찾다가
+    #   못 찾아 「'스카이스킨' 를 못 알아들어 빼고 읽었습니다」 를 냈다.
+    #   → `party_line` 이 메가 폼이면 특성을 안 적는다 (도구를 보고 폼과 함께 정해진다).
+    #   CLAUDE.md §1 의 「쓰는 쪽과 읽는 쪽이 짝이 맞나 — 한 바퀴 돌려 본다」 그 자리다.
+    stones = []
+    for p in dex.pokemon:
+        if p.get("isMega"):
+            continue
+        for item, mega in dex.mega_by_item.items():
+            if mega["dexNo"] == p["dexNo"]:
+                stones.append((p, item))
+                break
+    rows = []
+    for p, item in stones:
+        b, _f = live.build_one(dex, p, {"hp": 32}, dex.find_nature("고집"), None, item)
+        rows.append((b, ["지진"], []))
+    live.save_party_file(rows, tmp)
+    notes = []
+    back = live.load_party(dex, tmp, notes=notes) or []
+    bad = [(rows[i][0].name, back[i][0].name, rows[i][0].ability, back[i][0].ability)
+           for i in range(min(len(rows), len(back)))
+           if rows[i][0].name != back[i][0].name
+           or rows[i][0].ability != back[i][0].ability
+           or rows[i][0].item != back[i][0].item]
+    check("메가스톤 든 %d종이 저장했다 읽어도 그대로다 (경고 없이)" % len(stones),
+          len(back) == len(rows) and not notes and not bad,
+          (len(back), notes[:3], bad[:3]))
+    # 예전에 저장된 파일에 메가 특성이 적혀 있어도 **탓하지 않고 읽는다**
+    with io.open(tmp, "w", encoding="utf-8") as f:
+        f.write(u"# 이름 기술 | 성격 노력치 특성 도구\n")
+        f.write(u"보만다 지진 | 고집 H32 스카이스킨 보만다나이트\n")
+        f.write(u"마폭시 화염방사 | 겁쟁이 H32 부유 마폭시나이트\n")
+    notes = []
+    back = live.load_party(dex, tmp, notes=notes) or []
+    check("예전 파일에 적힌 메가 특성('스카이스킨'·'부유')도 탓하지 않고 읽는다",
+          len(back) == 2 and not notes
+          and back[0][0].ability == "스카이스킨" and back[1][0].ability == "부유",
+          (len(back), notes, [b.ability for b, _m, _x in back]))
+
     # ③ 한 줄에 못 읽는 말이 있어도 파티가 통째로 사라지지 않는다
     with io.open(tmp, "w", encoding="utf-8") as f:
         f.write(u"# 이름 기술 | 성격 노력치 특성 도구\n")
@@ -5302,10 +5343,14 @@ def test_screenread(dex):
     # ★ 글자로 읽은 % 와 막대를 **맞대 본다.** 실전에서 둘 다 읽힌 83프레임 중 진짜 대전 화면에서는
     #   ±1 로 붙었고(86.3/86 · 67.8/68 · 55.9/56 …), 글자는 9번 100% 를 넘었다(109 · 199 · 799).
     cb = screenread.combine_hp
-    check("막대와 글자가 붙으면 막대를 쓴다 (86.3 / 86)", cb({"hp": 86.3}, 86) == (86.3, None))
+    # ★ 둘이 맞으면 **글자** 를 쓴다 — 글자 % 는 게임이 직접 띄운 수라 오차가 없고,
+    #   막대는 잘 맞아도 1~2% 어긋난다 (사용자: "이건 생각보다 큰 문제이다", 2026-09-23).
+    check("막대와 글자가 붙으면 **글자** 를 쓴다 (막대 86.3 / 글자 86 → 86)",
+          cb({"hp": 86.3}, 86) == (86.0, None), cb({"hp": 86.3}, 86))
+    check("글자를 못 읽으면 막대를 쓴다", cb({"hp": 86.3}, None) == (86.3, None))
     check("막대만 있으면 막대", cb({"hp": 67.8}, None) == (67.8, None))
-    got_v, got_w = cb(None, 68)
-    check("글자만 있으면 쓰되 알린다", got_v == 68.0 and got_w and "글자" in got_w, (got_v, got_w))
+    check("글자만 있으면 글자를 쓴다 (알림 없이 — 게임이 띄운 수다)",
+          cb(None, 68) == (68.0, None), cb(None, 68))
     got_v, got_w = cb({"hp": 0.5}, 68)
     check("크게 다르면 **고르지 않고 말한다** (막대 0.5 / 글자 68)",
           got_v is None and got_w and "달라서" in got_w, (got_v, got_w))
@@ -5641,6 +5686,23 @@ def test_watch(dex):
     check("따라가기가 선출 화면의 상대 6마리를 판에 넣는다",
           got["kind"] == "선출"
           and got6 == ["갸라도스", "팬텀", "조로아크", "초염몽", "엘레이드", "루카리오"], got6)
+
+    # ★ **6마리를 알아도 「누가 먼저 나오는지」 는 모른다** (2026-09-23, 사용자가 실전에서 잡음).
+    #   `opp_active` 가 0 이라, 상대가 6번 다크펫을 냈는데 **1번 망나뇽의 HP 로 넣고 있었다.**
+    #   계산이 통째로 틀리는 자리다 → 모르면 **안 넣고 말한다.**
+    check("선출을 읽으면 '누가 먼저 나오는지 모른다' 가 된다", bd.opp_active_known is False)
+    notes = screenread.apply_hp(bd, {"opp_hp": None, "opp_hp_text": 80, "opp_name": None})
+    check("누가 나와 있는지 모르면 상대 HP 를 안 넣고 말한다",
+          bd.opp[0]["hp"] == 100.0 and any("누가 나와 있는지 몰라" in t for _o, t in notes), notes)
+    # 이름 칸을 읽으면 그때 정해진다 — HP 가 없어도 정해져야 한다 (예전엔 HP 가 있을 때만 봤다)
+    notes = screenread.apply_hp(bd, {"opp_hp": None, "opp_hp_text": None,
+                                     "opp_name": ("초염몽", 0.9, "초염몽")})
+    check("이름 칸을 읽으면 HP 가 없어도 나와 있는 상대가 정해진다",
+          bd.opp_active_known and bd.opp[bd.opp_active]["poke"]["name"] == "초염몽",
+          (bd.opp_active_known, bd.opp_active))
+    notes = screenread.apply_hp(bd, {"opp_hp": None, "opp_hp_text": 80, "opp_name": None})
+    check("정해진 뒤에는 그 칸에 HP 를 넣는다 (초염몽 80%)",
+          bd.opp[bd.opp_active]["hp"] == 80.0, bd.opp[bd.opp_active]["hp"])
 
 
 def test_mid_state(dex):
