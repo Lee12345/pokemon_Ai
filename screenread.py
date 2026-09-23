@@ -810,8 +810,14 @@ def apply_hp(board, res):
         elif 0 <= i < len(board.my):
             have = board.my[i].get("maxhp")
             if have and have != full:
-                out.append((False, "내 HP 최대치 %d 가 나와 있는 칸(%s, HP %d)과 다름 — 칸을 확인하세요"
+                # ★ **안 맞으면 안 넣는다.** 전에는 경고만 하고 그대로 넣었다. 실전에서
+                #   「0/3」 으로 잘못 읽은 것이 하마돈(215)에 들어가 **HP 0% = 쓰러짐**
+                #   이 되었고, 그 판 내내 내 파티가 두 마리로 계산됐다 (2026-09-23 기록).
+                #   경고를 띄우면서 틀린 값을 넣는 것은 안 띄우는 것보다 나쁘다.
+                out.append((False, "내 HP 최대치 %d 가 나와 있는 칸(%s, HP %d)과 달라 "
+                                   "안 넣었습니다 — 잘못 읽었거나 칸의 HP 능력치가 틀립니다"
                             % (full, board.my[i]["poke"]["name"], have)))
+                return out
         row = board.my[i] if 0 <= i < len(board.my) else None
         if row is None or row["poke"] is None:
             out.append((False, "내 HP %d/%d 를 읽었지만 나와 있는 내 칸이 비어 있음" % mine))

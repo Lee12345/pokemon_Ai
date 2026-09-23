@@ -83,6 +83,14 @@ class Watcher(object):
         except OSError:
             self.log = None     # 못 쓰면 조용히 그만둔다 — 기록 때문에 따라가기가 멈추면 안 된다
 
+    def note(self, text):
+        """창이 내놓은 답을 기록에도 남긴다.
+
+        ! 전에는 **읽은 것만** 남겼다. 그래서 판이 끝난 뒤 사용자가 "제대로 안 알려
+          줬다" 고 해도, 그때 창에 무엇이 떴는지 알 길이 없었다 (2026-09-23).
+        """
+        self._say(text)
+
     def reset(self):
         """새 판. 넣은 것을 잊는다 (안 잊으면 다음 판에서 같은 일을 안 넣는다)."""
         self.pending = self.applied = None

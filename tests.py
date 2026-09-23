@@ -5289,9 +5289,14 @@ def test_screenread(dex):
     check("최대 HP 215 가 하마돈 칸과만 같다 → 나와 있는 내 포켓몬을 하마돈으로",
           bd.my_active == 0 and bd.my[0]["hp"] == 46.5 and "하마돈" in notes[0][1], notes)
     bd.my[1]["maxhp"] = 215
+    was = bd.my[0]["hp"]
     notes = screenread.apply_hp(bd, {"my_hp": (50, 999)})
-    check("최대 HP 가 나와 있는 칸과 다르면 '칸을 확인하세요'",
-          any(not ok and "확인" in t for ok, t in notes), notes)
+    # ★ **안 맞으면 넣지 않는다.** 전에는 경고만 하고 그대로 넣었다. 실전 한 판에서
+    #   「0/3」 으로 잘못 읽은 것이 하마돈(215)에 들어가 HP 0% = 쓰러짐이 되었고,
+    #   그 판 내내 내 파티가 두 마리로 계산됐다 (2026-09-23 따라간기록_0923_2105).
+    check("최대 HP 가 나와 있는 칸과 다르면 **안 넣고** 말한다 (0/3 사고)",
+          any(not ok and "안 넣었습니다" in t for ok, t in notes) and bd.my[0]["hp"] == was,
+          (notes, bd.my[0]["hp"], was))
     ref, why = hpread.scale(2732, 69.0)
     ref2, why2 = hpread.scale(2732, 90.0)
     check("HP 잣대: 화면 너비 비례 (아이패드 2732 → 69.9), 잰 높이와 10% 넘게 다르면 잰 값 + 알림",
@@ -5705,6 +5710,76 @@ def test_watch(dex):
           bd.opp[bd.opp_active]["hp"] == 80.0, bd.opp[bd.opp_active]["hp"])
 
 
+def test_advice(dex):
+    """[61] 「무엇을 하라」 를 말로 해 준다 · 상대가 무엇을 할 것 같은가 (2026-09-23).
+
+    사용자가 실전 한 판을 하고 짚었다 — *"뭘 해야할지 제대로 말을 안해줘. 명확하게
+    뭘 해야한다 라고 말해주지않아. 교체를 해야할지 상대 교체를 예측해야할지 기타등등.."*
+
+    그때 창이 내놓던 것은 「=> 하마돈 로 교체 (37.6점 ±6.5, 59판)」 한 줄이었다.
+    조사도 틀렸고, 무엇보다 **상대가 무엇을 할지는 한마디도 없었다.**
+    """
+    import live
+    import search
+    print("\n[61] 시키는 말 · 상대가 무엇을 할 것 같은가")
+
+    # -- 조사 (받침) — 「하마돈 로 교체」 처럼 틀어지면 사람이 바로 어색해한다
+    check("받침 있는 이름은 '으로' (하마돈으로)", search.ro("하마돈") == "으로", search.ro("하마돈"))
+    check("받침 없는 이름은 '로' (보만다로)", search.ro("보만다") == "로", search.ro("보만다"))
+    # ★ ㄹ 받침은 예외다 — 「따라큐」 가 아니라 「이글이글」 같은 이름에서 걸린다
+    check("ㄹ 받침도 '로' (이글이글로)", search.ro("이글이글") == "로", search.ro("이글이글"))
+    check("을/를 도 받침으로 (지진을 · 파도타기를)",
+          search.has_batchim("지진") and not search.has_batchim("파도타기"))
+
+    # -- 시키는 말 — 기술 · 교체 · 메가가 다 다르게 들려야 한다
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    mence, hippo, ttar = P("보만다"), P("하마돈"), P("더시마사리")
+    party = battle.Party(dex, [mence, hippo, ttar])
+    quake = dex.find_move("지진")
+    check("기술은 '쓰세요'", search.order_name(dex, party, ("기술", quake)) == "「지진」을 쓰세요",
+          search.order_name(dex, party, ("기술", quake)))
+    check("교체는 '교체하세요' (조사까지)",
+          search.order_name(dex, party, ("교체", 1)) == "「하마돈」으로 교체하세요",
+          search.order_name(dex, party, ("교체", 1)))
+    check("메가는 '메가진화하고 ~ 쓰세요'",
+          search.order_name(dex, party, ("메가", quake)) == "메가진화하고 「지진」을 쓰세요",
+          search.order_name(dex, party, ("메가", quake)))
+    check("표에 적는 이름도 조사가 맞는다 (하마돈으로 교체)",
+          search.action_name(dex, party, ("교체", 1)) == "하마돈으로 교체",
+          search.action_name(dex, party, ("교체", 1)))
+
+    # -- 상대가 무엇을 할 것 같은가
+    check("상대 예측이 없으면 아무 줄도 안 띄운다", live.opp_guess_lines([]) == [])
+    lines = live.opp_guess_lines([("대검돌격", 0.76), ("얼음뭉치", 0.11)], "드닐레이브", 0.53)
+    check("제일 아픈 수를 비율과 함께 말한다",
+          "「대검돌격」 76%" in lines[0] and "드닐레이브" in lines[0], lines)
+    check("상대 메가진화도 따로 말한다 (53%)",
+          any("메가진화" in ln and "53%" in ln for ln in lines), lines)
+    # ★ **안 센 것을 안 셌다고 말해야 한다.** 이 줄이 없으면 사용자는 '상대 교체까지
+    #   따져 봤구나' 로 읽는다 — 조용히 틀리는 자리다.
+    check("이번 턴 상대 교체는 안 센다고 밝힌다",
+          any("교체하는 경우는 안 셉니다" in ln for ln in lines), lines)
+    check("메가가 드물면(5%) 메가 줄은 안 띄운다",
+          not any("메가진화" in ln for ln in
+                  live.opp_guess_lines([("지진", 0.9)], "하마돈", 0.05)))
+
+    # -- 진짜로 돌려 본다 — 7단계가 그 둘을 실제로 내놓는가
+    got = search.best_action(dex, [mence, hippo, ttar],
+                             [dex.find_pokemon("드닐레이브"), dex.find_pokemon("짜랑고우거")],
+                             seconds=1.5)
+    check("후보마다 시키는 말이 붙는다", all(r.get("order") for r in got["rows"]),
+          [r.get("order") for r in got["rows"][:3]])
+    check("1등의 시키는 말에 그 수의 이름이 들어 있다",
+          got["rows"][0]["name"].split()[0][:3] in got["rows"][0]["order"],
+          (got["rows"][0]["name"], got["rows"][0]["order"]))
+    share = sum(s for _n, s in got["opp_guess"])
+    check("상대 예측 비율이 1을 안 넘는다 (%.2f)" % share, 0.0 < share <= 1.0001, got["opp_guess"])
+    check("메가 비율은 0~1 (%.2f)" % got["opp_mega"], 0.0 <= got["opp_mega"] <= 1.0)
+    # 메가스톤이 없는 상대만 넣으면 메가 비율은 0 이어야 한다
+    flat = search.best_action(dex, [mence, hippo], [dex.find_pokemon("하마돈")], seconds=1.0)
+    check("메가가 될 수 없는 상대면 메가 비율 0", flat["opp_mega"] == 0.0, flat["opp_mega"])
+
+
 def test_mid_state(dex):
     """[58] 실전 중간 상태 — 상태이상 · 랭크 · 날씨·필드 · 압정을 계산에 넣는다 (2026-09-23).
 
@@ -5883,6 +5958,7 @@ def main():
     test_screenread(dex)
     test_read_speed(dex)
     test_watch(dex)
+    test_advice(dex)
     test_mid_state(dex)
 
     print("\n" + "=" * 50)

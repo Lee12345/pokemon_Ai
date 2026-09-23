@@ -82,6 +82,8 @@ GROW = 2.0
 CUT = 0.5
 # 마지막 수단으로 몇 턴에서 끊나
 SHALLOW_TURNS = 6
+# 상대가 메가진화를 골랐나를 세는 자리 (기술 이름과 안 섞이게 별표를 붙인다)
+MEGA_KEY = "*메가"
 
 
 def candidate_actions(dex, party, my_moves=None):
@@ -210,7 +212,8 @@ def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None):
 
 
 def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
-            opp_build=None, turns=None, my_moves=None, state=None, sink=None):
+            opp_build=None, turns=None, my_moves=None, state=None, sink=None,
+            guess=None):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
@@ -238,6 +241,18 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     # (정한 규칙이지 잰 것이 아니다. `Policy._wrap_mega` 와 같은 규칙).
     if opp_builds[oi].poke.get("isMega"):
         opp_plan = [("메가", opp_plan[0])]
+    # 이 판에서 **상대가 이번 턴에 무엇을 골랐나** 를 센다 (guess 를 주면).
+    # 판마다 상대 세트를 다시 뽑으므로, 이 비율이 곧 '상대 세트를 모른다' 는 폭이다.
+    # ★ 이것은 **내 계산이 상대의 제일 센 수로 본 것**이지 상대의 버릇을 잰 것이 아니다.
+    #   그리고 이번 턴의 상대 교체는 여기 안 들어간다 — 상대의 계획이 첫 턴을 덮는다.
+    if guess is not None:
+        first = opp_plan[0]
+        if isinstance(first, tuple):        # ("메가", 기술)
+            # 메가는 **따로** 센다. 「메가진화+대검돌격 39%」 와 「대검돌격 37%」 로 갈라
+            # 적으면, 같은 기술을 76% 로 노린다는 사실이 안 보인다.
+            guess[MEGA_KEY] = guess.get(MEGA_KEY, 0) + 1
+            first = first[1]
+        guess[first["name"]] = guess.get(first["name"], 0) + 1
     opp = opp_builds if len(opp_builds) > 1 else opp_builds[0]
 
     if turns is None:
@@ -338,6 +353,8 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
 
     rows = [{"action": a, "sum": 0.0, "n": 0, "dropped": False}
             for a in actions]
+    # 상대가 이번 턴에 무엇을 고르나 (판마다 상대 세트를 다시 뽑으므로 갈린다)
+    guess = {}
     live = list(rows)
     batch = MIN_ROLLOUTS
     out_of_time = False
@@ -346,7 +363,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     # 돌린 후보의 0점은 '나쁘다' 가 아니라 '모른다' 인데, 구별이 안 된다.
     for row in rows:
         row["sum"] += rollout(dex, builds, opp_pokes, row["action"], rng,
-                              evidence, opp_build, turns, moves, state, sink=warned)
+                              evidence, opp_build, turns, moves, state, sink=warned, guess=guess)
         row["n"] += 1
     while live and not out_of_time:
         for row in live:
@@ -356,7 +373,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                     break
                 row["sum"] += rollout(dex, builds, opp_pokes, row["action"],
                                       rng, evidence, opp_build, turns,
-                                      moves, state, sink=warned)
+                                      moves, state, sink=warned, guess=guess)
                 row["n"] += 1
             if out_of_time:
                 break
@@ -372,7 +389,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                         break
                     row["sum"] += rollout(dex, builds, opp_pokes,
                                           row["action"], rng, evidence,
-                                          opp_build, turns, moves, state, sink=warned)
+                                          opp_build, turns, moves, state, sink=warned, guess=guess)
                     row["n"] += 1
             break
         live.sort(key=lambda r: -(r["sum"] / max(1, r["n"])))
@@ -385,26 +402,88 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     for row in rows:
         row["score"] = row["sum"] / row["n"] if row["n"] else 0.0
         row["name"] = action_name(dex, party, row["action"])
+        row["order"] = order_name(dex, party, row["action"])
     rows.sort(key=lambda r: (-r["score"], r["dropped"]))
     thin = [r["name"] for r in rows if r["n"] < MIN_ROLLOUTS]
+    guess_rows, guess_mega = _guess_rows(guess)
     return {"rows": rows, "spent": time.time() - t0,
             "rollouts": sum(r["n"] for r in rows),
             "shallow": shallow, "guessed": guessed,
             "perRollout": per,
             # 예산이 모자라 제대로 못 잰 후보들. 보고서가 이걸 말해야 한다.
             "thin": thin,
+            # **상대가 이번 턴에 무엇을 고를 것 같나** — [(이름, 비율)], 많은 것부터.
+            # 판마다 상대 세트를 다시 뽑으므로 이 비율이 곧 '상대를 모르는 폭' 이다.
+            "opp_guess": guess_rows,
+            # 그 중 상대가 **메가진화까지** 한 비율
+            "opp_mega": guess_mega,
             # 대전이 띄운 경고 (미확인 값 · 안 붙은 도구 · 안 들어간 특성 …).
             # **승률 옆에 같이 보여야 한다** — 이 숫자를 얼마나 믿을지가 여기 있다.
             "warnings": sorted(warned)}
 
 
+def _guess_rows(guess):
+    """{기술: 횟수} -> ([(기술, 비율)] 많은 것부터 셋, 메가 비율)."""
+    counts = {k: v for k, v in guess.items() if k != MEGA_KEY}
+    total = sum(counts.values())
+    if not total:
+        return [], 0.0
+    rows = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return ([(n, c / float(total)) for n, c in rows[:3]],
+            guess.get(MEGA_KEY, 0) / float(total))
+
+
+def has_batchim(word):
+    """마지막 글자에 받침이 있나. 한글이 아니면 있는 것으로 본다 (조사가 덜 어색하다)."""
+    for ch in reversed(word or ""):
+        if ch.isspace():
+            continue
+        code = ord(ch)
+        if 0xAC00 <= code <= 0xD7A3:
+            return (code - 0xAC00) % 28 != 0
+        return True
+    return True
+
+
+def ro(word):
+    """'로' 인가 '으로' 인가. **ㄹ 받침은 '로' 다** — 「따라큐로」 · 「이글이글로」."""
+    for ch in reversed(word or ""):
+        if ch.isspace():
+            continue
+        code = ord(ch)
+        if 0xAC00 <= code <= 0xD7A3:
+            jong = (code - 0xAC00) % 28
+            return "로" if jong in (0, 8) else "으로"
+        return "으로"
+    return "으로"
+
+
 def action_name(dex, party, action):
     kind, what = action
     if kind == "교체":
-        return "%s 로 교체" % party.members[what].name
+        nm = party.members[what].name
+        return "%s%s 교체" % (nm, ro(nm))
     if kind == "메가":
         return "메가진화 + %s" % what["name"]
     return what["name"]
+
+
+def order_name(dex, party, action):
+    """수 하나를 **시키는 말**로 바꾼다 — 창의 작은 칸에 그대로 띄운다.
+
+    ★ 사용자가 짚었다 (2026-09-23): *"명확하게 뭘 해야한다 라고 말해주지않아.
+      교체를 해야할지 상대 교체를 예측해야할지 기타등등.."* 「지진」 이라고만 띄우면
+      그게 **쓰라는 건지 조심하라는 건지** 알 수가 없다. 한 줄로 시켜야 한다.
+    """
+    kind, what = action
+    if kind == "교체":
+        nm = party.members[what].name
+        return "「%s」%s 교체하세요" % (nm, ro(nm))
+    if kind == "메가":
+        return "메가진화하고 「%s」%s 쓰세요" % (what["name"],
+                                         "을" if has_batchim(what["name"]) else "를")
+    nm = what["name"]
+    return "「%s」%s 쓰세요" % (nm, "을" if has_batchim(nm) else "를")
 
 
 # ---------------------------------------------------------------------------
@@ -468,6 +547,14 @@ def report(dex, my_party, opp_pokes, got, evidence=None, state=None):
     L.append("  => %s  (승률 %.1f%% ±%.1f%%p, %d판)"
              % (top["name"], top["score"] * 100, _err(top["n"]) * 100,
                 top["n"]))
+    if top.get("order"):
+        L.append("  ▶ %s" % top["order"])
+    # 상대가 이번 턴에 무엇을 할 것 같나 — 창과 같은 말을 쓴다 (live.opp_guess_lines)
+    if got.get("opp_guess"):
+        import live
+        for ln in live.opp_guess_lines(got["opp_guess"], foes[oi]["name"],
+                                       got.get("opp_mega") or 0.0):
+            L.append("  " + ln)
     rest = [r for r in got["rows"] if r is not top]
     close = [r for r in rest
              if r["score"] + _err(r["n"]) >= top["score"] - _err(top["n"])]

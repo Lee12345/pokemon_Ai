@@ -728,6 +728,7 @@ class App(object):
         self.follow_said = None     # 같은 알림을 되풀이하지 않으려고
         self.overlay = self.overlay_text = None   # 추천만 띄우는 작은 창
         self.overlay_state = None                 # 그 창 맨 위 「지금 무엇을 하는 중」 줄
+        self.overlay_order = None                 # 그 아래 큰 글씨 — 「무엇을 하라」
         self.last_short = None                    # 거기 띄울 몇 줄
         # ★ 창을 꺼도 **마지막 상태는 들고 있는다** — 작은 창을 나중에 켜면 그때 것을 띄운다.
         #   (그리고 작은 창이 없어도 검사가 상태를 볼 수 있다.)
@@ -1260,8 +1261,9 @@ class App(object):
         self.busy = True
         self.go.config(text="생각하는 중...", state="disabled")
         # 이름 뒤에 조사를 붙이지 않는다 — 「다크펫 를」 처럼 틀어진다 (받침이 있고 없고)
+        self.last_opp_name = opp_pokes[oi]["name"]
         self.set_state("생각하는 중… 상대 %s / %.0f초"
-                       % (opp_pokes[oi]["name"], secs), BAR)
+                       % (self.last_opp_name, secs), BAR)
         # 화면에 찍는 것도 **넘긴 값 그대로** 쓴다. 따로 다시 세면
         # 화면과 계산이 갈라진다 — 이 저장소가 늘 고장 나는 방식이다.
         said = ", ".join("%s %.0f%%" % (p["name"], hp)
@@ -1415,7 +1417,7 @@ class App(object):
     # *"인식했으면 인식했다고, 생각중이면 생각중이라고 띄워줘. ai가 인식을 한건지
     # 어떻게한건지 모르겠어."* 답만 떠 있으면 그 답이 **방금 읽은 판의 답인지 아까
     # 것인지** 알 수가 없다.
-    OVERLAY_SIZE = (460, 250)
+    OVERLAY_SIZE = (520, 340)
 
     def apply_on_top(self):
         """작은 창을 켜고 끈다. 가짜 tkinter 에는 Toplevel·attributes 가 없을 수 있으니 조용히 넘어간다."""
@@ -1426,7 +1428,8 @@ class App(object):
                     self.overlay.destroy()
                 except Exception:
                     pass
-                self.overlay = self.overlay_text = self.overlay_state = None
+                self.overlay = self.overlay_text = None
+                self.overlay_state = self.overlay_order = None
             return False
         if self.overlay is not None:
             return True
@@ -1446,14 +1449,21 @@ class App(object):
             head = tk.Label(top, text="", bg=CARD, fg=DIM, anchor="w",
                             padx=10, pady=5, font=("Malgun Gothic", 11, "bold"))
             head.pack(fill="x")
-            body = tk.Text(top, bg=BG, fg=TEXT, relief="flat", padx=10, pady=8,
-                           wrap="word", font=("Malgun Gothic", 13, "bold"))
+            # ★ **시키는 말은 크게, 따로.** 일곱 줄을 한 덩어리로 넣었더니 「무엇을 하라」
+            #   가 점수·경고에 묻히고 마지막 줄이 잘렸다 (사진으로 봤다, 2026-09-23).
+            order = tk.Label(top, text="", bg=BG, fg=BAR, anchor="w", justify="left",
+                             padx=10, pady=(6), wraplength=w - 26,
+                             font=("Malgun Gothic", 15, "bold"))
+            order.pack(fill="x")
+            body = tk.Text(top, bg=BG, fg=TEXT, relief="flat", padx=10, pady=4,
+                           wrap="word", font=("Malgun Gothic", 11))
             body.pack(fill="both", expand=True)
             top.protocol("WM_DELETE_WINDOW", lambda: (self.on_top.set(0), self.apply_on_top()))
         except Exception:
             self.on_top.set(0)
             return False
         self.overlay, self.overlay_text, self.overlay_state = top, body, head
+        self.overlay_order = order
         self.set_state(*self.state_now)
         self.show_overlay(self.last_short or "판이 바뀌면 여기에 둘 수를 띄웁니다.")
         return True
@@ -1481,6 +1491,18 @@ class App(object):
             return ("! 계산이 터졌습니다 — 큰 창을 보세요", WARN)
         return ("✓ %s (%s)" % (ok_word, time.strftime("%H:%M:%S")), GOOD)
 
+    def log_answer(self):
+        """따라가는 중이면 **창이 내놓은 답을 기록에도** 남긴다.
+
+        기록에 읽은 것만 있으면, 판이 끝난 뒤 "제대로 안 알려 줬다" 를 확인할 수가 없다.
+        """
+        if self.watcher is None or not self.last_short:
+            return
+        try:
+            self.watcher.note("답 » " + " | ".join(self.last_short.splitlines()))
+        except Exception:
+            pass
+
     def cant(self, text, clear):
         """물어볼 수 없을 때 — 큰 창에 까닭을 적고 **작은 창에도 그 까닭을** 띄운다.
 
@@ -1489,14 +1511,28 @@ class App(object):
         """
         self.say(text, clear=clear)
         self.set_state("! " + text.splitlines()[0][:40], WARN)
+        if self.watcher is not None:
+            try:
+                self.watcher.note("답 » (못 물었습니다) " + text.splitlines()[0])
+            except Exception:
+                pass
 
     def show_overlay(self, text):
-        """작은 창에 글을 띄운다. 꺼져 있으면 아무것도 안 한다."""
+        """작은 창에 글을 띄운다. 꺼져 있으면 아무것도 안 한다.
+
+        **첫 줄이 「▶ …」 이면 그것만 큰 글씨 칸으로 올린다** — 시키는 말과 곁가지를
+        같은 크기로 늘어놓으면 무엇을 하라는 것인지 한눈에 안 들어온다.
+        """
         if self.overlay_text is None:
             return False
+        lines = (text or "").splitlines()
+        order = lines[0].strip() if lines and lines[0].lstrip().startswith("▶") else ""
+        rest = lines[1:] if order else lines
         try:
+            if self.overlay_order is not None:
+                self.overlay_order.config(text=order or "아직 답이 없습니다")
             self.overlay_text.delete("1.0", "end")
-            self.overlay_text.insert("end", text)
+            self.overlay_text.insert("end", "\n".join(rest))
         except Exception:
             return False
         return True
@@ -1504,13 +1540,18 @@ class App(object):
     @staticmethod
     def short_advice(text):
         """긴 보고에서 **답과 경고만** 뽑는다 — 작은 창에 넣을 몇 줄."""
-        # 한 턴의 답은 「=> 지진 …」, 선출의 답은 「▶ 선봉 …」 · 「벤치 …」 로 나온다.
-        # 경고(「!」)도 같이 띄운다 — 답만 보고 믿으면 안 되는 자리가 있다.
-        want = [ln.strip() for ln in (text or "").splitlines()
-                if ln.lstrip().startswith(("=>", "!", "▶", "벤치"))]
-        if not want:
-            want = [ln for ln in (text or "").splitlines() if ln.strip()][:4]
-        return "\n".join(want[:6])
+        # 한 턴의 답은 「▶ 「지진」 을 쓰세요」, 선출의 답은 「▶ 선봉 …」 · 「벤치 …」 다.
+        # 「· …」 는 점수·차이, 「◆ …」 는 상대가 할 것 같은 수, 「!」 는 경고다.
+        # 경고도 같이 띄운다 — 답만 보고 믿으면 안 되는 자리가 있다.
+        lines = [ln.strip() for ln in (text or "").splitlines()
+                 if ln.lstrip().startswith(("=>", "!", "▶", "벤치", "·", "◆"))]
+        # ★ **시키는 말이 있으면 「=> 지진」 줄은 뺀다** — 같은 말을 두 번 띄우면
+        #   작은 창에서 진짜 지시가 묻힌다.
+        if any(ln.startswith("▶") for ln in lines):
+            lines = [ln for ln in lines if not ln.startswith("=>")]
+        if not lines:
+            lines = [ln for ln in (text or "").splitlines() if ln.strip()][:4]
+        return "\n".join(lines[:7])
 
     def toggle_follow(self):
         if self.following:
@@ -1679,6 +1720,7 @@ class App(object):
         self.last_short = self.short_advice(text)
         self.set_state(*self._done_state(text, "선출 답이 나왔습니다"))
         self.show_overlay(self.last_short)
+        self.log_answer()
         self.say(text)
         self.busy = False
         self.go_pick.config(text="선출 — 어떤 3마리?", state="normal")
@@ -1687,6 +1729,7 @@ class App(object):
         self.last_short = self.short_advice(text)
         self.set_state(*self._done_state(text, "답이 나왔습니다"))
         self.show_overlay(self.last_short)
+        self.log_answer()
         self.say(text)
         self.busy = False
         self.go.config(text="무엇을 둘까?", state="normal")
@@ -1706,6 +1749,20 @@ class App(object):
         L.append("=> %s   (%.1f점 ±%.1f, %d판)"
                  % (top["name"], top["score"] * 100,
                     search._err(top["n"]) * 100, top["n"]))
+        # ★ **시키는 말로 한 줄.** 「지진」 이라고만 띄우면 그게 쓰라는 건지 조심하라는
+        #   건지 알 수가 없다 — 사용자가 짚었다 (2026-09-23).
+        L.append("▶ %s" % top.get("order", top["name"]))
+        second = next((r for r in rows if r is not top), None)
+        if second is not None:
+            L.append("· %.1f점 — 다음 수 「%s」 %.1f점 (%.1f점 차이)"
+                     % (top["score"] * 100, second["name"],
+                        second["score"] * 100,
+                        (top["score"] - second["score"]) * 100))
+        # **상대는 이번 턴에 무엇을 할까** — 내 수를 정하려면 이걸 같이 봐야 한다.
+        for line in live.opp_guess_lines(got.get("opp_guess"),
+                                         getattr(self, "last_opp_name", None),
+                                         got.get("opp_mega") or 0.0):
+            L.append(line)
         close = [r for r in rows if r is not top
                  and r["score"] + search._err(r["n"])
                  >= top["score"] - search._err(top["n"])]
@@ -2308,11 +2365,18 @@ def check():
     # ★ 추천 작은 창 — 게임을 가리지 않고 **답만** 구석에 띄운다 (2026-09-23).
     #   처음엔 이 창을 통째로 「항상 위에」 로 올렸는데 게임 화면을 덮어서 더 나빠졌다.
     turn_text = ("\n%-18s %6s\n----\n지진  78.0\n=> 지진   (78.0점 ±1.2, 900판)\n"
+                 "▶ 「지진」을 쓰세요\n"
+                 "· 78.0점 — 다음 수 「하품」 66.0점 (12.0점 차이)\n"
+                 "◆ 상대 하마돈 쪽 제일 아픈 수: 「지진」 76%%\n"
                  "! 겹치는 수: 하품 — 확실하지 않습니다\n" % ("수", "점수"))
     pick_text = "  [선출]  이 3마리를 이 순서로 내세요\n\n    ▶ 선봉   하마돈\n      벤치   마폭시 · 고릴타\n"
-    short = app.short_advice(turn_text)
-    if "=> 지진" not in short or "겹치는 수" not in short or "78.0\n" in short:
-        bad.append("작은 창에 넣을 몇 줄이 답·경고만 뽑지 않음 (%r)" % short)
+    turn_short = short = app.short_advice(turn_text)
+    # ★ **시키는 말이 맨 위, 「=>」 줄은 뺀다** — 같은 말을 두 번 띄우면 진짜 지시가 묻힌다.
+    if (not short.startswith("▶ 「지진」을 쓰세요") or "=>" in short
+            or "겹치는 수" not in short or "지진  78.0" in short):
+        bad.append("작은 창에 넣을 몇 줄이 시키는 말·경고만 뽑지 않음 (%r)" % short)
+    if "◆ 상대 하마돈" not in short:
+        bad.append("상대가 무엇을 할 것 같은지가 작은 창에 안 감 (%r)" % short)
     short = app.short_advice(pick_text)
     # ! 처음엔 "선봉 이 들어갔나" 만 봤는데, 못 뽑았을 때 쓰는 되돌림(앞 네 줄)에 그 줄이
     #   섞여 들어와 **일부러 고장 내도 안 잡혔다.** 그래서 「[선출]」 머리글이 없는 것까지 본다.
@@ -2330,6 +2394,15 @@ def check():
         app.set_state("생각하는 중… 시험", BAR)
         if app.overlay_state.cget("text") != "생각하는 중… 시험":
             bad.append("작은 창 맨 줄이 안 바뀜")
+        # ★ 시키는 말은 **큰 글씨 칸으로** 올라가고 본문에는 안 남는다 — 한 덩어리로
+        #   넣었더니 무엇을 하라는 것인지 묻히고 마지막 줄이 잘렸다 (사진으로 봤다).
+        app.show_overlay(turn_short)
+        if app.overlay_order.cget("text") != "▶ 「지진」을 쓰세요":
+            bad.append("시키는 말이 큰 글씨 칸에 안 올라감 (%r)"
+                       % app.overlay_order.cget("text"))
+        body = app.overlay_text.get("1.0", "end")
+        if "쓰세요" in body or "겹치는 수" not in body:
+            bad.append("작은 창 본문이 시키는 말을 두 번 띄우거나 나머지를 빠뜨림 (%r)" % body)
         app.on_top.set(0)
         app.apply_on_top()
         if app.overlay is not None:
