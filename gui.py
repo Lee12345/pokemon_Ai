@@ -726,6 +726,8 @@ class App(object):
         self.busy = False
         self.watcher = None         # 따라가기 (watch.Watcher) — 처음 켤 때 만든다
         self.follow_said = None     # 같은 알림을 되풀이하지 않으려고
+        self.overlay = self.overlay_text = None   # 추천만 띄우는 작은 창
+        self.last_short = None                    # 거기 띄울 몇 줄
         self.slots = []
         self.opp_slots = []
         # 상대 이름 -> 본 기술 목록. **상대마다 따로 쌓는다** —
@@ -1015,10 +1017,11 @@ class App(object):
                                    bg=LINE, fg=TEXT, relief="flat", font=FONT_B)
         self.go_follow.pack(side="left", padx=(6, 0))
         # ★ **창 프로젝터를 전체화면으로 두면 이 창이 뒤에 깔려 왔다갔다해야 한다**
-        #   (사용자, 2026-09-23). 이 창을 늘 위에 띄우면 프로젝터 위에 겹쳐 놓고 볼 수 있다.
-        #   찍는 쪽은 가려져도 되므로(PrintWindow) 프로젝터를 덮어도 읽기에 지장이 없다.
+        #   (사용자, 2026-09-23). 처음엔 이 창을 통째로 위에 올렸는데 **게임 화면을 가려서
+        #   더 나빠졌다** (사용자: "문제가 해결되기는커녕 오히려 악화되었어").
+        #   → **추천만 담은 작은 창**을 위에 띄운다. 게임은 그대로 보이고 답만 구석에 뜬다.
         self.on_top = tk.IntVar(value=0)
-        tk.Checkbutton(rs, text="항상 위에", variable=self.on_top, command=self.apply_on_top,
+        tk.Checkbutton(rs, text="추천 작은 창", variable=self.on_top, command=self.apply_on_top,
                        bg=CARD, fg=TEXT, selectcolor=FIELD, activebackground=CARD,
                        activeforeground=TEXT, font=FONT_S).pack(side="left", padx=(6, 0))
         tk.Label(rs, text="사진: 선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 순서대로) /"
@@ -1397,14 +1400,70 @@ class App(object):
     # ★ 읽은 것은 **언제나 먼저 보여 준다** — 잘못 읽으면 조용히 틀리기 때문이다.
     FOLLOW_REST = 0.2       # 한 바퀴 돌고 쉬는 시간 (읽는 데 0.5초쯤 걸린다)
 
+    # -- 추천 작은 창 -----------------------------------------------------
+    #
+    # 게임 화면(OBS 창 프로젝터)을 전체화면으로 두면 이 창이 뒤에 깔린다. 그렇다고 이 창을
+    # 통째로 위에 올리면 **게임이 안 보인다.** 그래서 **추천만 담은 작은 창**을 구석에 띄운다.
+    OVERLAY_SIZE = (460, 210)
+
     def apply_on_top(self):
-        """창을 늘 위에 띄울지. 가짜 tkinter 에는 attributes 가 없을 수 있으니 조용히 넘어간다."""
+        """작은 창을 켜고 끈다. 가짜 tkinter 에는 Toplevel·attributes 가 없을 수 있으니 조용히 넘어간다."""
         want = bool(self.on_top.get())
+        if not want:
+            if self.overlay is not None:
+                try:
+                    self.overlay.destroy()
+                except Exception:
+                    pass
+                self.overlay = self.overlay_text = None
+            return False
+        if self.overlay is not None:
+            return True
+        tk = self.tk
         try:
-            self.root.attributes("-topmost", want)
+            top = tk.Toplevel(self.root)
+            top.title("지금 둘 수")
+            top.configure(bg=BG)
+            top.attributes("-topmost", True)
+            w, h = self.OVERLAY_SIZE
+            # 오른쪽 위 구석에 — 게임 화면에서 문구 칸(왼쪽 아래)과 제일 안 겹치는 자리다
+            try:
+                sw = self.root.winfo_screenwidth()
+            except Exception:
+                sw = 1920
+            top.geometry("%dx%d+%d+%d" % (w, h, max(0, sw - w - 40), 40))
+            body = tk.Text(top, bg=BG, fg=TEXT, relief="flat", padx=10, pady=8,
+                           wrap="word", font=("Malgun Gothic", 13, "bold"))
+            body.pack(fill="both", expand=True)
+            top.protocol("WM_DELETE_WINDOW", lambda: (self.on_top.set(0), self.apply_on_top()))
+        except Exception:
+            self.on_top.set(0)
+            return False
+        self.overlay, self.overlay_text = top, body
+        self.show_overlay(self.last_short or "판이 바뀌면 여기에 둘 수를 띄웁니다.")
+        return True
+
+    def show_overlay(self, text):
+        """작은 창에 글을 띄운다. 꺼져 있으면 아무것도 안 한다."""
+        if self.overlay_text is None:
+            return False
+        try:
+            self.overlay_text.delete("1.0", "end")
+            self.overlay_text.insert("end", text)
         except Exception:
             return False
-        return want
+        return True
+
+    @staticmethod
+    def short_advice(text):
+        """긴 보고에서 **답과 경고만** 뽑는다 — 작은 창에 넣을 몇 줄."""
+        # 한 턴의 답은 「=> 지진 …」, 선출의 답은 「▶ 선봉 …」 · 「벤치 …」 로 나온다.
+        # 경고(「!」)도 같이 띄운다 — 답만 보고 믿으면 안 되는 자리가 있다.
+        want = [ln.strip() for ln in (text or "").splitlines()
+                if ln.lstrip().startswith(("=>", "!", "▶", "벤치"))]
+        if not want:
+            want = [ln for ln in (text or "").splitlines() if ln.strip()][:4]
+        return "\n".join(want[:6])
 
     def toggle_follow(self):
         if self.following:
@@ -1552,11 +1611,15 @@ class App(object):
             self.root.after(0, lambda: self._show_pick(text))
 
     def _show_pick(self, text):
+        self.last_short = self.short_advice(text)
+        self.show_overlay(self.last_short)
         self.say(text)
         self.busy = False
         self.go_pick.config(text="선출 — 어떤 3마리?", state="normal")
 
     def _show(self, text):
+        self.last_short = self.short_advice(text)
+        self.show_overlay(self.last_short)
         self.say(text)
         self.busy = False
         self.go.config(text="무엇을 둘까?", state="normal")
@@ -2160,6 +2223,30 @@ def check():
         os.remove(black)
     except OSError:
         pass
+
+    # ★ 추천 작은 창 — 게임을 가리지 않고 **답만** 구석에 띄운다 (2026-09-23).
+    #   처음엔 이 창을 통째로 「항상 위에」 로 올렸는데 게임 화면을 덮어서 더 나빠졌다.
+    turn_text = ("\n%-18s %6s\n----\n지진  78.0\n=> 지진   (78.0점 ±1.2, 900판)\n"
+                 "! 겹치는 수: 하품 — 확실하지 않습니다\n" % ("수", "점수"))
+    pick_text = "  [선출]  이 3마리를 이 순서로 내세요\n\n    ▶ 선봉   하마돈\n      벤치   마폭시 · 고릴타\n"
+    short = app.short_advice(turn_text)
+    if "=> 지진" not in short or "겹치는 수" not in short or "78.0\n" in short:
+        bad.append("작은 창에 넣을 몇 줄이 답·경고만 뽑지 않음 (%r)" % short)
+    short = app.short_advice(pick_text)
+    # ! 처음엔 "선봉 이 들어갔나" 만 봤는데, 못 뽑았을 때 쓰는 되돌림(앞 네 줄)에 그 줄이
+    #   섞여 들어와 **일부러 고장 내도 안 잡혔다.** 그래서 「[선출]」 머리글이 없는 것까지 본다.
+    if short.splitlines() != ["▶ 선봉   하마돈", "벤치   마폭시 · 고릴타"]:
+        bad.append("선출 답(선봉·벤치)만 뽑아야 하는데 다름 (%r)" % short)
+    app.on_top.set(1)
+    made = app.apply_on_top()
+    if made:
+        app.show_overlay("시험")
+        if app.overlay is None or app.overlay_text is None:
+            bad.append("추천 작은 창이 안 만들어짐")
+        app.on_top.set(0)
+        app.apply_on_top()
+        if app.overlay is not None:
+            bad.append("추천 작은 창이 안 닫힘")
 
     # 빠르게 읽는 장치(파워셸 일꾼)가 안 돌면 **창에 그렇게 적히는가** (2026-09-23).
     # 조용히 느려지기만 하면 왜 느린지 알 길이 없다.
