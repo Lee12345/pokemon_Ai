@@ -6318,6 +6318,115 @@ def test_ledger(dex):
     check("장부를 안 달아도 예전처럼 돈다", bd3.opp[0]["hp"] == 55.0, bd3.opp[0]["hp"])
 
 
+def test_checklist(dex):
+    """[65] 확정 체크리스트 — **빈칸과 '없음' 은 다르다** (2026-09-24).
+
+    사용자가 방향을 잡아 줬다 — *"데이터의 무결성에 집중하라는게 아니라, 현재까지 확인된
+    데이터를 정확하게 유지하고 **정보를 구축**하는게 더 중요하다. … 체크리스트를 만들어서
+    그 체크리스트가 픽스되어야 다음으로 넘어가게끔"*, 그리고 실전에서 본 것 —
+    *"이미 상대가 맹독에 걸려있는것도 확인 못하고 계속 맹독만 걸어대는"*.
+
+    ★ **대전 엔진은 멀쩡했다.** `Battle._inflict` 은 이미 걸린 놈에게 또 걸면 실패로 친다.
+      틀린 것은 **판에 맹독이 안 적혀 있던 것**뿐이었다. 빈칸이 '없음' 으로 읽히면
+      답이 조용히 뒤집힌다 — 그래서 빈칸을 **빈칸이라고** 들고 있어야 한다.
+    """
+    import ledger
+    import live
+    import screenread
+    import search
+    print("\n[65] 확정 체크리스트 — 빈칸과 '없음' 은 다르다")
+
+    # -- ① 맹독을 겹쳐 걸던 자리를 숫자로 붙잡아 둔다 ------------------------
+    ttar = calc.popular_build(dex, dex.find_pokemon("더시마사리"))[0]
+    moves = ["엉겨붙기", "흑안개", "맹독", "HP회복"]
+    base = {"my_hp": [100.0], "my_active": 0, "opp_hp": [100.0], "opp_active": 0,
+            "my_fresh": False, "opp_fresh": False, "my_status": [None]}
+    opp = [dex.find_pokemon("한카리아스")]
+    # 먼저 **기계적으로 확실한 것** — 대전 엔진은 겹쳐 걸지 않는다 (씨앗과 무관하다).
+    import random as _r
+    garch = calc.popular_build(dex, dex.find_pokemon("한카리아스"))[0]
+    toxic = dex.find_move("맹독")
+    fresh = battle.Battle(dex, ttar, garch, rng=_r.Random(1), log=True,
+                          my_fresh=False, opp_fresh=False)
+    fresh.step(toxic, dex.find_move("지진"))
+    already = battle.Battle(dex, ttar, garch, rng=_r.Random(1), log=True,
+                            my_fresh=False, opp_fresh=False, opp_status=["맹독"])
+    already.step(toxic, dex.find_move("지진"))
+    check("맹독을 안 걸린 상대에게 쓰면 걸린다", fresh.opp.status == "맹독", fresh.opp.status)
+    # ! 맹독 횟수(toxic_n)로 보면 안 된다 — **턴이 지나기만 해도 올라간다.** 처음에 그걸로
+    #   봤다가, 실패했는데도 1 -> 2 가 되어 검사가 틀리게 실패했다.
+    check("이미 맹독인 상대에게 또 쓰면 **실패한다** (엔진은 멀쩡했다)",
+          any("이미 맹독" in ln for ln in already.log),
+          [ln for ln in already.log][:4])
+
+    # 그 다음 **답 수준** — 칸이 비어 있으면 그 실패하는 수를 권한다.
+    #
+    # ★ **자리를 고르는 데서 한 번 틀렸다** (2026-09-24). 처음엔 한카리아스를 놓고 쟀는데
+    #   더시마사리가 거의 지는 대면이라 모든 수가 0~3점이었다. 거기서 나온 「맹독 2.9점
+    #   1등 → 0.0점 꼴찌」 를 사실처럼 보고했는데, 씨앗을 바꿔 보니 **오차 안이었다**
+    #   (빈칸 평균 1.95 / 적어 둠 1.74). 이길 수 있는 대면(갸라도스)에서 다시 재니
+    #   씨앗 셋 모두 갈렸다 — **빈칸이면 맹독 1등 3/3, 적어 두면 HP회복 1등 3/3.**
+    #   교훈: 점수 차가 오차보다 작은 자리에서 잰 것은 잰 것이 아니다.
+    gyara = [dex.find_pokemon("갸라도스")]
+    blank = search.best_action(dex, [ttar], gyara, my_moves=moves, seconds=3.0,
+                               state=dict(base, opp_status=[None]))
+    known = search.best_action(dex, [ttar], gyara, my_moves=moves, seconds=3.0,
+                               state=dict(base, opp_status=["맹독"]))
+    check("칸이 비어 있으면 맹독을 권한다 (그 판에서 본 고장)",
+          blank["rows"][0]["name"].startswith("맹독"),
+          [(r["name"], round(r["score"], 3)) for r in blank["rows"][:3]])
+    check("맹독이라고 적어 두면 **다른 수**를 권한다",
+          not known["rows"][0]["name"].startswith("맹독"),
+          [(r["name"], round(r["score"], 3)) for r in known["rows"][:3]])
+
+    # -- ② 체크리스트가 그 빈칸을 이름 대고 말하는가 -------------------------
+    row = lambda n, hp=100.0, br=False, st=None: {
+        "poke": dex.find_pokemon(n), "hp": hp, "brought": br, "status": st, "maxhp": None}
+    bd = screenread.Board([row("더시마사리", 100.0, True), row("하마돈")],
+                          [row("한카리아스", 62.0, True), row("블래키")])
+    bd.match = ledger.Match()
+    marks = live.checklist(bd, bd.match)
+    by = {r["key"]: r for r in marks}
+    check("상대 상태이상이 **아직 확인 안 됨**으로 뜬다 (칸은 '없음' 인데)",
+          not by["opp_status"]["ok"] and by["opp_status"]["value"] == "없음",
+          by["opp_status"])
+    check("그 줄이 왜 위험한지 말한다 (빈칸과 '없음' 은 다르다)",
+          "빈칸" in (by["opp_status"]["why"] or ""), by["opp_status"]["why"])
+    check("누가 나와 있나는 「반드시」 급이다", by["opp_active"]["level"] == live.MUST,
+          by["opp_active"]["level"])
+    check("상대 도구는 「알면 좋다」 급이다 (몰라도 답은 나온다)",
+          by["opp_item_0"]["level"] == live.NICE, by["opp_item_0"]["level"])
+
+    # 문구를 읽으면 그 줄이 잠긴다
+    bd.match.frame = 3
+    screenread.apply(bd, {"kind": "맹독퍼짐", "mon": "한카리아스", "side": "opp"}, dex)
+    by2 = {r["key"]: r for r in live.checklist(bd, bd.match)}
+    check("「몸에 맹독이 퍼졌다」 를 읽으면 그 줄이 ✓ 로 잠긴다",
+          by2["opp_status"]["ok"] and by2["opp_status"]["value"] == "맹독", by2["opp_status"])
+    check("어떻게 알았는지도 같이 적힌다", by2["opp_status"]["why"] == "문구",
+          by2["opp_status"]["why"])
+    before = len(live.open_items(marks))
+    after = len(live.open_items(live.checklist(bd, bd.match)))
+    check("정하면 빈칸이 줄어든다 (%d개 → %d개)" % (before, after), after == before - 1,
+          (before, after))
+
+    # -- ③ 창에 띄울 줄 ------------------------------------------------------
+    lines = live.checklist_lines(live.checklist(bd, bd.match))
+    check("몇 개를 정했는지 한 줄로 말한다", any("체크리스트" in ln and "정해짐" in ln
+                                                for ln in lines), lines)
+    check("안 정한 것을 **이름 대고** 말한다", any("확인 안 된 것" in ln for ln in lines), lines)
+    # 「반드시」 가 비면 그것부터 말한다
+    bd.opp_active_known = False
+    lines2 = live.checklist_lines(live.checklist(bd, bd.match))
+    check("「반드시」 가 비면 그 줄이 맨 위에 온다",
+          lines2[0].startswith("! 아직 안 정한 것") and "상대 나와 있는 놈" in lines2[0], lines2)
+    check("작은 창에도 그 줄이 간다 (「!」·「·」 로 시작한다)",
+          all(ln[0] in "!·" for ln in lines2), lines2)
+    # 장부가 없어도 돈다 (창을 안 쓰는 자리)
+    bare = screenread.Board([row("하마돈", 100.0, True)], [row("한카리아스", 50.0, True)])
+    check("장부 없이도 체크리스트가 만들어진다", len(live.checklist(bare)) > 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6386,6 +6495,7 @@ def main():
     test_mid_state(dex)
     test_hidden_bench(dex)
     test_ledger(dex)
+    test_checklist(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

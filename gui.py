@@ -907,6 +907,7 @@ class App(object):
         self.stale = False
         self.asked_sig = None       # 물어볼 때 누가 나와 있었나
         self.hidden_n = (0, 0)      # 판마다 새로 뽑아 붙인 상대 벤치 (몇, 몇 중에서)
+        self.marks = []             # 확정 체크리스트 (물어볼 때 본 갈래에서 만들어 둔다)
         # ★ **판 장부** — 판이 끝날 때까지 사는 하나의 물건 (`ledger.Match`).
         #   칸(tkinter 변수)에는 값만 들어가고 **어떻게 알았는지·모르는지**는 안 들어간다.
         #   그래서 장마다 새로 만드는 `Board` 말고, 이걸 따로 들고 간다 (사용자가 정함,
@@ -1330,6 +1331,11 @@ class App(object):
         self.my_fresh.set(False)
         self.opp_fresh.set(False)
 
+        # 체크리스트는 **본 갈래에서** 만들어 둔다 (딴 갈래에서 창의 칸을 읽으면 안 된다)
+        try:
+            self.marks = live.checklist(self.board(), self.match)
+        except Exception:
+            self.marks = []
         self.busy = True
         self.stale = False
         self.asked_sig = self.who_sig()
@@ -1661,6 +1667,14 @@ class App(object):
                         "밝혀짐 " if sl.brought.get() else "",
                         "[나와 있음] " if i == self.opp_active.get() else "",
                         ", ".join(self.seen.get(sl.poke["name"], []))))
+        try:
+            L.append("── 체크리스트 (정한 것 ✓ · 아직 빈칸 ·)")
+            for r in live.checklist(self.board(), self.match):
+                L.append("   %s [%s] %-20s %-14s %s"
+                         % ("✓" if r["ok"] else "·", r["level"], r["what"],
+                            r["value"], r["why"] or ""))
+        except Exception as e:
+            L.append("   (체크리스트를 못 만들었습니다: %s)" % e)
         L.extend(self.match.lines())
         L.append("생각 중: %s%s" % (self.busy,
                                   " (%.1f초째)" % (time.time() - self.asked_at)
@@ -2054,16 +2068,13 @@ class App(object):
         if guessed_opp:
             L.append("! 「냈다」 를 하나도 안 켜서 **적은 것 전부**를 상대로")
             L.append("  봤습니다. 실제로 나온 놈만 켜면 더 정확합니다")
-        # ★ **이 답이 무엇 위에 세워졌는지 말한다** (2026-09-24, 사용자가 정한 원칙:
-        #   "사실과 추론을 분리한다 · 모르는 것은 모른다고 표시한다").
-        #   확정이 아닌 값(막대로 잰 HP · 그림으로 알아본 이름 · 미루어 본 빈사)은
-        #   답을 통째로 뒤집을 수 있다. 숨기면 사용자가 확정된 값으로 읽는다.
-        soft = self.match.soft() if getattr(self, "match", None) else []
-        if soft:
-            L.append("! 확정 아닌 값 %d개 위에서 낸 답입니다: %s"
-                     % (len(soft), " · ".join("%s %s" % (w, f.describe()) for w, f in soft[:2])))
-            if len(soft) > 2:
-                L.append("  (나머지는 「디버그 기록」 의 장부에 다 있습니다)")
+        # ★ **아직 안 정한 것을 이름 대고 말한다** (2026-09-24, 사용자가 정한 방향:
+        #   *"체크리스트를 만들어서 그 체크리스트가 픽스되어야 다음으로 넘어가게끔"*).
+        #   빈칸이 '없음' 으로 읽히면 답이 조용히 뒤집힌다 — 상대가 이미 맹독인데
+        #   칸이 비어 있으면 맹독이 2.9점 1등, 적어 두면 0.0점 꼴찌였다 (live.checklist).
+        #   ! 여기는 **딴 갈래**다 (생각하는 동안 창이 안 얼게). tkinter 변수를 딴
+        #     갈래에서 읽으면 안 되므로, 체크리스트는 `ask()` 가 본 갈래에서 만들어 둔다.
+        L.extend(live.checklist_lines(getattr(self, "marks", None) or []))
         if getattr(self, "guessed_mine", False):
             L.append("! 내 쪽 「냈다」 를 하나도 안 켜서 **채운 자리 전부**를 내")
             L.append("  팀으로 봤습니다. 실제로는 3마리만 나갑니다 — 그대로 두면")

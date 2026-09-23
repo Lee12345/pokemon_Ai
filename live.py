@@ -834,6 +834,146 @@ def my_turn_state(rows, active_slot):
     return out
 
 
+# ---------------------------------------------------------------------------
+# 확정 체크리스트 — **판에 대해 무엇을 정했고 무엇이 아직 빈칸인가**
+# ---------------------------------------------------------------------------
+#
+# ★ 사용자가 방향을 잡아 줬다 (2026-09-24):
+#   *"데이터의 무결성에 집중하라는게 아니라, 현재까지 확인된 데이터를 정확하게 유지하고
+#    정보를 구축하는게 더 중요하다. … 나/상대의 선출, 필드, 포켓몬 도구 등등의 체크리스트를
+#    만들어서 그 체크리스트가 픽스되어야 다음으로 넘어가게끔 하는 느낌."*
+#
+# **왜 이게 답을 바꾸나 — 잰 것.** 더시마사리 vs 한카리아스, 상대가 이미 맹독인 판 —
+#
+#     상대 상태가 칸에 '없음' (문구를 못 읽은 판)   맹독 2.9점 **1등**  → 「맹독을 쓰세요」
+#     상대 상태가 칸에 '맹독' (읽어서 적어 둔 판)   맹독 0.0점 **꼴찌** → 「HP회복을 쓰세요」
+#
+# 대전 엔진은 멀쩡했다 — 이미 걸린 놈에게 또 걸면 실패로 친다 (`Battle._inflict`).
+# **빈칸이 '없음' 으로 읽힌 것**이 전부였다. 사용자가 실전에서 본 그대로다:
+# *"이미 상대가 맹독에 걸려있는것도 확인 못하고 계속 맹독만 걸어대는"*.
+#
+# 그래서 빈칸을 **빈칸이라고** 들고 있어야 한다. 채워야 할 것을 한 줄씩 세워 두고,
+# 정해진 것은 정해졌다고 잠그고, 안 정해진 것은 **답 옆에 이름을 대고** 물어본다.
+
+# 급 — 「반드시」 는 이것 없이는 답이 뜻이 없다 (창이 답을 안 낸다).
+#      「챙길 것」 은 답은 나오지만 **틀릴 만한 자리**라 답 옆에 뜬다.
+#      「알면 좋다」 는 있으면 더 정확해지는 것.
+MUST, WATCH, NICE = "반드시", "챙길 것", "알면 좋다"
+
+
+def _row(key, what, ok, value, why, level):
+    return {"key": key, "what": what, "ok": bool(ok),
+            "value": value, "why": why, "level": level}
+
+
+def checklist(board, match=None):
+    """지금 판에서 **정한 것과 안 정한 것** → [{key, what, ok, value, why, level}].
+
+    board  `screenread.Board` (창의 칸을 옮겨 담은 것)
+    match  `ledger.Match` — 있으면 **어떻게 알았는지**까지 적는다 (없어도 돈다)
+
+    ★ 창에 두지 않고 여기 두는 까닭은 **검사할 수 있어야** 하기 때문이다 (CLAUDE.md §9).
+    """
+    def how(side, i, field):
+        if match is None:
+            return None
+        return None if match.unknown(side, i, field) else match.how(side, i, field)
+
+    out = []
+    my = [r for r in board.my if r.get("poke")]
+    opp = [r for r in board.opp if r.get("poke")]
+    mine_out = [r for r in my if r.get("brought")]
+    shown = [r for r in opp if r.get("brought")]
+
+    # 1) 양쪽 선출 — 6마리 중 3마리
+    out.append(_row("my_pick", "내 선출 3마리", len(mine_out) >= 1,
+                    "%d마리 켜짐" % len(mine_out),
+                    "「냈다」 를 하나도 안 켜면 채운 자리 전부를 내 팀으로 봅니다"
+                    if not mine_out else None, MUST))
+    out.append(_row("opp_preview", "상대 프리뷰 6마리", len(opp) >= 1,
+                    "%d마리 적음" % len(opp),
+                    "선출 화면을 읽거나 직접 적어야 벤치를 셀 수 있습니다" if not opp else None,
+                    MUST))
+    out.append(_row("opp_pick", "상대가 낸 3마리 중 밝혀진 것", bool(shown),
+                    "%d마리" % len(shown),
+                    "아직 아무도 안 밝혀졌습니다 — 적은 것 전부를 상대로 봅니다"
+                    if not shown else None, WATCH))
+
+    # 2) 누가 나와 있나 — 이것이 틀리면 나머지가 전부 엉뚱한 놈에게 붙는다
+    i, j = board.my_active, board.opp_active
+    me_now = board.my[i] if 0 <= i < len(board.my) else None
+    op_now = board.opp[j] if 0 <= j < len(board.opp) else None
+    out.append(_row("my_active", "내 나와 있는 놈", bool(me_now and me_now.get("poke")),
+                    (me_now or {}).get("poke", {}).get("name"),
+                    "칸이 비었습니다" if not (me_now and me_now.get("poke")) else None, MUST))
+    out.append(_row("opp_active", "상대 나와 있는 놈",
+                    bool(board.opp_active_known and op_now and op_now.get("poke")),
+                    (op_now or {}).get("poke", {}).get("name"),
+                    "누가 나와 있는지 모릅니다 — 「나와 있음」 을 골라 주세요"
+                    if not board.opp_active_known else None, MUST))
+
+    # 3) 나와 있는 놈들의 HP·상태이상
+    #    ★ **상태이상이 이 목록에 있는 까닭**은 위의 맹독 사고 때문이다. 빈칸이 '없음' 으로
+    #      읽히는 자리라 답이 조용히 뒤집힌다.
+    for side, row, who in (("me", me_now, "내"), ("opp", op_now, "상대")):
+        if not (row and row.get("poke")):
+            continue
+        k = board.my.index(row) if side == "me" else board.opp.index(row)
+        out.append(_row("%s_hp" % side, "%s HP" % who, how(side, k, "hp") is not None,
+                        "%g%%" % row.get("hp", 100.0),
+                        "화면에서 아직 못 읽었습니다 (칸의 값을 그냥 쓰는 중)"
+                        if how(side, k, "hp") is None else how(side, k, "hp"), WATCH))
+        st = row.get("status")
+        out.append(_row("%s_status" % side, "%s 상태이상" % who,
+                        how(side, k, "status") is not None,
+                        st or "없음",
+                        "아직 확인 안 됨 — **빈칸과 '없음' 은 다릅니다** (맹독을 겹쳐 걸 수 있습니다)"
+                        if how(side, k, "status") is None else how(side, k, "status"), WATCH))
+
+    # 4) 판 — 날씨·필드
+    out.append(_row("weather", "날씨", board.weather is not None,
+                    board.weather or "자동(특성으로)",
+                    "안 정하면 특성으로 깔린 것만 봅니다" if board.weather is None else None, NICE))
+    out.append(_row("terrain", "필드", board.terrain is not None,
+                    board.terrain or "자동",
+                    "안 정하면 없는 것으로 봅니다" if board.terrain is None else None, NICE))
+
+    # 5) 상대에게서 드러난 것 — 도구·특성·기술
+    for row in shown or opp:
+        name = row["poke"]["name"]
+        k = board.opp.index(row)
+        item = (board.opp_items or {}).get(name)
+        out.append(_row("opp_item_%d" % k, "상대 %s 도구" % name, bool(item),
+                        item or "모름",
+                        "안 드러났습니다 — 사용률로 짐작합니다" if not item else None, NICE))
+        moves = (board.seen or {}).get(name) or []
+        out.append(_row("opp_moves_%d" % k, "상대 %s 본 기술" % name, bool(moves),
+                        ", ".join(moves) if moves else "없음",
+                        "아직 하나도 못 봤습니다 — 기술 넷을 전부 사용률로 뽑습니다"
+                        if not moves else None, NICE))
+    return out
+
+
+def open_items(rows, level=None):
+    """아직 안 정한 것만. level 을 주면 그 급만."""
+    return [r for r in rows if not r["ok"] and (level is None or r["level"] == level)]
+
+
+def checklist_lines(rows, most=4):
+    """창에 띄울 몇 줄로. **안 정한 것부터, 급한 것부터.**"""
+    out = []
+    for level in (MUST, WATCH):
+        got = open_items(rows, level)
+        if not got:
+            continue
+        head = "! 아직 안 정한 것" if level == MUST else "· 아직 확인 안 된 것"
+        more = "" if len(got) <= most else " 외 %d개" % (len(got) - most)
+        out.append("%s: %s%s" % (head, " · ".join(r["what"] for r in got[:most]), more))
+    done = sum(1 for r in rows if r["ok"])
+    out.append("· 체크리스트 %d/%d 정해짐" % (done, len(rows)))
+    return out
+
+
 def alive_slots(opp_rows):
     """turn_state 가 넘기는 상대 목록의 각 자리가 원래 몇 번 자리였나 (같은 규칙으로 센다)."""
     return [i for i, (poke, hp) in enumerate(opp_rows) if poke is not None and hp > 0]
