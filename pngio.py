@@ -134,6 +134,22 @@ def crop(w, h, rgba, x0, y0, x1, y1):
     return x1 - x0, y1 - y0, out
 
 
+def dark_share(w, h, rgba, dark=24, step=7):
+    """거의 까만 점의 몫 (0~1). 캡처보드가 신호를 잃으면 까만 바탕에 작은 알림창만 뜬다.
+
+    잰 것 (2026-09-23, OBS 캡처 2448x1377) — **신호 없음 0.956**, 진짜 게임 화면 **0.006~0.131**.
+    """
+    n = d = 0
+    for y in range(0, h, step):
+        base = y * w * 4
+        for x in range(0, w, step):
+            i = base + x * 4
+            n += 1
+            if rgba[i] <= dark and rgba[i + 1] <= dark and rgba[i + 2] <= dark:
+                d += 1
+    return d / float(n) if n else 0.0
+
+
 def trim_black(w, h, rgba, dark=10, most=0.25):
     """가장자리의 **줄 전체가 거의 까만** 줄·칸을 잘라 낸 (x0, y0, x1, y1).
 

@@ -5504,6 +5504,109 @@ def test_read_speed(dex):
         screenread._WORKER = screenread.Worker()
 
 
+def test_watch(dex):
+    """[60] 따라가기 — 화면을 계속 읽어 판을 따라간다 (2026-09-23, `watch.py`).
+
+    실전 두 판을 기록해 보고 알게 된 세 가지를 여기서 지킨다 —
+    ① **두 장 연속 같을 때만 믿는다** (연출 중간 장면은 HP 가 줄어드는 도중이다)
+    ② **같은 일을 두 번 넣지 않는다** (한 문구가 몇 초씩 떠 있어 대여섯 번 읽힌다)
+    ③ **신호가 없으면 말한다** (캡처보드가 끊기면 까만 화면 — 그냥 조용하면 멈춘 줄 안다)
+    """
+    import msgread
+    import pngio
+    import screenread
+    import watch
+    print("\n[60] 따라가기 — 화면을 계속 읽어 판을 따라가기")
+    here = os.path.dirname(os.path.abspath(__file__))
+    names = msgread.Names(dex, ["타부자고", "다크펫"])
+
+    def scr(name):
+        return os.path.join(here, "data", "screens", name)
+
+    class Replay(object):
+        """저장해 둔 화면을 차례로 내놓는다 (진짜 OBS 창 대신). 끝나면 마지막 것을 되풀이한다."""
+
+        def __init__(self, files):
+            self.files, self.i = list(files), 0
+
+        def grab(self):
+            f = self.files[min(self.i, len(self.files) - 1)]
+            self.i += 1
+            w, h, px = pngio.read_png(screenread.to_png(f))
+            return f, w, h, px
+
+    def blank():
+        return screenread.Board([{"poke": None, "hp": 100.0, "brought": False} for _ in range(6)],
+                                [{"poke": None, "hp": 100.0, "brought": False} for _ in range(6)])
+
+    # ① 한 장만 본 것은 안 믿는다. 두 장째에 넣는다.
+    w = watch.Watcher(Replay([scr("대전_아이패드_풍선.jpg")]))
+    bd = blank()
+    a = w.step(bd, dex, names)
+    b = w.step(bd, dex, names)
+    check("한 장만 본 것은 아직 안 믿는다", not a["changed"], a)
+    check("두 장 연속 같으면 믿는다", b["changed"] and b["kind"] == "대전", b)
+    # ② 같은 화면이 계속 와도 **두 번은 안 넣는다**
+    c = w.step(bd, dex, names)
+    d = w.step(bd, dex, names)
+    check("같은 화면이 계속 와도 두 번 넣지 않는다", not c["changed"] and not d["changed"], (c, d))
+    # 이 화면의 타부자고는 **내 쪽**이다 (문구에 「상대」 가 없다) — 상대 도구로 들어가면 안 된다
+    check("판에 한 줄이 들어갔다 (풍선)",
+          any("풍선" in t for _ok, t in b["notes"]) and not bd.opp_items,
+          (b["notes"], bd.opp_items))
+
+    # ③ 신호 없음 — 까만 화면
+    black = os.path.join(here, "data", "screens", "_까망점검.png")
+    pngio.write_png(black, 80, 45, bytearray([0, 0, 0, 255] * (80 * 45)))
+    try:
+        w = watch.Watcher(Replay([black]))
+        got = w.step(blank(), dex, names)
+    finally:
+        os.remove(black)
+    check("까만 화면은 '신호가 없습니다' 라고 말한다",
+          got["trouble"] and "신호가 없습니다" in got["trouble"], got["trouble"])
+    check("신호가 없으면 아무것도 판에 안 넣는다", not got["changed"] and not got["notes"], got)
+
+    # 화면을 못 찍으면 **조용히 지나가지 않는다**
+    class Dead(object):
+        def grab(self):
+            raise RuntimeError("창이 없다")
+
+    got = watch.Watcher(Dead()).step(blank(), dex, names)
+    check("화면을 못 찍으면 그렇다고 말한다",
+          got["trouble"] and "못 찍었습니다" in got["trouble"], got["trouble"])
+
+    # 끊겼다 이어지면 **기다리던 것을 버린다** — 끊긴 앞뒤 두 장을 같다고 보면 안 된다
+    w = watch.Watcher(Replay([scr("대전_아이패드_풍선.jpg")]))
+    bd = blank()
+    w.step(bd, dex, names)              # 한 장째
+    w.source = Dead()
+    w.step(bd, dex, names)              # 끊김
+    w.source = Replay([scr("대전_아이패드_풍선.jpg")])
+    got = w.step(bd, dex, names)        # 이어짐 — 이게 '두 장째' 면 안 된다
+    check("끊겼다 이어지면 세던 것을 버리고 다시 센다", not got["changed"], got)
+
+    # 새 판 — 잊어야 같은 일을 다시 넣는다
+    w = watch.Watcher(Replay([scr("대전_아이패드_풍선.jpg")]))
+    bd = blank()
+    w.step(bd, dex, names)
+    w.step(bd, dex, names)
+    w.reset()
+    w.step(bd, dex, names)
+    got = w.step(bd, dex, names)
+    check("새 판(reset)이면 같은 일을 다시 넣는다", got["changed"], got)
+
+    # 선출 화면 → 상대 6칸
+    w = watch.Watcher(Replay([scr("선출_실전OBS.jpg")]))
+    bd = blank()
+    w.step(bd, dex, names)
+    got = w.step(bd, dex, names)
+    got6 = [r["poke"]["name"] if r["poke"] else None for r in bd.opp]
+    check("따라가기가 선출 화면의 상대 6마리를 판에 넣는다",
+          got["kind"] == "선출"
+          and got6 == ["갸라도스", "팬텀", "조로아크", "초염몽", "엘레이드", "루카리오"], got6)
+
+
 def test_mid_state(dex):
     """[58] 실전 중간 상태 — 상태이상 · 랭크 · 날씨·필드 · 압정을 계산에 넣는다 (2026-09-23).
 
@@ -5681,6 +5784,7 @@ def main():
     test_msgread(dex)
     test_screenread(dex)
     test_read_speed(dex)
+    test_watch(dex)
     test_mid_state(dex)
 
     print("\n" + "=" * 50)

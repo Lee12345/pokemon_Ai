@@ -364,12 +364,15 @@ def message_lines(lines, w, h):
     return [t for _, t in sorted(got)]
 
 
-def read_screen(path, dex, names):
-    """사진 한 장 → {'kind': '선출', 'opp': [...]} 또는 {'kind': '대전', 'lines': [...], 'event': {...}}."""
+def read_screen(path, dex, names, img=None):
+    """사진 한 장 → {'kind': '선출', 'opp': [...]} 또는 {'kind': '대전', 'lines': [...], 'event': {...}}.
+
+    `img` 로 (너비, 높이, 점들) 을 미리 주면 다시 안 읽는다 (계속 읽을 때 장당 0.06초를 아낀다).
+    """
     import artmatch
     import msgread
     png = to_png(path)
-    w, h, px = pngio.read_png(png)
+    w, h, px = img if img is not None else pngio.read_png(png)
     bands = artmatch.panel_bands(w, h, px)
     try:
         found = artmatch.identify(w, h, px, bands=bands) if artmatch.pick_six(bands) else None

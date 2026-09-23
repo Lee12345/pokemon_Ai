@@ -54,6 +54,7 @@
 import os
 import sys
 import threading
+import time
 
 import battle
 import best
@@ -723,6 +724,8 @@ class App(object):
         self.dex = dex
         self.headless = headless
         self.busy = False
+        self.watcher = None         # 따라가기 (watch.Watcher) — 처음 켤 때 만든다
+        self.follow_said = None     # 같은 알림을 되풀이하지 않으려고
         self.slots = []
         self.opp_slots = []
         # 상대 이름 -> 본 기술 목록. **상대마다 따로 쌓는다** —
@@ -1006,7 +1009,13 @@ class App(object):
         self.go_screen = tk.Button(rs, text="화면 사진 넣기", command=self.load_screens,
                                    bg=LINE, fg=TEXT, relief="flat", font=FONT_B)
         self.go_screen.pack(side="left")
-        tk.Label(rs, text="선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 찍은 순서대로)",
+        # 따라가기 — OBS 창 프로젝터를 계속 읽어 칸을 채우고 둘 수를 다시 알려 준다 (watch.py)
+        self.following = False
+        self.go_follow = tk.Button(rs, text="따라가기 시작", command=self.toggle_follow,
+                                   bg=LINE, fg=TEXT, relief="flat", font=FONT_B)
+        self.go_follow.pack(side="left", padx=(6, 0))
+        tk.Label(rs, text="사진: 선출 화면 → 상대 6마리 · 대전 화면 → 문구 칸 (여러 장은 순서대로) /"
+                 " 따라가기: OBS 「창 프로젝터」 를 계속 읽습니다",
                  bg=CARD, fg=DIM, font=FONT_S).pack(side="left", padx=(6, 0))
 
         r4 = tk.Frame(box, bg=CARD)
@@ -1169,13 +1178,17 @@ class App(object):
         for slot, row in zip(self.slots, saved):
             slot.fill_from(row[0], row[1])
 
-    def ask(self):
-        """탐색은 **다른 갈래에서 돌린다.** 안 그러면 창이 10초 동안 언다."""
+    def ask(self, clear=True):
+        """탐색은 **다른 갈래에서 돌린다.** 안 그러면 창이 10초 동안 언다.
+
+        `clear=False` 는 따라가기에서 쓴다 — **방금 보여 준 「읽었습니다」 를 지우면 안 된다.**
+        (계산 전에 읽은 것을 먼저 보여 주기로 사용자와 정했다, 2026-09-21.)
+        """
         if self.busy:
             return
         party = self.party()
         if not party:
-            self.say("먼저 왼쪽에 파티를 채우세요.", clear=True)
+            self.say("먼저 왼쪽에 파티를 채우세요.", clear=clear)
             return
         def num(var, default):
             try:
@@ -1194,7 +1207,7 @@ class App(object):
         mine = live.my_turn_state(mine_rows, self.my_active.get())
         if mine["why"]:
             self.say("%s — 왼쪽 「이번 판」 줄을 확인하세요." % mine["why"],
-                     clear=True)
+                     clear=clear)
             return
         party = mine["party"]
         idx = mine["my_active"]
@@ -1216,7 +1229,7 @@ class App(object):
             my_hp, idx, rows, self.opp_active.get())
         if why:
             self.say("%s — 상대를 고르세요 (HP 0 은 쓰러진 것으로 봅니다)."
-                     % why, clear=True)
+                     % why, clear=clear)
             return
         secs = max(1.0, num(self.secs, 10))
         ev = live.evidence_map(self.seen, opp_pokes, self.opp_items, self.opp_abilities)
@@ -1238,7 +1251,7 @@ class App(object):
         said = ", ".join("%s %.0f%%" % (p["name"], hp)
                          for p, hp in zip(opp_pokes, state["opp_hp"]))
         self.say("상대 %s 를 놓고 %.0f초 생각합니다...\n(나와 있는 상대: %s)"
-                 % (said, secs, opp_pokes[oi]["name"]), clear=True)
+                 % (said, secs, opp_pokes[oi]["name"]), clear=clear)
         extra = describe_mid(mid, [b.poke["name"] for b, _m in party],
                              [p["name"] for p in opp_pokes])
         if extra:
@@ -1369,6 +1382,71 @@ class App(object):
             work()
         else:
             threading.Thread(target=work, daemon=True).start()
+
+    # -- 따라가기 ---------------------------------------------------------
+    #
+    # OBS 창 프로젝터를 계속 읽어 (watch.Watcher) 칸을 채우고, **판이 바뀌면 둘 수를 다시
+    # 물어본다.** 사용자가 게임하면서 칸을 손으로 채우기 힘들다고 해서 시작한 일이다.
+    # ★ 읽은 것은 **언제나 먼저 보여 준다** — 잘못 읽으면 조용히 틀리기 때문이다.
+    FOLLOW_REST = 0.2       # 한 바퀴 돌고 쉬는 시간 (읽는 데 0.5초쯤 걸린다)
+
+    def toggle_follow(self):
+        if self.following:
+            self.following = False
+            self.go_follow.config(text="따라가기 시작")
+            self.say("따라가기를 멈췄습니다.")
+            return
+        if self.watcher is None:
+            import watch
+            try:
+                self.watcher = watch.Watcher()
+            except Exception as e:
+                self.say("따라가기를 못 켰습니다 — %s" % e, clear=True)
+                return
+        self.following = True
+        self.go_follow.config(text="따라가기 멈춤")
+        self.say("따라갑니다 — OBS 「창 프로젝터(미리 보기)」 를 띄워 두세요.\n"
+                 "읽은 것을 그때그때 보여 드리고, 판이 바뀌면 둘 수를 다시 알려 드립니다.",
+                 clear=True)
+        if self.headless:
+            self.follow_once()
+        else:
+            threading.Thread(target=self._follow_loop, daemon=True).start()
+
+    def _follow_loop(self):
+        while self.following:
+            self.follow_once()
+            time.sleep(self.FOLLOW_REST)
+
+    def follow_once(self):
+        """한 장 읽어 칸에 넣는다. 판이 바뀌었으면 둘 수를 다시 묻는다."""
+        import msgread
+        here = [sl.poke["name"] for sl in self.slots + self.opp_slots if sl.poke]
+        names = msgread.Names(self.dex, here)
+        bd = self.board()
+        got = self.watcher.step(bd, self.dex, names)
+        if self.headless:
+            self._after_follow(bd, got)
+        else:
+            self.root.after(0, lambda: self._after_follow(bd, got))
+        return got
+
+    def _after_follow(self, bd, got):
+        if got["trouble"]:
+            if got["trouble"] != self.follow_said:
+                self.say("! " + got["trouble"])
+                self.follow_said = got["trouble"]
+            return
+        self.follow_said = None
+        if not got["changed"]:
+            return
+        self.set_board(bd)
+        self.say("─ 읽었습니다 (%s 화면)" % got["kind"])
+        for ok, text in got["notes"]:
+            self.say("   %s %s" % ("✓" if ok else "○", text))
+        # 칸이 바뀌었으니 둘 수를 다시 묻는다. 이미 생각하는 중이면 다음 바퀴에 묻는다.
+        if not self.busy:
+            self.ask(clear=False)
 
     def _apply_screens(self, got):
         import screenread
@@ -2001,6 +2079,54 @@ def check():
                            app.opp_items, app.opp_abilities)
     if not ev or ev["타부자고"].item != "풍선" or "지진" not in ev["하마돈"].seen_moves:
         bad.append("본 기술·도구가 계산에 넘어가지 않음 (%s)" % ev)
+    # ★ 따라가기 — 화면을 계속 읽어 칸을 채우고 **둘 수를 다시 묻는가** (2026-09-23).
+    #   진짜 OBS 창 대신 저장해 둔 화면을 차례로 내놓는 가짜를 끼운다.
+    import tempfile
+    import watch as watchmod
+    import pngio as pngiomod
+    import screenread as srmod
+    here = os.path.dirname(os.path.abspath(__file__))
+
+    class _Replay(object):
+        def __init__(self, files):
+            self.files, self.i = files, 0
+
+        def grab(self):
+            f = self.files[min(self.i, len(self.files) - 1)]
+            self.i += 1
+            w, h, px = pngiomod.read_png(srmod.to_png(f))
+            return f, w, h, px
+
+    shots = os.path.join(here, "data", "screens")
+    # 같은 화면을 두 번씩 — **두 장 연속 같아야** 믿는다
+    seq = [os.path.join(shots, "선출_실전OBS.jpg")] * 2
+    app.watcher = watchmod.Watcher(_Replay(seq))
+    app.follow_once()
+    app.follow_once()
+    got6 = [sl.poke["name"] if sl.poke else None for sl in app.opp_slots]
+    if got6 != ["갸라도스", "팬텀", "조로아크", "초염몽", "엘레이드", "루카리오"]:
+        bad.append("따라가기가 선출 화면의 상대 6마리를 칸에 안 넣음 (%s)" % got6)
+    if "읽었습니다" not in app.out.get("1.0", "end"):
+        bad.append("따라가기가 '읽었습니다' 를 안 보여 줌")
+    # 한 장만 본 것은 **아직 안 믿는다**
+    app.watcher = watchmod.Watcher(_Replay([os.path.join(shots, "대전_아이패드_풍선.jpg")] * 2))
+    first = app.follow_once()
+    second = app.follow_once()
+    if first["changed"] or not second["changed"]:
+        bad.append("두 장 연속 같아야 믿는 규칙이 안 돎 (첫 장 %s, 둘째 장 %s)"
+                   % (first["changed"], second["changed"]))
+    # 신호 없음 — 까만 화면
+    black = os.path.join(tempfile.gettempdir(), "gui_점검_까망.png")
+    pngiomod.write_png(black, 64, 36, bytearray([0, 0, 0, 255] * (64 * 36)))
+    app.watcher = watchmod.Watcher(_Replay([black]))
+    app.follow_once()
+    if "신호가 없습니다" not in app.out.get("1.0", "end"):
+        bad.append("신호 없음(까만 화면)을 안 알림")
+    try:
+        os.remove(black)
+    except OSError:
+        pass
+
     # 빠르게 읽는 장치(파워셸 일꾼)가 안 돌면 **창에 그렇게 적히는가** (2026-09-23).
     # 조용히 느려지기만 하면 왜 느린지 알 길이 없다.
     import screenread
