@@ -896,6 +896,8 @@ class App(object):
         #   1번 칸에 HP 를 넣었다. 실전에서 패리퍼가 나왔는데 대도각참으로 봤다
         #   (2026-09-23, 따라간기록_0923_2137).
         self.opp_known = True
+        self.asked_at = None        # 언제부터 생각하기 시작했나 (답에 걸린 시간을 적으려고)
+        self.ask_again = None       # 생각하는 동안 바뀐 것 — 끝나면 다시 묻는다
         self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
                                   font=FONT_S, anchor="w")
@@ -1046,7 +1048,10 @@ class App(object):
         r4.pack(fill="x", pady=(6, 0))
         tk.Label(r4, text="생각할 시간(초)", bg=CARD, fg=DIM,
                  font=FONT_S).pack(side="left")
-        self.secs = tk.StringVar(value="10")
+        # ★ 10초 -> 5초 (2026-09-23). 사용자가 "판단시간이 너무너무 길어짐" 이라고 했다.
+        #   재 보니 같은 대면에서 **답은 세 번 다 같았고** 오차만 ±1.9 -> ±2.9%p 로 벌어졌다
+        #   (3대3, 1517판 대 781판). 기다리는 시간이 반으로 주는 값으로 싸다.
+        self.secs = tk.StringVar(value="5")
         tk.Spinbox(r4, from_=1, to=120, increment=5, width=4,
                    textvariable=self.secs, bg=FIELD, fg=TEXT,
                    insertbackground=TEXT, relief="flat",
@@ -1281,6 +1286,7 @@ class App(object):
         self.opp_fresh.set(False)
 
         self.busy = True
+        self.asked_at = time.time()
         self.go.config(text="생각하는 중...", state="disabled")
         # 이름 뒤에 조사를 붙이지 않는다 — 「다크펫 를」 처럼 틀어진다 (받침이 있고 없고)
         self.last_opp_name = opp_pokes[oi]["name"]
@@ -1519,13 +1525,22 @@ class App(object):
         """따라가는 중이면 **창이 내놓은 답을 기록에도** 남긴다.
 
         기록에 읽은 것만 있으면, 판이 끝난 뒤 "제대로 안 알려 줬다" 를 확인할 수가 없다.
+        **걸린 시간도 같이 적는다** — "너무 늦다" 를 숫자로 봐야 어디를 줄일지 안다.
         """
         if self.watcher is None or not self.last_short:
             return
+        took = ("(%.1f초) " % (time.time() - self.asked_at)) if self.asked_at else ""
         try:
-            self.watcher.note("답 » " + " | ".join(self.last_short.splitlines()))
+            self.watcher.note("답 » " + took + " | ".join(self.last_short.splitlines()))
         except Exception:
             pass
+
+    def after_busy(self):
+        """생각이 끝났다 — 그동안 칸이 바뀌었으면 바로 다시 묻는다."""
+        self.busy = False
+        kind, self.ask_again = self.ask_again, None
+        if kind is not None and self.following:
+            self._ask_for(kind)
 
     def cant(self, text, clear):
         """물어볼 수 없을 때 — 큰 창에 까닭을 적고 **작은 창에도 그 까닭을** 띄운다.
@@ -1654,9 +1669,15 @@ class App(object):
         # 칸이 바뀌었으니 다시 묻는다. 이미 생각하는 중이면 다음 바퀴에 묻는다.
         # ★ **선출 화면이면 「어떤 3마리」 를, 대전 화면이면 「무엇을 둘까」 를** 묻는다.
         #   선출 화면에서 둘 수를 물으면 아무 쓸모가 없다 — 그때 둘 수는 '어떤 3마리' 다.
+        # ★ **생각하는 동안 바뀐 것은 끝나고 다시 묻는다.** 전에는 그냥 버려서, 다음 변화가
+        #   올 때까지 **지난 상황의 답**이 떠 있었다 (사용자: "판단시간이 너무너무 길어짐").
         if self.busy:
+            self.ask_again = got["kind"]
             return
-        if got["kind"] == "선출":
+        self._ask_for(got["kind"])
+
+    def _ask_for(self, kind):
+        if kind == "선출":
             self.ask_pick(clear=False)
         else:
             self.ask(clear=False)
@@ -1717,6 +1738,7 @@ class App(object):
         except (ValueError, AttributeError):
             secs = 45.0
         self.busy = True
+        self.asked_at = time.time()
         self.go_pick.config(text="고르는 중...", state="disabled")
         self.set_state("생각하는 중… 어떤 3마리를 낼까 (%.0f초)" % secs, BAR)
         self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=clear)
@@ -1746,8 +1768,8 @@ class App(object):
         self.show_overlay(self.last_short)
         self.log_answer()
         self.say(text)
-        self.busy = False
         self.go_pick.config(text="선출 — 어떤 3마리?", state="normal")
+        self.after_busy()
 
     def _show(self, text):
         self.last_short = self.short_advice(text)
@@ -1755,8 +1777,8 @@ class App(object):
         self.show_overlay(self.last_short)
         self.log_answer()
         self.say(text)
-        self.busy = False
         self.go.config(text="무엇을 둘까?", state="normal")
+        self.after_busy()
 
     def _format(self, got, n_foes=1, guessed_opp=False):
         rows = got["rows"]
@@ -2374,6 +2396,20 @@ def check():
     app.opp_slots[3].on_active()
     if not app.opp_known or not app.board().opp_active_known:
         bad.append("「나와 있음」 을 눌러도 '모른다' 가 안 풀림")
+    # ★ **생각하는 동안 바뀐 것은 끝나고 다시 묻는다.** 전에는 그냥 버려서 다음 변화가 올
+    #   때까지 지난 상황의 답이 떠 있었다 (사용자: "판단시간이 너무너무 길어짐").
+    app.busy, app.following = True, True
+    app.ask_again = None
+    app._after_follow(app.board(), {"trouble": None, "notes": [], "changed": True,
+                                    "kind": "대전", "lines": []})
+    if app.ask_again != "대전":
+        bad.append("생각하는 동안 바뀐 것을 기억 안 함 (%r)" % (app.ask_again,))
+    app.secs.set("1")
+    app.say("", clear=True)
+    app.after_busy()        # 생각이 끝났다 — 여기서 바로 다시 물어야 한다
+    if "=>" not in app.out.get("1.0", "end"):
+        bad.append("생각이 끝난 뒤에 다시 안 물음")
+    app.following = False
     # ★ **지금 무엇을 하는 중인지**를 작은 창 맨 줄이 말해야 한다 (2026-09-23, 사용자 요구).
     #   답만 떠 있으면 그게 방금 읽은 판의 답인지 아까 것인지 알 수가 없다.
     #   읽은 뒤에는 **무엇을 읽었는지**가 같이 적혀야 한다 (다크펫을 망나뇽으로 읽은 적이 있다).

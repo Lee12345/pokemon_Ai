@@ -5800,6 +5800,105 @@ def test_advice(dex):
     check("메가가 될 수 없는 상대면 메가 비율 0", flat["opp_mega"] == 0.0, flat["opp_mega"])
 
 
+def test_setup(dex):
+    """[62] 기점 잡기 — 상대도 칼춤을 쌓는다 (2026-09-23).
+
+    사용자가 실전 한 판을 보고 짚었다 — *"그냥 상황 해석 자체가 틀림. 따라큐 - 하마돈
+    대면에서 왜 하마돈이 게으름 피우기를 해야하지? 따라큐는 탈때문에 안전하게 하마돈을
+    칼춤 기점으로 삼을 수 있을건데."*
+
+    그때까지 **양쪽 다 제일 아픈 공격기만** 골랐다. 따라큐가 칼춤을 81.4% 로 들고 오는데
+    계산에서는 한 번도 안 썼다. 그러니 하마돈이 그 앞에서 편안해 보였다.
+
+    ★ **이건 정한 규칙이지 잰 것이 아니다.** 「공짜로 한 대를 벌어 주면(탈·대타) 또는
+      들어오는 게 지금 HP 의 35% 미만이고 내가 55% 이상 남았으면, 두 단계까지 쌓는다.」
+    """
+    import random as _r
+    import search
+    print("\n[62] 기점 잡기 — 상대도 칼춤을 쌓는다")
+    P = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    gain = battle.Policy.setup_gain
+
+    # -- 무엇을 '기점' 으로 보나
+    check("칼춤 = 공격 2단계", gain(dex.find_move("칼춤")) == {"attack": 2},
+          gain(dex.find_move("칼춤")))
+    check("용의춤 = 공격·스피드", gain(dex.find_move("용의춤")) == {"attack": 1, "speed": 1},
+          gain(dex.find_move("용의춤")))
+    check("나쁜음모 = 특공 2단계", gain(dex.find_move("나쁜음모")) == {"spAtk": 2},
+          gain(dex.find_move("나쁜음모")))
+    # 대가가 따르거나(저주: 스피드 −1) 공격기이거나 방어만 올리는 것은 기점으로 안 본다
+    check("저주는 대가가 있어 기점으로 안 본다", gain(dex.find_move("저주")) is None,
+          gain(dex.find_move("저주")))
+    check("지진(공격기)은 기점이 아니다", gain(dex.find_move("지진")) is None)
+    check("철벽(방어만)은 기점이 아니다 — 때릴 힘이 안 는다",
+          gain(dex.find_move("철벽")) is None, gain(dex.find_move("철벽")))
+
+    # -- 따라큐는 탈을 두르고 쌓는다 (7단계가 첫 턴 상대 수를 고르는 자리)
+    hip, mimi = P("하마돈"), P("따라큐")
+    got = search.best_action(dex, [hip], [dex.find_pokemon("따라큐")],
+                             my_moves=["지진", "게으름피우기", "하품", "스텔스록"],
+                             seconds=4.0)
+    guess = dict(got["opp_guess"])
+    check("상대 따라큐가 고를 수로 「칼춤」 이 1등이다 (%s)"
+          % ", ".join("%s %.0f%%" % (n, s * 100) for n, s in got["opp_guess"][:2]),
+          got["opp_guess"] and got["opp_guess"][0][0] == "칼춤", got["opp_guess"])
+    # ★ **답이 뒤집힌다.** 고치기 전에는 하마돈이 81.5% 로 이기는 판이었고 「하품」 을
+    #   권했다. 상대가 쌓으면 26% 로 진다 — 사용자가 본 그림과 맞다.
+    top = got["rows"][0]
+    check("하마돈이 따라큐 앞에서 유리하지 않다 (1등 %s %.0f점)" % (top["name"], top["score"] * 100),
+          top["score"] < 0.5, [(r["name"], round(r["score"], 3)) for r in got["rows"][:3]])
+
+    # -- 한 판 돌려 본다: 첫 턴 칼춤, 그 다음엔 때린다 (쌓기만 하지 않는다)
+    res = battle.run_once(dex, [hip], [mimi], [dex.find_move("지진")],
+                          [dex.find_move("칼춤")], _r.Random(7), log=True,
+                          my_moves=["지진", "게으름피우기", "하품", "스텔스록"])
+    used = [ln for ln in res["log"] if "따라큐" in ln and "의 " in ln]
+    dances = sum(1 for ln in res["log"] if "칼춤" in ln)
+    check("+2 까지만 쌓고 그 다음엔 때린다 (칼춤 %d번)" % dances, dances == 1,
+          res["log"][:8])
+    check("쌓은 따라큐가 하마돈을 이긴다 (%s)" % res["result"], res["result"] == "짐",
+          res["result"])
+
+    # -- 더 못 올리는 기술은 되풀이하지 않는다
+    mk = battle.Battle(dex, [mimi], [hip], rng=_r.Random(3))
+    side = mk.me
+    side.ranks["attack"] = 2
+    check("+2 면 칼춤을 '다 쌓았다' 로 본다",
+          battle.Policy._maxed_setup(side, dex.find_move("칼춤")))
+    side.ranks["attack"] = 0
+    check("0 이면 아직 쌓을 수 있다",
+          not battle.Policy._maxed_setup(side, dex.find_move("칼춤")))
+    # 랭크가 꽉 찼는데 또 쓰면 **실패로 적힌다** (전에는 회복기만 그랬다)
+    b2 = battle.Battle(dex, [mimi], [hip], rng=_r.Random(3), log=True)
+    for _ in range(4):
+        b2.step(dex.find_move("칼춤"), dex.find_move("철벽"))
+    check("+6 에서 칼춤을 또 쓰면 실패로 친다",
+          b2.me.move_failed and any("더 이상 안 변한다" in ln for ln in b2.log),
+          [ln for ln in b2.log if "칼춤" in ln])
+
+    # -- 위험하면 안 쌓는다 (한 방에 죽을 만큼 아픈 것이 들어오면)
+    # 탈이 없는 놈으로 — 브리두라스가 한카리아스 앞에서 칼춤부터 추면 안 된다
+    garch, bri = P("한카리아스"), P("브리두라스")
+    b3 = battle.Battle(dex, [bri], [garch], rng=_r.Random(5))
+    pol = battle.Policy(dex, [bri], garch, [], lead=b3.me_party.active.base)
+    rows = best.rate_moves(dex, b3.me.as_build(), b3.opp.as_build(),
+                           [(dex.find_move(m), None) for m in ("칼춤", "지진", "그래스슬라이더")])
+    pick_now = pol._setup_move(b3.me, rows, b3)
+    check("한 방이 아픈 상대 앞에서는 기점을 안 잡는다 (%s)"
+          % (pick_now["name"] if pick_now else "안 쌓음"), pick_now is None, pick_now)
+    # 반대로 **탈이 살아 있으면** 아무리 아파도 그 턴은 공짜다 — 사용자가 짚은 바로 그 그림
+    b4 = battle.Battle(dex, [mimi], [hip], rng=_r.Random(5))
+    pol4 = battle.Policy(dex, [mimi], hip, [], lead=b4.me_party.active.base)
+    rows4 = best.rate_moves(dex, b4.me.as_build(), b4.opp.as_build(),
+                            [(dex.find_move(m), None) for m in ("칼춤", "치근거리기", "야습")])
+    pick4 = pol4._setup_move(b4.me, rows4, b4)
+    check("탈이 살아 있으면 기점을 잡는다 (%s)" % (pick4["name"] if pick4 else "안 쌓음"),
+          pick4 is not None and pick4["name"] == "칼춤", pick4)
+    b4.me.disguise = False
+    check("탈이 벗겨진 뒤에는 안 잡는다 (지진이 아프다)",
+          pol4._setup_move(b4.me, rows4, b4) is None)
+
+
 def test_mid_state(dex):
     """[58] 실전 중간 상태 — 상태이상 · 랭크 · 날씨·필드 · 압정을 계산에 넣는다 (2026-09-23).
 
@@ -5979,6 +6078,7 @@ def main():
     test_read_speed(dex)
     test_watch(dex)
     test_advice(dex)
+    test_setup(dex)
     test_mid_state(dex)
 
     print("\n" + "=" * 50)

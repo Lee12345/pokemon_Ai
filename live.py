@@ -902,7 +902,7 @@ def opp_guess_lines(rows, opp_name=None, mega=0.0):
         return []
     who = "상대 %s" % opp_name if opp_name else "상대"
     part = " · ".join("「%s」 %.0f%%" % (n, s * 100) for n, s in rows[:2])
-    out = ["◆ %s 쪽 제일 아픈 수: %s" % (who, part)]
+    out = ["◆ %s 가 고를 것 같은 수: %s" % (who, part)]
     # 메가는 기술과 따로 센다 — 안 그러면 「메가+대검돌격 39%」 와 「대검돌격 37%」 로
     # 갈려서, 같은 기술을 76% 로 노린다는 사실이 안 보인다.
     if mega >= 0.10:

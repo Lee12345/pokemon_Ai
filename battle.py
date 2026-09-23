@@ -2684,6 +2684,11 @@ class Battle(object):
                                  STAT_LABEL[ef["stat"]], moved,
                                  side.rank_text()))
                 else:
+                    # ★ **아무것도 안 올랐으면 실패한 것이다.** 회복기는 「HP가 꽉 차서
+                    #   실패」 로 이미 그렇게 적고 있었는데 랭크만 빠져 있었다. 그래서
+                    #   +6 짜리 따라큐가 **칼춤을 매 턴 다시 썼다** (2026-09-23).
+                    if side is user:
+                        user.move_failed = True
                     self._say("%s 의 %s — %s 는 더 이상 안 변한다"
                               % (user.name, move["name"],
                                  STAT_LABEL[ef["stat"]]))
@@ -3608,6 +3613,81 @@ class Policy(object):
         # 실제보다 한참 높게 나온다 (재 보니 최대 89%p 차이가 났다).
         self.allow_switch = allow_switch
 
+    # ── 기점 잡기 (칼춤 · 용의춤 · 나쁜음모 …) ──────────────────────────────
+    #
+    # ★ **정한 규칙이지 잰 것이 아니다.** 2026-09-23 까지 양쪽 다 **제일 아픈 공격기만**
+    #   골랐다. 그래서 따라큐가 탈을 두르고 칼춤을 쌓는 그림을 계산이 아예 못 봤고,
+    #   하마돈이 그 앞에서 「게으름피우기」 를 권했다 (사용자가 잡음) —
+    #   *"따라큐는 탈때문에 안전하게 하마돈을 칼춤 기점으로 삼을 수 있을건데."*
+    #   상대가 안 쌓으면 상대가 실제보다 약해지고, 내 승률이 통째로 부풀려진다.
+    SETUP_STATS = ("attack", "spAtk", "speed")
+    SETUP_MAX = 2          # 이 단계까지만 쌓는다 (계속 쌓기만 하면 그것도 거짓말이다)
+    SETUP_SAFE = 0.35      # 상대의 제일 센 수가 내 지금 HP 의 이만큼 미만이면 한 턴 벌 수 있다
+    SETUP_MIN_HP = 0.55    # 그리고 내가 이만큼은 남아 있을 때만
+
+    @staticmethod
+    def setup_gain(move):
+        """이 기술이 **대가 없이 내 공격력·스피드만 올리는** 기술이면 {능력: 단계}.
+
+        저주(스피드 −1)처럼 대가가 따르는 것, 상대를 깎는 것, 랭크 말고 다른 일도
+        하는 것은 뺀다 — 그런 것까지 '기점' 으로 보면 규칙이 너무 헐거워진다.
+        """
+        effs = move_effects(move)
+        if not effs or any(e["kind"] != "rank" for e in effs):
+            return None
+        got = {}
+        for e in effs:
+            if e["who"] != "self" or e["step"] <= 0 or e["stat"] not in Policy.SETUP_STATS:
+                return None
+            got[e["stat"]] = e["step"]
+        return got or None
+
+    def _incoming(self, side, battle):
+        """상대의 제일 센 수가 내 지금 HP 의 몇 할인가. 못 재면 1.0 (위험한 쪽으로)."""
+        foe = battle.opp if side is battle.me else battle.me
+        key = ("들어오는", foe.name, side.name, foe.hp, side.hp,
+               tuple(sorted(foe.ranks.items())), tuple(sorted(side.ranks.items())))
+        got = self._fallback.get(key)
+        if got is None:
+            cand = ([(self.dex.find_move(m), None) for m in foe.moveset]
+                    if foe.moveset else best.candidate_moves(self.dex, foe.base.poke))
+            rows = best.rate_moves(self.dex, foe.as_build(), side.as_build(), cand)
+            threat = best.best_threat(rows)
+            got = (threat["expected"] / float(max(1, side.hp))) if threat else 1.0
+            self._fallback[key] = got
+        return got
+
+    def _setup_move(self, side, rows, battle):
+        """지금 기점을 잡는 것이 나은가 — 그 기술, 아니면 None."""
+        if battle is None:
+            return None
+        threat = best.best_threat(rows)
+        if threat is None:
+            return None                     # 때릴 수단이 없으면 쌓아도 소용없다
+        if threat["koNow"] >= 0.5:
+            return None                     # 지금 잡을 수 있으면 잡는다
+        want = "attack" if threat["move"]["category"] == "물리" else "spAtk"
+        cand = []
+        for r in rows:
+            if r["kind"] != "status":
+                continue
+            gain = self.setup_gain(r["move"])
+            if not gain or want not in gain:
+                continue                    # 안 쓰는 능력을 올리는 것은 기점이 아니다
+            if side.ranks.get(want, 0) + gain[want] > self.SETUP_MAX:
+                continue
+            cand.append((sum(gain.values()), r["move"]))
+        if not cand:
+            return None
+        # **공짜로 한 대를 벌어 주는 것**(따라큐의 탈 · 대타)이 있으면 그때가 기점이다
+        free = side.disguise or side.substitute > 0
+        if not free:
+            if side.hp < side.max_hp * self.SETUP_MIN_HP:
+                return None
+            if self._incoming(side, battle) >= self.SETUP_SAFE:
+                return None
+        return max(cand)[1]
+
     def _best_move(self, side, battle=None):
         # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
         restricted = bool(self.moves) and self._is_lead(side)
@@ -3632,12 +3712,25 @@ class Policy(object):
             rows = [r for r in rows if battle.move_blocked(
                 side, foe, r["move"], foresee=True) is None
                 and not self._just_failed(side, r["move"], foe)]
+        setup = self._setup_move(side, rows, battle)
+        if setup is not None:
+            return setup
         threat = best.best_threat(rows)
         if threat:
             return threat["move"]
         dmg = [r for r in rows if r["kind"] != "status"]
         return (dmg[0]["move"] if dmg else
                 (rows[0]["move"] if rows else self.dex.find_move("막치기")))
+
+    @classmethod
+    def _maxed_setup(cls, side, move):
+        """더 쌓을 수 없는 기점 기술인가 — 되풀이하면 턴만 버린다.
+
+        ! 이게 없어서 +2 까지 쌓은 따라큐가 **칼춤을 매 턴 다시 썼다.** 계획이 끝난 뒤
+          첫 수를 되풀이하는 자리(`act`)인데, 그 수가 공격기일 때는 티가 안 났다.
+        """
+        gain = cls.setup_gain(move)
+        return bool(gain) and all(side.ranks.get(k, 0) >= cls.SETUP_MAX for k in gain)
 
     @staticmethod
     def _just_failed(side, move, foe=None):
@@ -3716,7 +3809,8 @@ class Policy(object):
                         again, foresee=True)
                          or self._just_failed(
                              party.active, again,
-                             battle.opp if party is battle.me_party else battle.me))):
+                             battle.opp if party is battle.me_party else battle.me)
+                         or self._maxed_setup(party.active, again))):
                 again = self._best_move(party.active, battle)
             return self._wrap_mega(party, again)
         return self._wrap_mega(party, self._best_move(party.active, battle))

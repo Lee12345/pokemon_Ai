@@ -236,6 +236,18 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     threat = best.best_threat(rows)
     opp_plan = [threat["move"]] if threat else [
         opp_moves[0] if opp_moves else dex.find_move("막치기")]
+    # ★ **탈(따라큐)이 살아 있으면 그 턴이 기점이다.** 한 대를 통째로 막아 주므로 실제
+    #   플레이는 거기서 칼춤을 쌓는다. 안 넣으면 따라큐가 실제보다 한참 약해진다 —
+    #   사용자가 잡았다: *"따라큐는 탈때문에 안전하게 하마돈을 칼춤 기점으로 삼을 수 있을건데."*
+    #   (둘째 턴부터는 `battle.Policy._setup_move` 가 양쪽 모두에게 같은 판단을 한다.)
+    if threat is not None and opp_builds[oi].ability == battle.DISGUISE \
+            and st.get("opp_fresh") is not False and threat["koNow"] < 0.5:
+        want = "attack" if threat["move"]["category"] == "물리" else "spAtk"
+        ups = [(sum(g.values()), m) for m, g in
+               ((m, battle.Policy.setup_gain(m) or {}) for m in opp_moves)
+               if g.get(want)]
+        if ups:
+            opp_plan = [max(ups)[1]]
     # 상대도 메가를 쓴다. **안 쓰게 두면 상대가 실제보다 약해진다** —
     # 그러면 내 승률이 통째로 뻥튀기된다. 상대는 '첫 기회에 바로' 로 둔다
     # (정한 규칙이지 잰 것이 아니다. `Policy._wrap_mega` 와 같은 규칙).
