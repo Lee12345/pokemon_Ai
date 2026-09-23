@@ -6230,6 +6230,94 @@ def test_hidden_bench(dex):
     # `gui.py --점검` 이 잰다 — 거기서 칸을 실제로 채워 놓고 보기 때문이다 ([43]).
 
 
+def test_ledger(dex):
+    """[64] 판 장부 — 값마다 **어떻게 알았나**를 같이 들고 있는다 (2026-09-24).
+
+    사용자가 정한 방향: *"확인된 데이터를 정확하게 유지하고 … **사실과 추론을 분리**하고 …
+    **모르는 것은 모른다고 표시한다** … **전투 데이터를 물리적으로 메모리에 올려놓고** 해야 한다."*
+
+    그때까지 판 상태는 **창의 칸에만** 있었고, 장마다 새 `Board` 를 만들어 고치고 다시
+    칸에 써 넣었다. 그래서 칸에 못 담는 것 — **어떻게 알았나 · 모르는가 · 언제** — 이
+    매번 사라졌다. 「막대로 잰 55%(±2)」 와 「글자로 읽은 55%」 가 구별되지 않았다.
+    """
+    import ledger
+    import screenread
+    print("\n[64] 판 장부 — 값마다 어떻게 알았나")
+
+    m = ledger.Match()
+    m.frame = 3
+    m.put("opp", 2, "hp", 99.0, "막대")
+    check("넣은 값이 그대로 나온다", m.get("opp", 2, "hp") == 99.0, m.get("opp", 2, "hp"))
+    check("막대로 잰 값은 **확정이 아니다** (±1~2%p)",
+          not m.sure("opp", 2, "hp") and m.fact("opp", 2, "hp").error == 2.0)
+    check("한 번도 안 넣은 칸은 '모른다' 로 나온다 — 조용히 100% 로 차지 않는다",
+          m.unknown("opp", 2, "item") and m.how("opp", 2, "item") == "기본값")
+    # 같은 장: 글자가 막대를 이긴다
+    m.put("opp", 2, "hp", 62.0, "화면글자")
+    m.put("opp", 2, "hp", 58.0, "막대")
+    check("같은 장에서는 흐린 출처가 확정된 값을 못 덮는다 (글자 62 vs 막대 58)",
+          m.get("opp", 2, "hp") == 62.0, m.get("opp", 2, "hp"))
+    # 다음 장: 바뀐 것이므로 흐린 값이라도 이긴다
+    m.frame = 9
+    m.put("opp", 2, "hp", 41.0, "막대")
+    check("다음 장에서는 흐린 값이라도 이긴다 (HP 는 턴마다 바뀐다)",
+          m.get("opp", 2, "hp") == 41.0, m.get("opp", 2, "hp"))
+    check("바뀐 것이 기록에 남는다 (되짚을 수 있어야 한다)",
+          any("62 -> 41" in t for _f, _a, t in m.log), [t for _f, _a, t in m.log])
+    soft = dict(m.soft())
+    check("확정 아닌 값을 모아서 내놓는다 (%d개)" % len(soft),
+          "상대 3번 HP" in soft and "상대 3번 HP" in m.text(), list(soft))
+    check("'나와 있음' 은 쪽마다 하나다 — 둘이 동시에 나와 있을 수 없다",
+          ledger._where("opp", 4, "active") == "상대 나와 있음",
+          ledger._where("opp", 4, "active"))
+    for bad in (("적", 0, "hp"), ("opp", 0, "체력")):
+        try:
+            m.put(bad[0], bad[1], bad[2], 1, "사람")
+            ok = False
+        except ValueError:
+            ok = True
+        check("모르는 쪽·칸 이름은 조용히 넘기지 않고 멈춘다 (%s)" % (bad,), ok)
+    try:
+        m.put("opp", 0, "hp", 1, "대충")
+        ok = False
+    except ValueError:
+        ok = True
+    check("모르는 출처도 멈춘다 (출처가 늘면 HOW 에 먼저 적는다)", ok)
+
+    # -- 화면에서 읽은 것이 **출처와 함께** 장부에 들어가는가 ------------------
+    row = lambda n: {"poke": dex.find_pokemon(n), "hp": 100.0, "brought": False,
+                     "status": None, "maxhp": None}
+    bd = screenread.Board([row("하마돈")], [row("한카리아스"), row("패리퍼")])
+    bd.match = ledger.Match()
+    bd.match.frame = 5
+    screenread.apply_hp(bd, {"opp_hp": {"hp": 55.0}, "opp_hp_text": None, "my_hp": None})
+    check("막대로만 읽은 상대 HP 는 장부에 '막대' 로 들어간다",
+          bd.match.how("opp", 0, "hp") == "막대", bd.match.how("opp", 0, "hp"))
+    bd.match.frame = 6
+    screenread.apply_hp(bd, {"opp_hp": {"hp": 54.0}, "opp_hp_text": 53, "my_hp": None})
+    check("글자로 읽으면 '화면글자' 로 들어간다 (확정)",
+          bd.match.sure("opp", 0, "hp"), bd.match.how("opp", 0, "hp"))
+    screenread.apply(bd, {"kind": "나옴", "mon": "패리퍼", "side": "opp"}, dex)
+    check("문구로 알아낸 것은 '문구' 로 들어간다",
+          bd.match.get("opp", 0, "active") == 1
+          and bd.match.how("opp", 0, "active") == "문구", bd.match.get("opp", 0, "active"))
+    # ★ **미루어 본 것은 미루어 봤다고 적는다** — 「돌아와」 없이 사라진 놈을 쓰러진 것으로
+    #   보는 규칙은 추론이다. 이게 '문구' 로 들어가면 사람이 확정된 사실로 읽는다.
+    bd2 = screenread.Board([row("하마돈"), row("고릴타")], [row("한카리아스")])
+    bd2.match = ledger.Match()
+    bd2.my[0]["hp"] = 3.0
+    screenread._switch_me(bd2, 1)
+    check("「돌아와」 없이 사라진 놈을 쓰러졌다고 본 것은 '미뤄짐' 으로 적는다",
+          bd2.match.how("me", 0, "hp") == "미뤄짐" and not bd2.match.sure("me", 0, "hp"),
+          bd2.match.how("me", 0, "hp"))
+    check("그래서 그 값은 '확정 아닌 값' 목록에 뜬다",
+          any(w == "내 1번 HP" for w, _f in bd2.match.soft()), bd2.match.soft())
+    # 장부가 없어도 화면 읽기는 그대로 돈다 (검사·옛 호출 자리)
+    bd3 = screenread.Board([row("하마돈")], [row("한카리아스")])
+    screenread.apply_hp(bd3, {"opp_hp": {"hp": 55.0}, "opp_hp_text": None, "my_hp": None})
+    check("장부를 안 달아도 예전처럼 돈다", bd3.opp[0]["hp"] == 55.0, bd3.opp[0]["hp"])
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6297,6 +6385,7 @@ def main():
     test_setup(dex)
     test_mid_state(dex)
     test_hidden_bench(dex)
+    test_ledger(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

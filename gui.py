@@ -59,6 +59,7 @@ import time
 import battle
 import best
 import calc
+import ledger
 import live
 import paths
 import pick
@@ -631,6 +632,9 @@ class OppSlot(object):
         tk.Label(self.box, text="HP", bg=CARD, fg=DIM,
                  font=FONT_S).pack(side="left", padx=(6, 1))
         self.hp = tk.StringVar(value="100")
+        # ★ **사람이 고친 값이 제일 세다** — 사람은 화면을 눈으로 보고 있다.
+        #   장부에 「사람이 직접 적음」 으로 남겨야 막대로 잰 값이 같은 장에서 덮지 않는다.
+        self.hp.trace_add("write", lambda *_a: app.put_by_hand("opp", index, "hp", self.hp))
         # 0 이면 쓰러진 것으로 본다. 칸을 따로 만들지 않는다.
         tk.Spinbox(self.box, from_=0, to=100, increment=5, width=4,
                    textvariable=self.hp, bg=FIELD, fg=TEXT,
@@ -903,6 +907,13 @@ class App(object):
         self.stale = False
         self.asked_sig = None       # 물어볼 때 누가 나와 있었나
         self.hidden_n = (0, 0)      # 판마다 새로 뽑아 붙인 상대 벤치 (몇, 몇 중에서)
+        # ★ **판 장부** — 판이 끝날 때까지 사는 하나의 물건 (`ledger.Match`).
+        #   칸(tkinter 변수)에는 값만 들어가고 **어떻게 알았는지·모르는지**는 안 들어간다.
+        #   그래서 장마다 새로 만드는 `Board` 말고, 이걸 따로 들고 간다 (사용자가 정함,
+        #   2026-09-24: *"전투 데이터를 물리적으로 메모리에 올려놓고 해야한다"*).
+        self.match = ledger.Match()
+        # 창이 스스로 칸을 채우는 중인가 (그동안의 칸 변화는 '사람이 적은 것' 이 아니다)
+        self._writing = False
         self.last_got = None        # 마지막으로 읽은 것 (디버그·「이거 틀렸어」 가 쓴다)
         self.opp_active.trace_add("write", lambda *_a: self.opp_fresh.set(True))
         self.opp_state = tk.Label(box, text="", bg=CARD, fg=DIM,
@@ -1397,6 +1408,10 @@ class App(object):
         bd = screenread.Board(my, opp, self.my_active.get(), self.opp_active.get(),
                               bool(self.my_fresh.get()), bool(self.opp_fresh.get()),
                               self.seen, self.opp_items, self.opp_abilities)
+        # ★ 판은 장마다 새로 만들지만 **장부는 그대로 들고 간다.** 칸에 못 담는 것
+        #   (어떻게 알았나 · 모르는가 · 언제)이 여기 쌓인다.
+        bd.match = self.match
+        self.match.frame = self.watcher.frames if self.watcher is not None else 0
         bd.opp_active_known = self.opp_known
         bd.ranks = {side: {k: _int(v) for k, v in self.ranks[side].items()} for side in ("me", "opp")}
         # 판에서는 '자동' 을 None 으로 둔다
@@ -1414,7 +1429,18 @@ class App(object):
 
     def set_board(self, bd):
         """screenread.Board -> 창의 칸. '나와 있음' 을 바꾸면 '막 나옴' 이 켜지므로
-        (trace) 나와 있음을 먼저 넣고 막 나옴을 나중에 넣는다."""
+        (trace) 나와 있음을 먼저 넣고 막 나옴을 나중에 넣는다.
+
+        ★ 이 동안 칸이 바뀌는 것은 **화면에서 읽은 것**이지 사람이 고친 것이 아니다.
+          `_writing` 을 켜서 장부가 그걸 「사람이 적음」 으로 잘못 적지 않게 한다.
+        """
+        self._writing = True
+        try:
+            self._set_board(bd)
+        finally:
+            self._writing = False
+
+    def _set_board(self, bd):
         for sl, row in zip(self.slots, bd.my):
             sl.hp.set("%g" % row["hp"])
             sl.brought.set(bool(row["brought"]))
@@ -1635,6 +1661,7 @@ class App(object):
                         "밝혀짐 " if sl.brought.get() else "",
                         "[나와 있음] " if i == self.opp_active.get() else "",
                         ", ".join(self.seen.get(sl.poke["name"], []))))
+        L.extend(self.match.lines())
         L.append("생각 중: %s%s" % (self.busy,
                                   " (%.1f초째)" % (time.time() - self.asked_at)
                                   if self.busy and self.asked_at else ""))
@@ -1726,6 +1753,20 @@ class App(object):
             lines = [ln for ln in (text or "").splitlines() if ln.strip()][:4]
         return "\n".join(lines[:7])
 
+    def put_by_hand(self, side, i, field, var):
+        """사람이 칸을 고쳤다 → 장부에 「사람이 직접 적음」 으로.
+
+        ★ **창이 스스로 써 넣을 때는 안 적는다** (`set_board` 중). 안 그러면 화면에서
+          읽은 값이 전부 '사람이 적은 값' 으로 둔갑해서, 장부가 거짓말을 하게 된다.
+        """
+        # 창을 짓는 도중에도 칸이 채워진다 — 그때는 장부도 깃발도 아직 없다.
+        if getattr(self, "_writing", True) or getattr(self, "match", None) is None:
+            return
+        try:
+            self.match.put(side, i, field, float(var.get()), "사람")
+        except (ValueError, TypeError):
+            pass
+
     def warm_up(self):
         """계산 장치를 미리 한 번 돌려 둔다 (뒤에서). 답이 아니라 **표를 채우는 것**이 목적이다.
 
@@ -1758,6 +1799,8 @@ class App(object):
                 self.say("따라가기를 못 켰습니다 — %s" % e, clear=True)
                 return
         self.following = True
+        # 새 판이니 장부도 새로 편다 (지난 판의 사실이 남아 있으면 안 된다)
+        self.match = ledger.Match()
         # ★ **미리 덥힌다.** 첫 물음은 표(기술 점수·도구 규칙·특성 규칙)를 처음 채우느라
         #   **4~5초**가 더 걸린다 (잰 것: 「5초」 로 물었는데 10.3초, 두 번째는 10초에 10.0초).
         #   판이 시작되기 전에 뒤에서 한 번 돌려 두면 그 값을 첫 답에서 안 낸다.
@@ -2011,6 +2054,16 @@ class App(object):
         if guessed_opp:
             L.append("! 「냈다」 를 하나도 안 켜서 **적은 것 전부**를 상대로")
             L.append("  봤습니다. 실제로 나온 놈만 켜면 더 정확합니다")
+        # ★ **이 답이 무엇 위에 세워졌는지 말한다** (2026-09-24, 사용자가 정한 원칙:
+        #   "사실과 추론을 분리한다 · 모르는 것은 모른다고 표시한다").
+        #   확정이 아닌 값(막대로 잰 HP · 그림으로 알아본 이름 · 미루어 본 빈사)은
+        #   답을 통째로 뒤집을 수 있다. 숨기면 사용자가 확정된 값으로 읽는다.
+        soft = self.match.soft() if getattr(self, "match", None) else []
+        if soft:
+            L.append("! 확정 아닌 값 %d개 위에서 낸 답입니다: %s"
+                     % (len(soft), " · ".join("%s %s" % (w, f.describe()) for w, f in soft[:2])))
+            if len(soft) > 2:
+                L.append("  (나머지는 「디버그 기록」 의 장부에 다 있습니다)")
         if getattr(self, "guessed_mine", False):
             L.append("! 내 쪽 「냈다」 를 하나도 안 켜서 **채운 자리 전부**를 내")
             L.append("  팀으로 봤습니다. 실제로는 3마리만 나갑니다 — 그대로 두면")
@@ -2685,6 +2738,14 @@ def check():
     got_now = open(now_file, encoding="utf-8").read() if os.path.exists(now_file) else ""
     if "내 파티" not in got_now or "상대" not in got_now or "마지막 답" not in got_now:
         bad.append("디버그 파일에 지금 상태가 안 들어감 (%r)" % got_now[:120])
+    # ★ **장부가 디버그 파일에 통째로 들어가야 한다** (2026-09-24). 값만 있고 '어떻게
+    #   알았나' 가 없으면, 틀렸을 때 어디서 잘못 들어왔는지 되짚을 수가 없다.
+    if "장부" not in got_now or "확정이 아닌 값" not in got_now:
+        bad.append("디버그 파일에 장부가 안 들어감 (%r)" % got_now[-200:])
+    if not app.match.facts:
+        bad.append("화면을 여러 장 읽었는데 장부가 비어 있음")
+    if not any("그림으로 알아봄" in f.describe() for f in app.match.facts.values()):
+        bad.append("선출 화면을 그림으로 알아본 것이 '확정 아님' 으로 안 적힘")
     app.wrong_why.set("따라큐를 못 읽음")
     app.mark_wrong()
     marks = [f for f in os.listdir(pathsmod.mine("디버그")) if f.startswith("틀림_")]

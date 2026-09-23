@@ -739,6 +739,10 @@ class Board(object):
         self.seen = seen if seen is not None else {}
         self.opp_items = opp_items if opp_items is not None else {}
         self.opp_abilities = opp_abilities if opp_abilities is not None else {}
+        # ★ **장부** (`ledger.Match`) — 판이 끝날 때까지 사는 물건. 여기 달아 두면 아래
+        #   `put` 이 값마다 **어떻게 알았는지**를 같이 적는다. 없으면(검사 등) 아무 일도 안 한다.
+        #   판(Board)은 장마다 새로 만들어도 **장부는 안 새로 만든다** — 그게 핵심이다.
+        self.match = None
         # 실전 중간 상태 (창의 칸과 같다). 자리마다의 상태이상은 my/opp 줄의 'status'.
         self.ranks = {"me": {}, "opp": {}}              # 나와 있는 놈의 랭크
         self.weather, self.weather_turns = None, 5      # None = 자동 (특성으로)
@@ -751,6 +755,15 @@ class Board(object):
             if r["poke"] is not None and r["poke"]["name"] == name:
                 return i
         return None
+
+    def put(self, side, i, field, value, how):
+        """장부에 **값과 그 출처를** 적는다. 장부가 없으면 아무 일도 안 한다.
+
+        ★ 값을 칸에 넣는 자리마다 이것을 같이 부른다. 안 부르면 그 값은 나중에
+          「어떻게 알았는지 모르는 값」 이 되고, 답 옆에서 확정된 값인 척한다.
+        """
+        if self.match is not None:
+            self.match.put(side, i, field, value, how)
 
 
 # 문구 한 줄이 랭크를 몇 칸 움직이나
@@ -819,6 +832,9 @@ def _switch_me(board, j):
     if row["poke"]["name"] == board.left_ok:
         return []                       # 「돌아와」 를 봤다 — 제 발로 들어간 것이다
     hp, row["hp"] = row["hp"], 0.0
+    # ★ 이것은 **본 것이 아니라 미루어 본 것**이다. 장부에 그렇게 적어야 답 옆에
+    #   「확정 아님」 으로 따라 나온다 — 틀렸으면 사람이 칸을 고칠 수 있어야 한다.
+    board.put("me", was, "hp", 0.0, "미뤄짐")
     return [(True, "내 %s 가 HP %.0f%% 에서 「돌아와」 없이 사라졌습니다 — 쓰러진 것으로 "
                    "봅니다 (아니면 칸을 고쳐 주세요)" % (row["poke"]["name"], hp))]
 
@@ -838,6 +854,9 @@ def apply_who(board, who):
         j = board.find(side, name)
         if j is None:
             continue
+        # ★ **이름표를 봤다는 것 자체가 사실이다.** 자리가 안 바뀌었어도 장부에 적는다 —
+        #   「그대로겠거니」 하고 있던 것과 **이름표로 확인한 것**은 다르다.
+        board.put(side, 0, "active", j, "이름표")
         if side == "me":
             out += _switch_me(board, j)
             continue
@@ -869,9 +888,11 @@ def apply(board, ev, dex):
         if i is None:
             return out + [(False, "%s: %s 파티에 없음 — 칸을 확인하세요" % (name, _who(side)))]
         rows = board.my if side == "me" else board.opp
+        board.put(side, 0, "active", i, "문구")
         changed = []
         if not rows[i]["brought"]:
             rows[i]["brought"] = True
+            board.put(side, i, "brought", True, "문구")
             changed.append("냈다")
         moved = _switch_me(board, i) if side == "me" else (
             [(True, "")] if _switch_to(board, "opp", i) else [])
@@ -894,6 +915,7 @@ def apply(board, ev, dex):
                 got = board.seen.setdefault(name, [])
                 if move not in got:
                     got.append(move)
+                    board.put("opp", i, "moves", list(got), "문구")
                     out.append((True, "상대 %s: 기술 %s → 본 기술에 넣음" % (name, move)))
                 else:
                     out.append((True, "상대 %s: 기술 %s (이미 본 기술)" % (name, move)))
@@ -910,14 +932,22 @@ def apply(board, ev, dex):
         hp = 0.0 if kind == "쓰러짐" else REVIVE_HP
         rows[i]["hp"] = hp
         rows[i]["brought"] = True
+        board.put(side, i, "hp", hp, "문구")
+        board.put(side, i, "brought", True, "문구")
         return [(True, "%s %s: %s → HP %d" % (_who(side), name,
                                               "쓰러짐" if kind == "쓰러짐" else "되살아남", hp))]
     if kind in ("풍선", "메가반응") and side == "opp":
         item = ev.get("item")
         board.opp_items[name] = item
+        i = board.find("opp", name)
+        if i is not None:
+            board.put("opp", i, "item", item, "문구")
         return [(True, "상대 %s: 도구 %s → 계산에 넣음" % (name, item))]
     if kind == "통찰" and side == "opp":
         board.opp_abilities[name] = "통찰"
+        i = board.find("opp", name)
+        if i is not None:
+            board.put("opp", i, "ability", "통찰", "문구")
         return [(True, "상대 %s: 특성 통찰 → 계산에 넣음 (본 것: 내 %s · %s)"
                  % (name, ev.get("other"), ev.get("item")))]
     if kind == "풍선터짐" and side == "opp":
@@ -955,6 +985,7 @@ def _apply_mid(board, ev, kind, side, name):
             return [(False, "%s %s: %s %s — 나와 있는 놈이 아니라 안 넣음" % (_who(side), name, ev.get("stat"), word))]
         r = board.ranks.setdefault(side, {})
         r[key] = max(-6, min(6, r.get(key, 0) + step))
+        board.put(side, i, "ranks", dict(r), "문구")
         return [(True, "%s %s: %s 랭크 %+d" % (_who(side), name, ev["stat"], r[key]))]
     if kind in ("하품", "잠듦", "자는중", "깸"):
         i = board.find(side, name)
@@ -971,6 +1002,7 @@ def _apply_mid(board, ev, kind, side, name):
         else:
             row["status"] = "잠듦"
         now = row["status"] or "없음"
+        board.put(side, i, "status", row["status"], "문구")
         return [(True, "%s %s: 상태 %s" % (_who(side), name, now))]
     # 실전 기록에서 자주 나온 것들 (2026-09-24) — 칸이 있는 것은 넣는다.
     if kind in ("맹독퍼짐", "독데미지"):
@@ -985,14 +1017,17 @@ def _apply_mid(board, ev, kind, side, name):
             row["status"] = "독"
         else:
             return [(True, "%s %s: 독 데미지 (이미 %s)" % (_who(side), name, row["status"]))]
+        board.put(side, i, "status", row["status"], "문구")
         return [(True, "%s %s: 상태 %s" % (_who(side), name, row["status"]))]
     if kind in ("비시작", "비끝"):
         board.weather = "비" if kind == "비시작" else "없음"
+        board.put("field", 0, "weather", board.weather, "문구")
         if kind == "비시작":
             board.weather_turns = 5
         return [(True, "날씨 %s" % board.weather)]
     if kind in ("풀필드시작", "풀필드끝"):
         board.terrain = "그래스필드" if kind == "풀필드시작" else "없음"
+        board.put("field", 0, "terrain", board.terrain, "문구")
         if kind == "풀필드시작":
             board.terrain_turns = 5
         return [(True, "필드 %s" % board.terrain)]
@@ -1052,6 +1087,10 @@ def apply_hp(board, res):
             txt = res.get("opp_hp_text")
             how = ("글자 %d%% (막대 %.0f%% 와 맞음)" % (txt, m["hp"])) if (m and txt) else (
                 "막대로 잼 — 글자를 못 읽어 1~2%% 오차가 있을 수 있음" if m else "글자로 읽음")
+            # ★ **어떻게 알았는지를 값과 함께 남긴다.** 전에는 이 한 줄이 기록으로만 가고
+            #   `row["hp"] = 55.0` 다음부터는 막대로 잰 55 와 글자로 읽은 55 가 똑같아 보였다.
+            board.put("opp", i, "hp", round(hp, 1), "화면글자" if txt else "막대")
+            board.put("opp", i, "brought", True, "화면글자" if txt else "막대")
             out.append((True, "상대 %s: HP %.0f%% (%s)" % (row["poke"]["name"], hp, how)))
         if why_hp:
             out.append((False, "상대 HP: " + why_hp))
@@ -1084,6 +1123,8 @@ def apply_hp(board, res):
             out.append((False, "내 HP %d/%d 를 읽었지만 나와 있는 내 칸이 비어 있음" % mine))
         else:
             row["hp"] = round(cur * 100.0 / full, 1)
+            # 내 HP 는 게임이 「164/164」 로 띄워 준다 — 재는 것이 아니라 읽는 것이다 (확정).
+            board.put("me", i, "hp", row["hp"], "화면글자")
             out.append((True, "내 %s: HP %d/%d = %.0f%%" % (row["poke"]["name"], cur, full, row["hp"])))
     return out
 
@@ -1096,6 +1137,8 @@ def apply_preview(board, found, dex):
     for i, f in enumerate(found):
         poke = live.pickable_for(dex, dex.find_pokemon(f["key"]))
         board.opp.append({"poke": poke, "hp": 100.0, "brought": False})
+        # 그림으로 알아본 것이다 — 점수가 0.8~0.9 라 **확정이 아니다.**
+        board.put("opp", i, "poke", poke["name"], "그림")
         warn = "  ← 2등과 차이가 작음, 확인하세요" if f["gap"] < 0.05 else ""
         out.append((True, "상대 %d. %s  (%s, 점수 %.2f)%s"
                     % (i + 1, live.poke_label(poke), f["gender"] or "성별 표시 없음",
