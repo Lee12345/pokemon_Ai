@@ -1019,11 +1019,24 @@ def turn_state(my_hp, my_active, opp_rows, opp_active):
              if poke is not None and hp > 0]
     if not alive:
         return None, None, "상대가 한 마리도 살아 있지 않습니다"
-    oi = 0
+    # ★ **못 찾으면 말없이 1번으로 돌아가지 않는다.** 2026-09-24 까지 `oi = 0` 이 기본값
+    #   이어서, 나와 있다는 자리가 목록에 없으면 **첫 번째 놈을 상대로 놓고** 답이 나왔다.
+    #   실전 한 판이 통째로 그렇게 틀렸다 (따라간기록_0924_0851) — 이름표로 킬라플로르를
+    #   읽었는데 그놈은 「냈다」 가 안 켜져 목록에서 빠졌고, 답은 전부 마스카나 것이었다.
+    #   경고도 없었다. **번호가 안 맞으면 답하지 않는다** (CLAUDE.md §8).
+    oi = None
     for new_i, (old_i, _p, _hp) in enumerate(alive):
         if old_i == opp_active:
             oi = new_i
             break
+    if oi is None:
+        was = opp_rows[opp_active] if 0 <= opp_active < len(opp_rows) else (None, 0.0)
+        if was[0] is not None and was[1] <= 0:
+            return None, None, ("나와 있다는 상대 %s 가 HP 0 입니다 — 새로 나온 놈을 "
+                                "골라 주세요" % was[0]["name"])
+        return None, None, ("나와 있다는 상대 자리(%d번)가 넘길 목록에 없습니다 — 그 칸의 "
+                            "「냈다」 를 켜거나 나와 있는 놈을 다시 골라 주세요"
+                            % (opp_active + 1))
     return ([p for _i, p, _hp in alive],
             {"my_hp": list(my_hp), "my_active": my_active,
              "opp_hp": [hp for _i, _p, hp in alive], "opp_active": oi},

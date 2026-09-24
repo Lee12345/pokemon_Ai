@@ -734,6 +734,9 @@ class Board(object):
         self.opp_active_known = True
         # 마지막으로 「돌아와!」 를 본 내 포켓몬 — **말없이 사라진 것과 가르려고** 들고 있는다
         self.left_ok = None
+        # 방금 「곁으로 돌아간다!」 를 본 상대 — 그 이름이 곧바로 이름표에 또 보이면
+        # **지난 장을 늦게 읽은 것**이다 (게임 규칙: 들어간 놈은 그 턴에 다시 못 나온다)
+        self.left_opp = None
         self.my_fresh = my_fresh
         self.opp_fresh = opp_fresh
         self.seen = seen if seen is not None else {}
@@ -795,11 +798,21 @@ def _who(side):
 
 def _switch_to(board, side, i):
     """그쪽의 나와 있는 놈을 i 로. 바뀌었으면 True — 막 나옴을 켜고, **랭크를 풀고**, 들어간 놈의
-    졸음(하품)을 푼다 (게임 규칙: 교체하면 랭크·졸음이 사라진다)."""
+    졸음(하품)을 푼다 (게임 규칙: 교체하면 랭크·졸음이 사라진다).
+
+    ★ **나와 있으면 「냈다」 다.** 이 한 줄이 없어서 실전 한 판이 통째로 틀렸다
+      (2026-09-24, 따라간기록_0924_0851). 이름표로 「상대 킬라플로르」 를 읽고 나와 있는
+      놈을 그쪽으로 옮겼는데 **「냈다」 를 안 켰다.** 창은 「냈다」 가 켜진 놈만 상대로
+      넘기므로 킬라플로르가 목록에서 빠졌고, `live.turn_state` 가 **말없이 1번(마스카나)**
+      으로 되돌아갔다. 그 판의 답은 **전부 마스카나를 놓고** 나왔다 — 경고 한 줄 없이.
+    """
+    rows = board.my if side == "me" else board.opp
+    if 0 <= i < len(rows) and rows[i].get("poke") is not None and not rows[i]["brought"]:
+        rows[i]["brought"] = True
+        board.put(side, i, "brought", True, "이름표")
     now = board.my_active if side == "me" else board.opp_active
     if now == i:
         return False
-    rows = board.my if side == "me" else board.opp
     if 0 <= now < len(rows) and rows[now].get("status") == "졸음":
         rows[now]["status"] = None
     if side == "me":
@@ -839,6 +852,33 @@ def _switch_me(board, j):
                    "봅니다 (아니면 칸을 고쳐 주세요)" % (row["poke"]["name"], hp))]
 
 
+def _left_opp(board, name):
+    """상대가 **제 발로 들어갔다** (「상대 XX는 …의 곁으로 돌아간다!」) → [(넣었나, 한 줄)].
+
+    ★ **여기서 멈추는 것이 핵심이다.** 누가 새로 나오는지는 아직 모른다. 그런데도 예전
+      코드는 들어간 놈을 그대로 나와 있는 놈으로 두었고, 그 사이에 읽은 일(하품·데미지)이
+      **엉뚱한 놈에게** 붙었다. 실전에서 마스카나가 빠지고 킬라플로르가 나왔는데, 창은
+      15초 동안 마스카나를 잡고 있었다 (2026-09-24, 따라간기록_0924_0851).
+      그래서 **「누가 나와 있나」 를 모름으로 돌린다** — 창은 그동안 답을 내지 않고,
+      이름표를 읽는 순간(보통 한두 장 뒤) 저절로 풀린다.
+      사용자가 말한 그대로다: *"체크리스트가 픽스되어야 다음으로 넘어가게끔"*.
+    """
+    i = board.find("opp", name)
+    if i is None:
+        return [(False, "상대 %s: 들어갔다는데 파티에 없음 — 칸을 확인하세요" % name)]
+    row = board.opp[i]
+    if not row["brought"]:
+        row["brought"] = True
+        board.put("opp", i, "brought", True, "문구")
+    if row.get("status") == "졸음":        # 교체하면 졸음(하품)은 사라진다
+        row["status"] = None
+    board.ranks["opp"] = {}                # 랭크도 사라진다
+    board.opp_active_known = False         # **누가 나오는지는 아직 모른다**
+    board.left_opp = name
+    return [(True, "상대 %s 가 들어갔습니다 — 새로 나오는 놈을 읽을 때까지 "
+                   "「나와 있는 상대」 를 모름으로 둡니다" % name)]
+
+
 def apply_who(board, who):
     """문구에 적힌 이름으로 **누가 나와 있는지** 정한다 → [(넣었나, 한 줄)].
 
@@ -854,12 +894,23 @@ def apply_who(board, who):
         j = board.find(side, name)
         if j is None:
             continue
+        # ★ **방금 들어간 놈의 이름표는 한 번 흘린다.** 게임 규칙상 들어간 놈은 그 턴에
+        #   다시 못 나온다. 그런데 화면은 「돌아간다!」 문구가 뜬 뒤에도 잠깐 옛 이름표를
+        #   달고 있어서, 그걸 읽으면 **들어간 놈이 도로 나와 있는 것으로** 돌아간다.
+        #   한 장 더 보고 그때도 그 이름이면 진짜로 받는다 (그 사이 답은 안 낸다).
+        if (side == "opp" and name == board.left_opp
+                and not board.opp_active_known):
+            board.left_opp = None
+            out.append((False, "화면에 「상대 %s」 — 방금 들어간 놈입니다. "
+                               "한 장 더 보고 정합니다" % name))
+            continue
         # ★ **이름표를 봤다는 것 자체가 사실이다.** 자리가 안 바뀌었어도 장부에 적는다 —
         #   「그대로겠거니」 하고 있던 것과 **이름표로 확인한 것**은 다르다.
         board.put(side, 0, "active", j, "이름표")
         if side == "me":
             out += _switch_me(board, j)
             continue
+        board.left_opp = None
         if _switch_to(board, "opp", j):
             out.append((True, "화면에 「상대 %s」 — 나와 있는 상대를 그쪽으로" % name))
         elif not board.opp_active_known:
@@ -888,14 +939,26 @@ def apply(board, ev, dex):
         if i is None:
             return out + [(False, "%s: %s 파티에 없음 — 칸을 확인하세요" % (name, _who(side)))]
         rows = board.my if side == "me" else board.opp
-        board.put(side, 0, "active", i, "문구")
+        # ★ **들어간 놈이 기술을 썼다는 문구로 그놈을 도로 불러내지 않는다.** 「상대 XX의
+        #   유턴!」 은 **빠지기 전**의 일이라, 늦게 읽으면 나와 있는 놈이 뒤로 돌아간다.
+        #   기술은 기록하되 「나와 있음」 은 안 건드린다. (「내보냈다」 는 그 반대다 —
+        #   그건 나온 사실 자체라 그대로 받고, 기다리던 것도 푼다.)
+        stale = (kind == "기술" and side == "opp" and name == board.left_opp
+                 and not board.opp_active_known)
+        if stale:
+            out.append((False, "상대 %s: 기술 문구 — 방금 들어간 놈이라 「나와 있음」 은 "
+                               "안 바꿉니다" % name))
+        else:
+            board.put(side, 0, "active", i, "문구")
+            if side == "opp":
+                board.left_opp = None
         changed = []
         if not rows[i]["brought"]:
             rows[i]["brought"] = True
             board.put(side, i, "brought", True, "문구")
             changed.append("냈다")
-        moved = _switch_me(board, i) if side == "me" else (
-            [(True, "")] if _switch_to(board, "opp", i) else [])
+        moved = [] if stale else (_switch_me(board, i) if side == "me" else (
+            [(True, "")] if _switch_to(board, "opp", i) else []))
         if moved:
             changed.append("나와 있음")
             out += [n for n in moved if n[1]]
@@ -922,8 +985,11 @@ def apply(board, ev, dex):
             elif move:
                 out.append((True, "내 %s: 기술 %s" % (name, move)))
         return out
-    if kind == "들어감" and side == "me" and name:
-        board.left_ok = name        # 제 발로 들어갔다 — 쓰러진 것으로 보면 안 된다
+    if kind == "들어감" and name:
+        if side == "me":
+            board.left_ok = name    # 제 발로 들어갔다 — 쓰러진 것으로 보면 안 된다
+        else:
+            return _left_opp(board, name)
     if kind in ("쓰러짐", "되살아남"):
         i = board.find(side, name)
         if i is None:

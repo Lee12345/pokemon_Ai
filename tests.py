@@ -6427,6 +6427,115 @@ def test_checklist(dex):
     check("장부 없이도 체크리스트가 만들어진다", len(live.checklist(bare)) > 0)
 
 
+def test_switch_read(dex):
+    """[66] 상대가 **교체로 빠지고 들어오는 것** — 실전 한 판이 통째로 틀렸다 (2026-09-24).
+
+    사용자가 짚었다 — *"상대가 교체로 뺐을때 ~가 나왔다 이후에 HP바가 나오는데 … 교체 전
+    포켓몬이 맞았다거나 그런식으로 저장되기도 하는듯. 하마돈-마스카나 대면에서 상대
+    마스카나가 유턴을 눌러 킬라플로르가 나오고 … 작은창에는 여전히 마스카나로 인식중인 느낌"*,
+    *"체력바의 이름으로만 읽는건 한계가 매우명확. 교체로 들어가고 나가는 문구를 완벽하게
+    캐치해야함."*
+
+    **기록으로 확인한 것** (`내기록/대전기록/따라간기록_0924_0851.txt`) —
+
+        08:54:31  문구 「상대 마스카나는 / soirée의 곁으로 돌아간다!」 → 못 읽음
+        08:54:46  O 화면에 「상대 킬라플로르」 — 나와 있는 상대를 그쪽으로
+        08:55:06  답 » ... ◆ **상대 마스카나** 가 고를 것 같은 수 ...
+
+    고장은 셋이었다.
+      ① 상대가 **빠지는 문구에 틀이 하나도 없었다** — 15초를 이름표만 기다렸다.
+      ② `_switch_to` 가 나와 있는 놈으로 옮기면서 **「냈다」 를 안 켰다.**
+      ③ 그래서 킬라플로르가 넘길 목록에서 빠졌고, `live.turn_state` 가 **말없이
+         1번(마스카나)으로 되돌아갔다.** 경고 한 줄 없이 그 판 답이 전부 마스카나 것이었다.
+    """
+    import live
+    import msgread
+    import screenread
+    print("\n[66] 교체로 빠지고 들어오는 것 — 이름표만으로는 안 된다")
+
+    names = msgread.Names(dex, ["하마돈", "마스카나", "킬라플로르"])
+    # -- ① 문구 -------------------------------------------------------------
+    got = msgread.read(["상대 마스카나는", "soirée의 곁으로 돌아간다!"], names)
+    check("「…의 곁으로 돌아간다!」 를 읽는다 (실전에서 못 읽던 줄)",
+          got and got["kind"] == "들어감" and got["mon"] == "마스카나"
+          and got["side"] == "opp", got)
+    bare = msgread.read(["상대 마스카나는", "곁으로 돌아간다!"], names)
+    check("트레이너 이름이 통째로 안 읽혀도 읽는다 (일본어·특수문자)",
+          bare and bare["kind"] == "들어감" and bare["side"] == "opp", bare)
+    mine = msgread.read(["하마돈 돌아와!"], names)
+    check("내 쪽 「돌아와!」 는 그대로 내 쪽이다", mine and mine["side"] == "me", mine)
+
+    row = lambda n, hp=100.0, br=False, st=None: {
+        "poke": dex.find_pokemon(n), "hp": hp, "brought": br, "status": st, "maxhp": None}
+    def fresh_board():
+        bd = screenread.Board([row("하마돈", 100.0, True)],
+                              [row("마스카나", 83.0, True), row("킬라플로르"),
+                               row("블래키")])
+        bd.opp_active, bd.opp_active_known = 0, True
+        return bd
+
+    # -- ② 빠지면 「누가 나와 있나」 를 모름으로 ------------------------------
+    bd = fresh_board()
+    bd.opp[0]["status"] = "졸음"
+    bd.ranks["opp"] = {"공격": 2}
+    notes = screenread.apply(bd, got, dex)
+    check("상대가 빠지면 **나와 있는 상대를 모름**으로 둔다",
+          bd.opp_active_known is False, (bd.opp_active_known, notes))
+    check("빠진 놈의 졸음(하품)이 풀린다 — 게임 규칙",
+          bd.opp[0]["status"] is None, bd.opp[0]["status"])
+    check("빠진 쪽의 랭크가 풀린다", not bd.ranks["opp"], bd.ranks["opp"])
+    check("왜 멈췄는지 말한다", any("새로 나오는 놈" in t for _ok, t in notes), notes)
+
+    # -- ③ 이름표로 새 놈을 읽으면 「냈다」 가 같이 켜진다 --------------------
+    # ★ 이 한 줄이 없어서 실전 한 판이 통째로 틀렸다.
+    # ★ 빠진 놈의 이름표가 한 장 더 보이는 일이 있다 (문구가 먼저 뜨고 이름표가 늦게 바뀐다).
+    #   게임 규칙상 그 턴에 다시 못 나오므로 **한 번은 흘리고** 한 장 더 보고 정한다.
+    first = screenread.apply_who(bd, [("opp", "마스카나")])
+    check("방금 들어간 놈의 이름표는 **한 번 흘린다** (게임 규칙: 그 턴에 못 나온다)",
+          bd.opp_active_known is False and any("한 장 더" in t for _o, t in first),
+          (bd.opp_active_known, first))
+    screenread.apply_who(bd, [("opp", "마스카나")])
+    check("한 장 더 봐도 그 이름이면 그때는 받는다 (영영 막히지 않는다)",
+          bd.opp_active_known is True, bd.opp_active_known)
+    bd2 = fresh_board()
+    screenread.apply(bd2, got, dex)
+    screenread.apply_who(bd2, [("opp", "킬라플로르")])
+    check("이름표로 새 놈을 읽으면 나와 있는 상대가 바뀐다", bd2.opp_active == 1, bd2.opp_active)
+    check("그러면서 **「냈다」 도 같이 켠다** (나와 있으면 낸 것이다)",
+          bd2.opp[1]["brought"] is True, bd2.opp[1])
+    check("모름이 풀린다", bd2.opp_active_known is True, bd2.opp_active_known)
+
+    # -- ④ 넘길 목록에서 빠지면 **말없이 1번으로 돌아가지 않는다** -----------
+    rows = [(bd2.opp[0]["poke"], 83.0), (None, 100.0), (None, 100.0)]
+    pokes, state, why = live.turn_state([100.0], 0, rows, 1)
+    check("나와 있다는 자리가 목록에 없으면 **답하지 않는다** (전엔 1번으로 돌아갔다)",
+          pokes is None and why, (pokes and [p["name"] for p in pokes], why))
+    check("왜 안 되는지 이름 대고 말한다", "냈다" in (why or ""), why)
+    dead = [(bd2.opp[0]["poke"], 0.0), (bd2.opp[1]["poke"], 100.0)]
+    pokes2, _st2, why2 = live.turn_state([100.0], 0, dead, 0)
+    check("쓰러진 놈이 나와 있다고 돼 있으면 그렇게 말한다",
+          pokes2 is None and "HP 0" in (why2 or ""), why2)
+
+    # -- ⑤ 실전 그대로 밟으면 킬라플로르를 놓고 답한다 -----------------------
+    use = [i for i, r in enumerate(bd2.opp) if r["poke"] and r["brought"]]
+    live_rows = [(r["poke"] if i in use else None, r["hp"]) for i, r in enumerate(bd2.opp)]
+    pokes3, state3, why3 = live.turn_state([100.0], 0, live_rows, bd2.opp_active)
+    check("실전 그대로 밟으면 **킬라플로르**를 놓고 답한다 (전엔 마스카나였다)",
+          why3 is None and pokes3[state3["opp_active"]]["name"] == "킬라플로르",
+          (why3, pokes3 and [p["name"] for p in pokes3]))
+
+    # -- ⑥ 늦게 읽은 「상대 XX의 기술!」 이 나와 있음을 되돌리지 않는다 ------
+    bd3 = fresh_board()
+    screenread.apply(bd3, got, dex)          # 마스카나가 빠졌다
+    late = msgread.read(["상대 마스카나의", "유턴!"], names)
+    notes = screenread.apply(bd3, late, dex)
+    check("늦게 읽은 「상대 마스카나의 유턴!」 이 나와 있음을 **안 되돌린다**",
+          bd3.opp_active_known is False,
+          (bd3.opp_active_known, notes))
+    check("그래도 본 기술로는 적어 둔다", "유턴" in bd3.seen.get("마스카나", []),
+          bd3.seen)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6496,6 +6605,7 @@ def main():
     test_hidden_bench(dex)
     test_ledger(dex)
     test_checklist(dex)
+    test_switch_read(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

@@ -1304,6 +1304,14 @@ class App(object):
             return
         shown = [sl for sl in self.opp_slots if sl.revealed()]
         use = shown if shown else [sl for sl in self.opp_slots if sl.poke]
+        # ★ **나와 있는 놈은 무슨 일이 있어도 넣는다.** 「냈다」 가 안 켜져 있으면 그놈이
+        #   목록에서 빠지고, 예전에는 `turn_state` 가 말없이 1번으로 되돌아갔다 —
+        #   실전에서 킬라플로르가 나와 있는데 답은 전부 마스카나 것이었다 (2026-09-24).
+        oa = self.opp_active.get()
+        if 0 <= oa < len(self.opp_slots):
+            here = self.opp_slots[oa]
+            if here.poke and here not in use:
+                use = list(use) + [here]
         self.guessed_opp = not shown
         rows = [(sl.poke if sl in use else None, sl.hp_pct())
                 for sl in self.opp_slots]
@@ -2323,11 +2331,28 @@ def check():
         app.opp_slots[0].on_active()
         app.ask()
         hidden_in = "킬가르도" in (seen_args.get("opp") or [])
+        # ★ **나와 있는 놈은 「냈다」 가 꺼져 있어도 반드시 들어가야 한다.** 실전에서
+        #   이름표로 킬라플로르를 읽었는데 「냈다」 가 안 켜져 목록에서 빠졌고,
+        #   `turn_state` 가 말없이 1번으로 돌아가 **그 판 답이 전부 마스카나 것**이었다
+        #   (2026-09-24, 따라간기록_0924_0851). 여기서 그 자리를 그대로 만든다.
+        app.opp_active.set(3)
+        app.ask()
+        out_now = app.out.get("1.0", "end")
+        here_opp = list(seen_args.get("opp") or [])
+        here_i = (seen_args.get("state") or {}).get("opp_active")
+        now_name = here_opp[here_i] if (here_opp and here_i is not None
+                                        and here_i < len(here_opp)) else None
+        app.opp_active.set(0)
+        app.opp_slots[0].on_active()
         seen_args = first
     finally:
         search.best_action = real
     if hidden_in:
         print("안 밝혀진 놈이 계산에 들어갔습니다")
+        return 1
+    if now_name != "킬가르도":
+        print("나와 있는 상대가 「냈다」 가 꺼져 있다고 **말없이 딴 놈으로** 바뀌었습니다: "
+              "%r (넘긴 상대 %r)\n%s" % (now_name, here_opp, out_now[-400:]))
         return 1
     if moved != 1:
         print("'나와 있음' 을 바꿨는데 안 따라갑니다: %r" % (moved,))
