@@ -3562,7 +3562,7 @@ class Policy(object):
     """
 
     def __init__(self, dex, party, foe_build, plan, allow_switch=True,
-                 moves=None, lead=None, auto_mega=True):
+                 moves=None, lead=None, auto_mega=True, first_switch=False):
         """moves 를 주면 **계획이 끝난 뒤에도 그 기술들만 쓴다.**
 
         ! 이게 없어서 7단계가 조용히 거짓말을 했다. 계획(plan)은 첫 턴
@@ -3612,6 +3612,14 @@ class Policy(object):
         # 이게 없으면 상대가 죽을 때까지 절대 안 빠지고, 그러면 내 승률이
         # 실제보다 한참 높게 나온다 (재 보니 최대 89%p 차이가 났다).
         self.allow_switch = allow_switch
+        # ★ **첫 턴에도 뺄지 본다.** 둘째 턴부터는 늘 보는데 **첫 턴만** 계획으로
+        #   굳어 있었다 — 그래서 "상대가 이번 턴에 빼면?" 이 계산에 아예 없었고,
+        #   답 옆에 「이번 턴에 상대가 교체하는 경우는 안 셉니다」 가 붙어 있었다
+        #   (사용자: *"교체로 빠지는건 왜 고려X?"*, 2026-09-24).
+        # ! **내 쪽에는 켜지 않는다.** 내 계획은 '이 수를 두면 어떻게 되나' 를 묻는
+        #   것이라, 여기서 몰래 교체로 바꾸면 묻지도 않은 수를 잰 것이 된다.
+        self.first_switch = first_switch
+        self.chose_switch = False      # 첫 턴에 실제로 뺐나 (세어서 알려 주려고)
 
     # ── 기점 잡기 (칼춤 · 용의춤 · 나쁜음모 …) ──────────────────────────────
     #
@@ -3781,6 +3789,15 @@ class Policy(object):
         return side.is_same(self.lead)
 
     def act(self, party, turn_index, battle=None):
+        # ★ **첫 턴에도 뺄지 본다** — 둘째 턴부터 쓰는 것과 **같은 규칙**
+        #   (`Battle.should_switch`, 실제로 잰 1대1 승률)이다. 새로 지어낸 값이 아니라
+        #   첫 턴만 빠져 있던 것을 메운 것이다.
+        if (self.first_switch and turn_index == 0 and battle is not None
+                and self._is_lead(party.active)):
+            idx = battle.should_switch(party)
+            if idx is not None:
+                self.chose_switch = True
+                return ("교체", idx)
         # 계획은 처음 나온 놈의 수순이다. 그놈이 나와 있는 동안은 계획대로.
         if self._is_lead(party.active) and turn_index < len(self.plan):
             want = self.plan[turn_index]
@@ -3872,7 +3889,7 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
              opp_switch=True, matchup=None, my_moves=None, state=None,
-             auto_mega=True):
+             auto_mega=True, opp_first_switch=False):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다.
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
@@ -3891,7 +3908,8 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
     mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves,
                   lead=b.me_party.active.base, auto_mega=auto_mega)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
-                    allow_switch=opp_switch, lead=b.opp_party.active.base)
+                    allow_switch=opp_switch, lead=b.opp_party.active.base,
+                    first_switch=opp_first_switch)
     for i in range(MAX_TURNS):
         if b.over:
             break
@@ -3914,6 +3932,7 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
             "myPartyHpPct": my_hp * 100.0,
             "myLost": len(b.me_party.members) - my_alive,
             "log": b.log, "warnings": b.warnings,
+            "oppSwitched": theirs.chose_switch,   # 상대가 **이번 턴에** 뺐나
             "weather": b.field.weather, "terrain": b.field.terrain}
 
 

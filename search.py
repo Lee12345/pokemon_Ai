@@ -84,6 +84,8 @@ CUT = 0.5
 SHALLOW_TURNS = 6
 # 상대가 메가진화를 골랐나를 세는 자리 (기술 이름과 안 섞이게 별표를 붙인다)
 MEGA_KEY = "*메가"
+# 상대가 **이번 턴에 뺐나**. 기술 이름과 나란히 세서 「교체 31%」 로 보여 준다.
+SWITCH_KEY = "교체(뺀다)"
 
 
 def candidate_actions(dex, party, my_moves=None):
@@ -226,9 +228,24 @@ def sample_opp_party(dex, opp_pokes, rng, evidence=None, opp_build=None,
     return builds, movesets
 
 
+def _undo_guess(guess, counted):
+    """상대가 이번 턴에 **뺐다** — 미리 세어 둔 「제일 아픈 수」 를 무르고 교체로 센다.
+
+    ! 세는 자리와 무르는 자리가 갈라져 있으면 조용히 어긋난다. 그래서 **센 열쇠를
+      그대로 들고 다니다가** 그것만 되돌린다 (메가도 같이 센 판이면 메가까지).
+    """
+    if guess is None:
+        return
+    for key in counted:
+        guess[key] = guess.get(key, 0) - 1
+        if guess[key] <= 0:
+            guess.pop(key, None)
+    guess[SWITCH_KEY] = guess.get(SWITCH_KEY, 0) + 1
+
+
 def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
             opp_build=None, turns=None, my_moves=None, state=None, sink=None,
-            guess=None, hidden=None, take=0):
+            guess=None, hidden=None, take=0, opp_may_switch=False):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
@@ -271,15 +288,19 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     # 이 판에서 **상대가 이번 턴에 무엇을 골랐나** 를 센다 (guess 를 주면).
     # 판마다 상대 세트를 다시 뽑으므로, 이 비율이 곧 '상대 세트를 모른다' 는 폭이다.
     # ★ 이것은 **내 계산이 상대의 제일 센 수로 본 것**이지 상대의 버릇을 잰 것이 아니다.
-    #   그리고 이번 턴의 상대 교체는 여기 안 들어간다 — 상대의 계획이 첫 턴을 덮는다.
+    # ★ **상대가 이번 턴에 빼면 여기 센 것을 도로 무른다** (`_undo_guess`). 안 무르면
+    #   쓰지도 않은 수가 「트릭플라워 97%」 처럼 확신에 차 보인다 (2026-09-24).
+    counted = []
     if guess is not None:
         first = opp_plan[0]
         if isinstance(first, tuple):        # ("메가", 기술)
             # 메가는 **따로** 센다. 「메가진화+대검돌격 39%」 와 「대검돌격 37%」 로 갈라
             # 적으면, 같은 기술을 76% 로 노린다는 사실이 안 보인다.
             guess[MEGA_KEY] = guess.get(MEGA_KEY, 0) + 1
+            counted.append(MEGA_KEY)
             first = first[1]
         guess[first["name"]] = guess.get(first["name"], 0) + 1
+        counted.append(first["name"])
     opp = opp_builds if len(opp_builds) > 1 else opp_builds[0]
 
     if turns is None:
@@ -287,9 +308,11 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
         # 후보이므로, 계획 턴에 Policy 가 멋대로 메가를 붙이면 안 된다.
         res = battle.run_once(dex, my_party, opp, _as_plan(action),
                               opp_plan, rng, my_moves=my_moves, state=state,
-                              auto_mega=False)
+                              auto_mega=False, opp_first_switch=opp_may_switch)
         if sink is not None:
             sink.update(res["warnings"])
+        if res.get("oppSwitched"):
+            _undo_guess(guess, counted)
         return _score(res)
 
     # 끊어 보기 — run_once 를 못 쓰므로 직접 돈다
@@ -298,7 +321,8 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
                          moves=my_moves, lead=b.me_party.active.base,
                          auto_mega=False)
     theirs = battle.Policy(dex, opp, my_party, opp_plan,
-                           lead=b.opp_party.active.base)
+                           lead=b.opp_party.active.base,
+                           first_switch=opp_may_switch)
     for i in range(turns):
         if b.over:
             break
@@ -309,12 +333,14 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     #   안 맞으면 둘을 나란히 볼 수 없다. 한 군데서만 재게 한다.
     if sink is not None:
         sink.update(b.warnings)
+    if theirs.chose_switch:
+        _undo_guess(guess, counted)
     return _position_value(b)
 
 
 def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                 seconds=10.0, seed=1, opp_build=None, state=None,
-                opp_hidden=None, opp_take=0, stop=None):
+                opp_hidden=None, opp_take=0, stop=None, opp_may_switch=True):
     """이번 턴의 수를 고른다.
 
     opp_pokes 는 **한 마리든 파티든** 받는다. 파티를 주면 상대의
@@ -362,7 +388,8 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
     def play(action, turns_=None, guess_=None):
         return rollout(dex, builds, opp_pokes, action, rng, evidence,
                        opp_build, turns_, moves, state, sink=warned,
-                       guess=guess_, hidden=opp_hidden, take=opp_take)
+                       guess=guess_, hidden=opp_hidden, take=opp_take,
+                       opp_may_switch=opp_may_switch)
 
     stopped = [False]
 

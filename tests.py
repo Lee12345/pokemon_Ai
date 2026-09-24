@@ -5861,10 +5861,17 @@ def test_advice(dex):
           "「대검돌격」 76%" in lines[0] and "드닐레이브" in lines[0], lines)
     check("상대 메가진화도 따로 말한다 (53%)",
           any("메가진화" in ln and "53%" in ln for ln in lines), lines)
-    # ★ **안 센 것을 안 셌다고 말해야 한다.** 이 줄이 없으면 사용자는 '상대 교체까지
-    #   따져 봤구나' 로 읽는다 — 조용히 틀리는 자리다.
-    check("이번 턴 상대 교체는 안 센다고 밝힌다",
-          any("교체하는 경우는 안 셉니다" in ln for ln in lines), lines)
+    # ★ 예전에는 여기에 「이번 턴 상대 교체는 안 셉니다」 가 붙었다. 이제는 **센다**
+    #   (2026-09-24, 검사 [67]) — 그래서 그 말 대신 **뺄 자리면 뺀다고** 말한다.
+    check("이번 턴에 상대가 뺄 자리면 그렇게 말한다",
+          any("뺄 자리입니다" in ln for ln in
+              live.opp_guess_lines([("지진", 0.3), (live.SWITCH_NAME, 0.7)], "한카리아스")),
+          live.opp_guess_lines([("지진", 0.3), (live.SWITCH_NAME, 0.7)], "한카리아스"))
+    check("안 뺄 자리면 그 줄은 안 띄운다",
+          not any("뺄 자리" in ln for ln in lines), lines)
+    check("교체는 기술 비율에 안 섞인다",
+          "교체" not in live.opp_guess_lines(
+              [("지진", 0.3), (live.SWITCH_NAME, 0.7)], "한카리아스")[0])
     check("메가가 드물면(5%) 메가 줄은 안 띄운다",
           not any("메가진화" in ln for ln in
                   live.opp_guess_lines([("지진", 0.9)], "하마돈", 0.05)))
@@ -6536,6 +6543,126 @@ def test_switch_read(dex):
           bd3.seen)
 
 
+def test_opp_switch(dex):
+    """[67] **상대가 이번 턴에 빼는 것**도 센다 (2026-09-24).
+
+    사용자가 물었다 — *"교체로 빠지는건 왜 고려X?"* 답 옆에 늘
+    「이번 턴에 상대가 교체하는 경우는 안 셉니다」 가 붙어 있었다.
+
+    ★ **새로 지어낸 값이 아니다.** 둘째 턴부터는 `Policy` 가 이미 매 턴
+      `Battle.should_switch`(실제로 잰 1대1 승률)로 뺄지 봤다. **첫 턴만** 계획으로
+      굳어 있었던 것이다. 그 하나를 메웠다.
+
+    ! **판단이 0% 아니면 100% 로 쏠린다** — 규칙이 정해진 것이라 같은 대면이면 늘 같은
+      답이다 (상대 세트가 갈릴 때만 흔들린다). 그래서 창은 「반드시 뺀다」 가 아니라
+      **"내 계산으로는 빼는 것이 상대에게 낫다"** 로 적는다.
+    """
+    import live
+    import random
+    import search
+    print("\n[67] 이번 턴에 상대가 빼는 것도 센다")
+
+    hama = calc.popular_build(dex, dex.find_pokemon("하마돈"))[0]
+    garch = calc.popular_build(dex, dex.find_pokemon("한카리아스"))[0]
+    peri = calc.popular_build(dex, dex.find_pokemon("패리퍼"))[0]
+    quake = dex.find_move("지진")
+
+    # -- ① 규칙 자체 --------------------------------------------------------
+    # 하마돈(지진) 앞의 한카리아스(땅 4배)는 땅이 안 통하는 패리퍼로 빼는 게 낫다.
+    def first_move(flag):
+        b = battle.Battle(dex, [hama], [garch, peri], rng=random.Random(3),
+                          my_fresh=False, opp_fresh=False)
+        # ! auto_mega=False — 한카리아스는 메가스톤을 들어서, 안 끄면 계획이
+        #   ("메가", 지진) 으로 감싸여 「계획을 그대로 뒀나」 를 못 가른다.
+        pol = battle.Policy(dex, [garch, peri], [hama], [quake],
+                            lead=b.opp_party.active.base, first_switch=flag,
+                            auto_mega=False)
+        return pol.act(b.opp_party, 0, b), pol.chose_switch
+
+    act_off, swap_off = first_move(False)
+    act_on, swap_on = first_move(True)
+    check("안 켜면 첫 턴에 계획(기술)을 그대로 둔다 (예전 그대로)",
+          swap_off is False and act_off is quake, (act_off, swap_off))
+    check("켜면 나쁜 대면에서 **첫 턴에 뺀다**",
+          swap_on is True and isinstance(act_on, tuple) and act_on[0] == "교체",
+          (act_on, swap_on))
+    # ! 고장을 냈을 때 **터지지 말고 실패해야 한다.** 처음에 act_on[1] 을 바로 꺼내
+    #   썼더니, 교체를 막자 act_on 이 기술(dict)이 되어 KeyError 로 터졌고
+    #   나머지 검사가 통째로 안 돌았다.
+    ref = battle.Battle(dex, [hama], [garch, peri], rng=random.Random(3),
+                        my_fresh=False, opp_fresh=False)
+    check("판단은 둘째 턴과 **같은 규칙**이다 (Battle.should_switch)",
+          isinstance(act_on, tuple) and act_on[1] == ref.should_switch(ref.opp_party),
+          (act_on, ref.should_switch(ref.opp_party)))
+
+    # -- ② 한 판이 그것을 알려 주는가 ---------------------------------------
+    st1 = {"my_fresh": False, "opp_fresh": False}
+    res = battle.run_once(dex, [hama], [garch, peri], [quake], [quake],
+                          random.Random(3), state=st1, opp_first_switch=True)
+    check("한 판이 「상대가 이번 턴에 뺐다」 를 돌려준다", res["oppSwitched"] is True,
+          res["oppSwitched"])
+    res0 = battle.run_once(dex, [hama], [garch, peri], [quake], [quake],
+                           random.Random(3), state=st1)
+    check("안 켜면 그 자리가 False 다", res0["oppSwitched"] is False, res0["oppSwitched"])
+
+    # -- ③ 세는 자리 — 기술로 센 것을 **무른다** ----------------------------
+    # ! 안 무르면 쓰지도 않은 수가 「트릭플라워 97%」 처럼 확신에 차 보인다.
+    guess = {}
+    rng = random.Random(5)
+    st = {"my_hp": [100.0], "my_active": 0, "opp_hp": [100.0, 100.0],
+          "opp_active": 0, "my_fresh": False, "opp_fresh": False}
+    n = 12
+    for _ in range(n):
+        search.rollout(dex, [hama], [garch.poke, peri.poke], ("기술", quake), rng,
+                       state=st, my_moves=["지진"], guess=guess, opp_may_switch=True)
+    check("판수와 센 횟수가 맞는다 (무른 만큼만 줄었다)",
+          sum(v for k, v in guess.items() if k != search.MEGA_KEY) == n,
+          (guess, n))
+    check("뺀 판은 「%s」 로 센다" % search.SWITCH_KEY,
+          guess.get(search.SWITCH_KEY, 0) > 0, guess)
+    check("창이 쓰는 이름과 탐색이 쓰는 이름이 같다 (갈라지면 줄이 안 뜬다)",
+          live.SWITCH_NAME == search.SWITCH_KEY,
+          (live.SWITCH_NAME, search.SWITCH_KEY))
+
+    # -- ④ 창까지 실제로 가는가 ---------------------------------------------
+    # ★ **여기서 한 번 틀리게 적었다** (2026-09-24). 처음엔 「안 세면 1~4등이 0.405~0.419
+    #   로 구별이 안 되는데 세면 1등이 뚜렷해진다」 고 적었는데, 씨앗과 초를 바꿔 보니
+    #   **그 반대로도 나왔다** (1등-4등 차: 안 셈 평균 0.293 / 셈 0.247). 점수 차는
+    #   예산에 따라 흔들린다 — **검사에 넣을 값이 아니다.**
+    #
+    #   흔들리지 않는 것만 여기서 본다: 이 대면에서 상대가 빼는 비율(규칙이 정해져 있어
+    #   0% 아니면 100%)과, 그 사실이 창까지 가는가.
+    #   따로 잰 것 (같은 자리, **4초·씨앗 다섯**): 권하는 수가
+    #   **스텔스록 4/5 → 하품 4/5** 로 바뀌었다. 3초로 줄이면 안 세는 쪽도 하품이
+    #   한 번 나와 덜 또렷하다 — 그래서 이 숫자는 주석으로만 남기고 검사는 안 한다.
+    party = [hama, peri, calc.popular_build(dex, dex.find_pokemon("타부자고"))[0]]
+    foes = [dex.find_pokemon(n) for n in ("한카리아스", "패리퍼", "블래키")]
+    st3 = {"my_hp": [100.0] * 3, "my_active": 0, "opp_hp": [100.0] * 3,
+           "opp_active": 0, "my_fresh": False, "opp_fresh": False}
+    off = search.best_action(dex, party, foes, seconds=2.0, state=st3, seed=2,
+                             opp_may_switch=False)
+    on = search.best_action(dex, party, foes, seconds=2.0, state=st3, seed=2,
+                            opp_may_switch=True)
+    swap_of = lambda g: dict(g["opp_guess"]).get(search.SWITCH_KEY, 0.0)
+    check("안 세면 상대가 빼는 판이 하나도 없다", swap_of(off) == 0.0, off["opp_guess"])
+    check("세면 이 대면에서는 **거의 언제나 뺀다** (규칙이라 0% 아니면 100%)",
+          swap_of(on) >= 0.9, on["opp_guess"])
+    check("빼는 대면이면 **뺀다고 말해 준다**",
+          any("뺄 자리" in ln for ln in
+              live.opp_guess_lines(on["opp_guess"], "한카리아스", on["opp_mega"])),
+          on["opp_guess"])
+    check("안 빼는 것으로 보면 그 줄은 안 나온다",
+          not any("뺄 자리" in ln for ln in
+                  live.opp_guess_lines(off["opp_guess"], "한카리아스", off["opp_mega"])),
+          off["opp_guess"])
+    # ★ **내 쪽에는 안 켠다.** 내 계획은 '이 수를 두면 어떻게 되나' 를 묻는 것이라,
+    #   여기서 몰래 교체로 바뀌면 **묻지도 않은 수**를 잰 것이 된다.
+    mine = battle.Policy(dex, [garch, peri], [hama], [quake],
+                         lead=garch, first_switch=False)
+    check("내 쪽 Policy 는 첫 턴을 안 바꾼다 (묻지도 않은 수를 재면 안 된다)",
+          mine.first_switch is False and mine.chose_switch is False)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6606,6 +6733,7 @@ def main():
     test_ledger(dex)
     test_checklist(dex)
     test_switch_read(dex)
+    test_opp_switch(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
