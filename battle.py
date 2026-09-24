@@ -3562,8 +3562,20 @@ class Policy(object):
     """
 
     def __init__(self, dex, party, foe_build, plan, allow_switch=True,
-                 moves=None, lead=None, auto_mega=True, first_switch=False):
+                 moves=None, lead=None, auto_mega=True, first_switch=False,
+                 party_moves=None):
         """moves 를 주면 **계획이 끝난 뒤에도 그 기술들만 쓴다.**
+
+        party_moves 는 **마리별 기술표**다 — `party_moves[i]` 가 `party[i]` 의 기술.
+        주면 그 놈은 선봉이든 벤치에서 나왔든 **자기 기술 안에서만** 고른다.
+        비어 있거나 None 인 자리는 기술을 모르는 것으로 보고 예전처럼 사용률로 짐작한다.
+
+        ! 이게 없어서 상대가 **들고 있지도 않은 기술**로 싸웠다 (2026-09-24 감사).
+          `search.rollout` 이 판마다 상대 4기술을 뽑아 놓고 첫 수를 고르는 데만 쓰고
+          버렸다. 벤치에서 나온 한카리아스(지진·칼춤·스텔스록·땅고르기)가 아머까오에게
+          화염방사를 465/465 번 썼고, 칼춤을 다 쌓은 선봉 따라큐가 우드해머를 195번 썼다.
+          `moves` 는 **계획 주인 한 마리**에게만 걸리는 옛 장치라 여기에 못 쓴다 —
+          하나를 여럿에게 복사하면 벤치가 선봉의 기술을 쓰게 된다.
 
         ! 이게 없어서 7단계가 조용히 거짓말을 했다. 계획(plan)은 첫 턴
           한 수뿐인데, 그 뒤부터는 `_best_move` 가 **사용률 상위 기술**을
@@ -3591,6 +3603,13 @@ class Policy(object):
         # 이름으로 줘도 받는다 — 안 그러면 `_best_move` 안에서 터진다.
         self.moves = ([m if isinstance(m, dict) else dex.find_move(m)
                        for m in moves] if moves else None)
+        # 마리별 기술표 — (그 놈의 Build, [기술]). 주인은 **이름·번호가 아니라
+        # `Side.is_same`** 으로 찾는다. 메가진화로 몸이 바뀌어도 같은 놈이다 (§5-2).
+        self._own = []
+        for b, mv in zip(_as_party(party), party_moves or ()):
+            if mv:
+                self._own.append((b, [m if isinstance(m, dict) else dex.find_move(m)
+                                      for m in mv]))
         if lead is not None:
             self.lead = lead
         else:
@@ -3696,16 +3715,28 @@ class Policy(object):
                 return None
         return max(cand)[1]
 
+    def _moves_of(self, side):
+        """이 놈의 기술표 (마리별로 받은 것). 없으면 None."""
+        for b, mv in self._own:
+            if side.is_same(b):
+                return mv
+        return None
+
     def _best_move(self, side, battle=None):
         # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
-        restricted = bool(self.moves) and self._is_lead(side)
-        if restricted:
-            side.moveset = [m["name"] for m in self.moves]   # 비장의무기가 본다
-        key = (side.name, restricted)
+        # ① 마리별 기술표 — 선봉·벤치 가리지 않는다  ② 계획 주인 한 마리의 moves
+        # ③ 둘 다 없으면 사용률로 짐작 (예전 그대로)
+        own = self._moves_of(side)
+        restricted = own is None and bool(self.moves) and self._is_lead(side)
+        known = own if own is not None else (self.moves if restricted else None)
+        if known is not None:
+            side.moveset = [m["name"] for m in known]   # 비장의무기가 본다
+        key = ((side.name, "own", tuple(m["name"] for m in own)) if own is not None
+               else (side.name, restricted))
         rows = self._fallback.get(key)
         if rows is None:
-            if restricted:
-                cand = [(m, None) for m in self.moves]
+            if known is not None:
+                cand = [(m, None) for m in known]
             else:
                 cand = best.candidate_moves(self.dex, side.base.poke)
             rows = best.rate_moves(
@@ -3889,10 +3920,12 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
              opp_switch=True, matchup=None, my_moves=None, state=None,
-             auto_mega=True, opp_first_switch=False):
+             auto_mega=True, opp_first_switch=False, opp_moves=None):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다.
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
+    opp_moves 는 **상대 마리별 기술표** (`opp_moves[i]` = `opp_build` 의 i번째).
+    주면 상대는 선봉이든 벤치에서 나왔든 자기 기술 안에서만 고른다 (`Policy(party_moves=…)`).
     """
     kw = dict(state or {})
     if state is None:
@@ -3909,7 +3942,7 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
                   lead=b.me_party.active.base, auto_mega=auto_mega)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
                     allow_switch=opp_switch, lead=b.opp_party.active.base,
-                    first_switch=opp_first_switch)
+                    first_switch=opp_first_switch, party_moves=opp_moves)
     for i in range(MAX_TURNS):
         if b.over:
             break
@@ -4029,7 +4062,9 @@ def evaluate_vs_distribution(dex, me_build, opp_poke, my_plan, trials=400,
         else:
             opp_plan = [opp_moves[0]] if opp_moves else [dex.find_move("막치기")]
 
-        r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng)
+        # 뽑은 4기술을 상대가 끝까지 쓴다 (첫 수만 고르고 버리지 않는다)
+        r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng,
+                     opp_moves=[opp_moves])
         won = r["result"] == "이김"
         if won:
             wins += 1

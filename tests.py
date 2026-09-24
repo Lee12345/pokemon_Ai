@@ -5928,18 +5928,60 @@ def test_setup(dex):
 
     # -- 따라큐는 탈을 두르고 쌓는다 (7단계가 첫 턴 상대 수를 고르는 자리)
     hip, mimi = P("하마돈"), P("따라큐")
-    got = search.best_action(dex, [hip], [dex.find_pokemon("따라큐")],
-                             my_moves=["지진", "게으름피우기", "하품", "스텔스록"],
-                             seconds=4.0)
-    guess = dict(got["opp_guess"])
+    hip_moves = ["지진", "게으름피우기", "하품", "스텔스록"]
+    # 판마다 뽑힌 상대 세트와, 상대가 실제로 낸 기술 (그 세트 밖을 썼나)
+    real_sop, real_step = search.sample_opp_party, battle.Battle.step
+    picked, outside, forced = {}, [], {}
+
+    def spy_sop(*a, **k):
+        builds, sets = real_sop(*a, **k)
+        if forced.get("moves"):        # 몸은 원래대로 뽑고 **기술만** 명시한 4개로
+            sets = [[dex.find_move(n) for n in forced["moves"]] for _b in builds]
+        for b, mv in zip(builds, sets):
+            picked[b.poke["name"]] = {m["name"] for m in mv}
+        return builds, sets
+
+    def spy_step(self, my_action, opp_action):
+        a = opp_action[1] if isinstance(opp_action, tuple) and opp_action[0] == "메가" else opp_action
+        who = self.opp_party.active.base.poke["name"]
+        if isinstance(a, dict) and a["name"] not in picked.get(who, {a["name"]}):
+            outside.append(a["name"])
+        return real_step(self, my_action, opp_action)
+
+    def ask(moves=None):
+        forced["moves"] = moves
+        del outside[:]
+        search.sample_opp_party, battle.Battle.step = spy_sop, spy_step
+        try:
+            return search.best_action(dex, [hip], [dex.find_pokemon("따라큐")],
+                                      my_moves=hip_moves, seconds=4.0)
+        finally:
+            search.sample_opp_party, battle.Battle.step = real_sop, real_step
+
+    got = ask()
     check("상대 따라큐가 고를 수로 「칼춤」 이 1등이다 (%s)"
           % ", ".join("%s %.0f%%" % (n, s * 100) for n, s in got["opp_guess"][:2]),
           got["opp_guess"] and got["opp_guess"][0][0] == "칼춤", got["opp_guess"])
-    # ★ **답이 뒤집힌다.** 고치기 전에는 하마돈이 81.5% 로 이기는 판이었고 「하품」 을
-    #   권했다. 상대가 쌓으면 26% 로 진다 — 사용자가 본 그림과 맞다.
+    # ! 여기에는 전에 「관찰 없는 따라큐 앞에서 하마돈 1등 점수 < 0.5」 가 있었다.
+    #   그 26점은 **칼춤을 쌓은 따라큐가 자기 세트에 없는 우드해머를 꺼내 쓴** 결과였다
+    #   (2026-09-24 감사: 뽑힌 세트의 13% 에만 우드해머가 있는데 따라큐 행동의 41% 가
+    #   우드해머). 상대가 자기 기술표 안에서만 싸우게 고치자 76~77점이 됐다.
+    #   관찰이 없으면 세트는 모르는 것이라 **결과값을 강제하지 않는다** — 대신
+    #   코드가 보장해야 하는 것(뽑힌 4기술 밖을 안 쓴다)을 본다.
+    check("관찰 없는 따라큐도 그 판에 뽑힌 4기술 밖은 안 쓴다 (밖 %d번)" % len(outside),
+          not outside, sorted(set(outside)))
+
+    # ★ **답이 뒤집힌다** — 따라큐가 **우드해머를 들고 있으면.** 쌓기 규칙이 없을 때는
+    #   하마돈이 81.5% 로 이기는 판이었고 「하품」 을 권했다. 상대가 쌓으면 진다 — 사용자가
+    #   본 그림과 맞다. 세트는 관찰(Evidence)로 넣지 않고 **명시적으로 고정한다** —
+    #   관찰로 넣으면 세트가 가끔 다른 기술로 뽑혀서(scout 샘플링, 별개 결함) 섞인다.
+    wood_set = ["칼춤", "우드해머", "치근거리기", "야습"]
+    got = ask(wood_set)
     top = got["rows"][0]
-    check("하마돈이 따라큐 앞에서 유리하지 않다 (1등 %s %.0f점)" % (top["name"], top["score"] * 100),
+    check("우드해머 따라큐(%s) 앞에서 하마돈이 유리하지 않다 (1등 %s %.0f점)"
+          % ("·".join(wood_set), top["name"], top["score"] * 100),
           top["score"] < 0.5, [(r["name"], round(r["score"], 3)) for r in got["rows"][:3]])
+    check("고정한 4기술 밖은 안 쓴다 (밖 %d번)" % len(outside), not outside, sorted(set(outside)))
 
     # -- 한 판 돌려 본다: 첫 턴 칼춤, 그 다음엔 때린다 (쌓기만 하지 않는다)
     res = battle.run_once(dex, [hip], [mimi], [dex.find_move("지진")],
@@ -6663,6 +6705,165 @@ def test_opp_switch(dex):
           mine.first_switch is False and mine.chose_switch is False)
 
 
+def test_opp_own_moves(dex):
+    """[68] **상대는 자기 기술표 안에서만 싸운다** — 선봉이든 벤치에서 나왔든 (2026-09-24 감사).
+
+    `search.rollout` 은 판마다 상대 한 마리씩 4기술을 뽑아 놓고(`opp_sets`), 그걸
+    **첫 수를 고르는 데만** 쓰고 버렸다. 상대 `Policy` 는 `moves` 없이 만들어져서,
+    계획 주인이 아닌 놈(벤치에서 나온 놈)과 첫 수를 되풀이할 수 없게 된 선봉이
+    `best.candidate_moves` — **사용률에 나오는 기술 전부** — 에서 골랐다.
+
+    잰 것 (392e994, 감사 재현):
+      벤치에서 나온 한카리아스(지진·칼춤·스텔스록·땅고르기) vs 아머까오
+        → 화염방사 **465/465** (기술표 밖 100%)
+      선봉 따라큐(칼춤·섀도클로·치근거리기·그림자꿰매기) vs 하마돈
+        → 칼춤 +2 뒤 우드해머 **195/403**
+
+    ! 여기서 재는 것은 **그 판에 뽑힌 세트 밖을 쓰느냐**다. 관찰한 4기술이 세트에서
+      빠지는 것은 다른 결함(scout 샘플링)이라 이 검사가 섞어 재면 안 된다.
+    """
+    import random
+    import collections
+    import scout
+    import search
+    print("\n[68] 상대는 자기 기술표 안에서만 싸운다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+
+    # 판마다 뽑힌 상대 세트와, 상대가 Battle.step 에 실제로 낸 기술을 센다
+    picked = {}
+    used = collections.Counter()
+    outside = collections.Counter()
+    real_sop, real_step = search.sample_opp_party, battle.Battle.step
+
+    def spy_sop(*a, **k):
+        builds, sets = real_sop(*a, **k)
+        for b, mv in zip(builds, sets):
+            picked[b.poke["name"]] = {m["name"] for m in mv}
+        return builds, sets
+
+    def spy_step(self, my_action, opp_action):
+        who = self.opp_party.active.base.poke["name"]
+        a = opp_action[1] if isinstance(opp_action, tuple) and opp_action[0] == "메가" else opp_action
+        if isinstance(a, dict):
+            used[(who, a["name"])] += 1
+            allowed = picked.get(who)
+            if allowed is not None and a["name"] not in allowed:
+                outside[(who, a["name"])] += 1
+        return real_step(self, my_action, opp_action)
+
+    def count(fn):
+        picked.clear(); used.clear(); outside.clear()
+        search.sample_opp_party, battle.Battle.step = spy_sop, spy_step
+        try:
+            fn()
+        finally:
+            search.sample_opp_party, battle.Battle.step = real_sop, real_step
+        return dict(used), dict(outside)
+
+    N = 200
+    armor = pb("아머까오")
+    armor_moves = [M(x) for x in ("철벽", "브레이브버드", "날개쉬기", "바디프레스")]
+    han_real = ["지진", "칼춤", "스텔스록", "땅고르기"]
+    pel_real = ["폭풍", "냉동빔", "파도타기", "날개쉬기"]
+    ev_bench = {"한카리아스": scout.Evidence(seen_moves=han_real),
+                "패리퍼": scout.Evidence(seen_moves=pel_real)}
+
+    # -- A. 벤치에서 나온 상대 (끝까지 보는 경로 · 끊어 보는 경로 둘 다) ----------------
+    for label, turns in (("끝까지", None), ("3턴 끊어 보기", 3)):
+        def play(turns=turns):
+            for s in range(N):
+                search.rollout(dex, [armor], [P("패리퍼"), P("한카리아스")],
+                               ("기술", M("브레이브버드")), random.Random(s),
+                               evidence=ev_bench, my_moves=armor_moves, turns=turns,
+                               state={"opp_hp": [1, 100]}, opp_may_switch=True)
+        got, bad = count(play)
+        han = sum(n for (w, _m), n in got.items() if w == "한카리아스")
+        han_bad = {m: n for (w, m), n in bad.items() if w == "한카리아스"}
+        check("A 벤치에서 나온 한카리아스가 실제로 행동했다 (%s, %d번)" % (label, han), han > 0)
+        check("A 벤치에서 나온 한카리아스 — 뽑힌 4기술 밖 선택 0 (%s)" % label,
+              not han_bad, "밖: %s / 전체 %d" % (han_bad, han))
+
+    # -- B. 선봉 상대 — 첫 수(칼춤)를 더 쌓을 수 없게 된 뒤 _best_move 로 넘어간다 ------
+    hama = pb("하마돈")
+    hama_moves = [M(x) for x in ("지진", "하품", "게으름피우기", "스텔스록")]
+    mimi_real = ["칼춤", "섀도클로", "치근거리기", "그림자꿰매기"]
+    ev_lead = {"따라큐": scout.Evidence(seen_moves=mimi_real)}
+
+    def play_lead():
+        for s in range(N):
+            search.rollout(dex, [hama], [P("따라큐")], ("기술", M("지진")), random.Random(s),
+                           evidence=ev_lead, my_moves=hama_moves, opp_may_switch=True)
+    got, bad = count(play_lead)
+    swords = got.get(("따라큐", "칼춤"), 0)
+    after = sum(n for (w, m), n in got.items() if w == "따라큐" and m != "칼춤")
+    check("B 선봉 따라큐가 칼춤을 쌓고 (%d번) 그 뒤 다른 기술로 넘어갔다 (%d번)" % (swords, after),
+          swords > 0 and after > 0)
+    check("B 선봉 따라큐 — 뽑힌 4기술 밖 선택 0",
+          not bad, "밖: %s / 전체 %d" % (bad, sum(got.values())))
+
+    # B-2. run_once 에 직접 기술표를 준 경우 — 첫 수 칼춤, 그 뒤 되풀이 불가
+    gar = pb("한카리아스")
+    try:
+        def play_run_once():
+            for s in range(N):
+                battle.run_once(dex, [armor], gar, [M("철벽")], [M("칼춤")], random.Random(s),
+                                my_moves=armor_moves, auto_mega=False,
+                                opp_first_switch=True, opp_moves=[han_real])
+        picked["한카리아스"] = set(han_real)
+        search.sample_opp_party, battle.Battle.step = spy_sop, spy_step
+        used.clear(); outside.clear()
+        try:
+            play_run_once()
+        finally:
+            search.sample_opp_party, battle.Battle.step = real_sop, real_step
+        ok, detail = not outside, "밖: %s / 전체 %d" % (dict(outside), sum(used.values()))
+    except TypeError as e:
+        ok, detail = False, "run_once 가 상대 기술표를 못 받는다: %s" % e
+    check("B-2 run_once(opp_moves=…) 선봉 한카리아스 — 칼춤 뒤에도 기술표 밖 선택 0", ok, detail)
+
+    # -- C. 기술표가 없으면 예전 그대로 사용률로 짐작한다 (fallback 을 없애지 않았다) ------
+    usage = {m["name"] for m, _ in best.candidate_moves(dex, gar.poke)}
+    picked.clear()
+    search.sample_opp_party, battle.Battle.step = spy_sop, spy_step
+    used.clear(); outside.clear()
+    try:
+        for s in range(N):
+            battle.run_once(dex, [armor], gar, [M("철벽")], [M("칼춤")], random.Random(s),
+                            my_moves=armor_moves, auto_mega=False, opp_first_switch=True)
+    finally:
+        search.sample_opp_party, battle.Battle.step = real_sop, real_step
+    names = {m for (_w, m), _n in used.items()}
+    # 칼춤은 **계획으로 준 첫 수**다 (사용률 상위 목록 밖이어도 부른 쪽이 정한 수)
+    check("C 기술표 없음 — 계획 밖의 수는 사용률 기술 안에서 고른다 (%s)" % sorted(names),
+          names and (names - {"칼춤"}) <= usage, "사용률 밖: %s" % (names - {"칼춤"} - usage))
+    check("C 기술표 없음 — 칼춤 뒤 사용률 fallback 이 살아 있다 (칼춤 말고도 씀)",
+          bool(names - {"칼춤"}), "%s" % sorted(names))
+
+    # -- D. 주인 찾기 — 순서·교체·메가진화와 상관없이 자기 기술표 ---------------------
+    mimi, garz = pb("따라큐"), pb("한카리아스")      # 한카리아스 인기 세트는 메가스톤을 든다
+    table = [["칼춤", "섀도클로", "치근거리기", "그림자꿰매기"], han_real]
+    try:
+        b = battle.Battle(dex, [armor], [mimi, garz], rng=random.Random(1))
+        pol = battle.Policy(dex, [mimi, garz], armor, [M("칼춤")], party_moves=table)
+        own = [pol._moves_of(s) for s in b.opp_party.members]
+        names_of = lambda mv: [m["name"] for m in mv] if mv else mv
+        ok = [names_of(x) for x in own] == table
+        side = b.opp_party.members[1]
+        was_mega = side.can_mega
+        if was_mega:
+            side.mega()
+        ok_mega = names_of(pol._moves_of(side)) == han_real
+        empty = battle.Policy(dex, [mimi, garz], armor, [M("칼춤")], party_moves=[None, []])
+        ok_empty = all(empty._moves_of(s) is None for s in b.opp_party.members)
+    except (TypeError, AttributeError) as e:
+        ok = ok_mega = ok_empty = was_mega = False
+        own = "Policy 가 마리별 기술표를 못 받는다: %s" % e
+    check("D 마리마다 자기 기술표를 찾는다 (파티 순서 그대로)", ok, own)
+    check("D 메가진화한 뒤에도 같은 기술표 (몸이 바뀌어도 같은 놈)", was_mega and ok_mega)
+    check("D 비어 있거나 None 이면 기술표 없음으로 본다 (fallback)", ok_empty)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6734,6 +6935,7 @@ def main():
     test_checklist(dex)
     test_switch_read(dex)
     test_opp_switch(dex)
+    test_opp_own_moves(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

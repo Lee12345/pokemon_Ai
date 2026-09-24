@@ -306,9 +306,12 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     if turns is None:
         # auto_mega=False — '메가하고 쓴다' 와 '그냥 쓴다' 가 서로 다른
         # 후보이므로, 계획 턴에 Policy 가 멋대로 메가를 붙이면 안 된다.
+        # ★ opp_moves — 이 판에 뽑은 상대 4기술을 **끝까지** 쓴다. 전에는 첫 수를 고르는
+        #   데만 쓰고 버려서, 벤치에서 나온 놈이 사용률 기술 전부에서 골랐다 (2026-09-24).
         res = battle.run_once(dex, my_party, opp, _as_plan(action),
                               opp_plan, rng, my_moves=my_moves, state=state,
-                              auto_mega=False, opp_first_switch=opp_may_switch)
+                              auto_mega=False, opp_first_switch=opp_may_switch,
+                              opp_moves=opp_sets)
         if sink is not None:
             sink.update(res["warnings"])
         if res.get("oppSwitched"):
@@ -322,7 +325,7 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
                          auto_mega=False)
     theirs = battle.Policy(dex, opp, my_party, opp_plan,
                            lead=b.opp_party.active.base,
-                           first_switch=opp_may_switch)
+                           first_switch=opp_may_switch, party_moves=opp_sets)
     for i in range(turns):
         if b.over:
             break
