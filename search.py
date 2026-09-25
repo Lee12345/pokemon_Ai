@@ -330,6 +330,9 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     theirs = battle.Policy(dex, opp, my_party, opp_plan,
                            lead=b.opp_party.active.base,
                            first_switch=opp_may_switch, party_moves=opp_sets)
+    # run_once 와 같이 — 이미 아는 기술표는 판 처음부터 자리마다 (`Policy.give_movesets`)
+    mine.give_movesets(b.me_party)
+    theirs.give_movesets(b.opp_party)
     for i in range(turns):
         if b.over:
             break

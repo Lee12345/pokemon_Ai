@@ -7351,6 +7351,308 @@ def test_incoming_key(dex):
           st["wrong_pick"] == 0)
 
 
+def test_moveset_start(dex):
+    """[72] **판을 만들 때 이미 아는 기술표는 판 처음부터 `Side.moveset` 에 있다** (2026-09-25).
+
+    `Side.moveset`(그 놈이 든 기술 이름)은 `Policy._best_move` 가 불릴 때에야 채워졌다. 그런데
+    `Policy._incoming`(기점을 잡아도 되나)은 **상대의** `moveset` 을 보고, 없으면 사용률 후보 전부로 잰다.
+    상대 선봉은 계획한 첫 수를 되풀이해서 `_best_move` 를 거의 안 부르므로, 판에 상대 4기술이
+    이미 넘어와 있는데도(`opp_moves`, 감사 Patch 1) 내 쪽은 판 내내 **모르는 척** 사용률로 쟀다.
+    잰 것 (감사, 같은 판·같은 순간): `run_once` 20,000판에서 내 `_incoming` 8,346번 중 4,496번이 빈 목록.
+      메가보만다 vs 하마돈(게으름피우기·하품·스텔스록·암석봉인)  빈 목록 0.5476 이판사판태클 / 목록 0.2543 용의춤
+      루카리오 vs 메가핫삼(불릿펀치·칼춤·날개쉬기·유턴)          빈 목록 1.0 파동탄 / 목록 0.2828 나쁜음모
+      (사용률 후보의 인파이트가 루카리오 HP 를 넘긴다 — 이 판의 핫삼은 인파이트가 없다)
+
+    ★ **새로 알려 주는 것이 아니다.** 목록은 판을 만들 때 이미 `Policy` 가 들고 있다 (`party_moves` ·
+      계획 주인의 `moves`). 늦게 옮겨 적던 것을 처음에 옮겨 적는 것뿐이다. 그래서 **기술표가 없는
+      판(선출·`evaluate`)은 예전처럼 비어 있고 사용률로 잰다** — 이것도 같이 본다.
+    ★ 대조는 **같은 판·같은 순간**에 캐시만 빈 새 Policy 로, 상대 목록을 빈칸 / 판이 준 것 / 표 그대로
+      셋으로 바꿔 잰다.
+    """
+    import random
+    import copy
+    import search
+    print("\n[72] 판을 만들 때 이미 아는 기술표는 판 처음부터 Side.moveset 에 있다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    real_mv = lambda n: [m["name"] for m, _ in battle.realistic_moveset(dex, P(n))]
+    is_setup = lambda n: bool(battle.Policy.setup_gain(M(n)))
+
+    class Stop(Exception):
+        pass
+
+    real_best = battle.Policy._best_move
+
+    def at_start(go):
+        """go() 로 판을 돌리다 **첫 수를 고르기 직전**(판을 막 만든 순간)에 멈추고 그 판을 돌려준다.
+        그때까지 `_best_move` 가 몇 번 불렸는지도 센다."""
+        real_act = battle.Policy.act
+        got = {"bm": 0}
+
+        def spy(self, party, i, b=None):
+            got["b"] = b
+            raise Stop
+
+        def count(self, side, b=None):
+            got["bm"] += 1
+            return real_best(self, side, b)
+        battle.Policy.act, battle.Policy._best_move = spy, count
+        try:
+            go()
+        except Stop:
+            pass
+        finally:
+            battle.Policy.act, battle.Policy._best_move = real_act, real_best
+        return got
+
+    def names(side):
+        return list(side.moveset) if side.moveset else None
+
+    def lists_ok(party, table):
+        """자리마다 (기술표가 있는 자리 수, 목록이 표와 같은 자리 수, 표가 없는데 목록이 생긴 자리 수)."""
+        have = same = extra = 0
+        for side, mv in zip(party.members, table):
+            want = [m["name"] if isinstance(m, dict) else m for m in mv] if mv else None
+            if want:
+                have += 1
+                same += names(side) == want
+            else:
+                extra += names(side) is not None
+        return have, same, extra
+
+    def three(b, side, own_builds, own_table, foe_builds, foe_list):
+        """같은 판·같은 순간 — 상대 목록을 빈칸(A) / 판이 준 그대로(B) / 표(R) 로 두고 새 Policy 로 잰다."""
+        foe = b.opp if side is b.me else b.me
+        keep_foe, keep_me = foe.moveset, side.moveset
+        out = {}
+        for tag, lst in (("A", None), ("B", keep_foe), ("R", list(foe_list))):
+            foe.moveset = lst
+            pol = battle.Policy(dex, own_builds, foe_builds, [M(own_table[0][0])], party_moves=own_table)
+            out[tag] = (pol._incoming(side, b), pol._best_move(side, b)["name"])
+            side.moveset = keep_me
+        foe.moveset = keep_foe
+        return out
+
+    # ① 3대3 — 판을 막 만든 순간 양쪽 모든 자리의 목록 (메가스톤 든 놈도 · 벤치도)
+    mine = [pb("보만다"), pb("하마돈"), pb("루카리오")]
+    mt = [real_mv("보만다"), real_mv("하마돈"), real_mv("루카리오")]
+    opp = [pb("한카리아스"), pb("핫삼"), pb("아머까오")]
+    ot = [real_mv("한카리아스"), real_mv("핫삼"), real_mv("아머까오")]
+    got = at_start(lambda: battle.run_once(
+        dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(3), my_moves=mt[0],
+        opp_moves=ot, my_party_moves=mt, opp_first_switch=True))
+    b = got["b"]
+    for label, party, table, idx in (("내 선봉(메가보만다 — 기본 폼으로 시작)", b.me_party, mt, [0]),
+                                     ("내 벤치", b.me_party, mt, [1, 2]),
+                                     ("상대 선봉", b.opp_party, ot, [0]),
+                                     ("상대 벤치", b.opp_party, ot, [1, 2])):
+        ok = all(names(party.members[i]) == table[i] for i in idx)
+        check("판을 막 만든 순간 %s 의 목록 = 넘긴 기술표 (%s)"
+              % (label, " / ".join(str(names(party.members[i])) for i in idx)), ok)
+    check("그 순간까지 `_best_move` 는 한 번도 안 불렸다 — 목록이 `_best_move` 의 부수효과가 아니다 (%d번)"
+          % got["bm"], got["bm"] == 0)
+
+    # ② 경계 사례 — 판을 막 만든 순간, 같은 판에서 A(빈칸)/B(판이 준 것)/R(표) 를 잰다
+    CASES = [  # (나, 내 표, 상대, 상대 표, 누구 쪽에서 재나)
+        (pb("보만다"), ["이판사판태클", "용의춤", "지진", "날개쉬기"],
+         pb("하마돈"), ["게으름피우기", "하품", "스텔스록", "암석봉인"], "me"),
+        (pb("루카리오"), ["나쁜음모", "파동탄", "악의파동", "러스터캐논"],
+         pb("핫삼"), ["불릿펀치", "칼춤", "날개쉬기", "유턴"], "me"),
+        (pb("포푸니크"), ["인파이트", "페이탈클로", "칼춤", "지옥찌르기"],
+         pb("아머까오"), ["날개쉬기", "바디프레스", "유턴", "철벽"], "me"),
+        # 거꾸로 — **상대** Policy 가 **내** 목록을 보는 쪽 (상대 루카리오 vs 내 메가핫삼)
+        (pb("핫삼"), ["불릿펀치", "칼춤", "날개쉬기", "유턴"],
+         pb("루카리오"), ["나쁜음모", "파동탄", "악의파동", "러스터캐논"], "opp"),
+    ]
+    for me, mv, foe, fl, who in CASES:
+        got = at_start(lambda: battle.run_once(
+            dex, [me], [foe], [M(mv[0])], [M(fl[0])], random.Random(3), my_moves=mv,
+            opp_moves=[fl], my_party_moves=[mv]))
+        b = got["b"]
+        if who == "me":
+            r = three(b, b.me, [me], [mv], [foe], fl)
+            label = "%s vs %s" % (b.me.name, b.opp.name)
+        else:
+            r = three(b, b.opp, [foe], [fl], [me], mv)
+            label = "상대 %s 가 내 %s 를 볼 때" % (b.opp.name, b.me.name)
+        (va, pa), (vb, pbk), (vr, pr) = r["A"], r["B"], r["R"]
+        check("%s — 빈칸이면 값·기점 판단이 표와 다르다 (빈칸 %.4f %s / 표 %.4f %s — 시험이 뜻이 있다)"
+              % (label, va, pa, vr, pr), va != vr and is_setup(pa) != is_setup(pr))
+        check("%s — 판을 막 만든 순간의 값 = 표로 잰 값 (%.4f / %.4f)" % (label, vb, vr), vb == vr)
+        check("%s — 판을 막 만든 순간 고른 수 = 표로 고른 수 (%s / %s)" % (label, pbk, pr), pbk == pr)
+
+    # ③ 판 내내 — `_incoming` 이 불릴 때마다 상대 목록이 있고, 값이 같은 순간 표로 잰 값과 같다
+    real_inc = battle.Policy._incoming
+    st = dict(calls=0, empty=0, wrong=0, never_best=0, never_best_empty=0, rewrite=0)
+    seen_best = set()
+    tables = {}
+
+    def spy_inc(self, side, b_):
+        foe = b_.opp if side is b_.me else b_.me
+        st["calls"] += 1
+        want = tables.get(id(foe))
+        st["empty"] += not foe.moveset
+        if id(foe) not in seen_best:
+            st["never_best"] += 1
+            st["never_best_empty"] += not foe.moveset
+        got_v = real_inc(self, side, b_)
+        keep = foe.moveset
+        foe.moveset = want
+        t = copy.copy(self)
+        t._fallback = {}
+        ref = real_inc(t, side, b_)
+        foe.moveset = keep
+        st["wrong"] += got_v != ref
+        return got_v
+
+    def spy_best(self, side, b_=None):
+        seen_best.add(id(side))
+        before = names(side)
+        out = real_best(self, side, b_)
+        st["rewrite"] += before != names(side)
+        return out
+
+    def game(seed, mine_, mt_, opp_, ot_):
+        real_run = battle.Battle.__init__
+
+        def spy_init(self, *a, **k):
+            real_run(self, *a, **k)
+            for party, table in ((self.me_party, mt_), (self.opp_party, ot_)):
+                for side, mv in zip(party.members, table):
+                    tables[id(side)] = list(mv)
+        battle.Battle.__init__ = spy_init
+        try:
+            return battle.run_once(dex, mine_, opp_, [M(mt_[0][0])], [M(ot_[0][0])], random.Random(seed),
+                                   my_moves=mt_[0], opp_moves=ot_, my_party_moves=mt_,
+                                   opp_first_switch=True)
+        finally:
+            battle.Battle.__init__ = real_run
+
+    battle.Policy._incoming, battle.Policy._best_move = spy_inc, spy_best
+    try:
+        for seed in range(12):
+            for me, mv, foe, fl, _ in CASES:
+                seen_best.clear()
+                game(seed, [me, pb("하마돈")], [mv, real_mv("하마돈")], [foe, pb("누리레느")],
+                     [fl, real_mv("누리레느")])
+            seen_best.clear()
+            game(seed, mine, mt, opp, ot)
+    finally:
+        battle.Policy._incoming, battle.Policy._best_move = real_inc, real_best
+    print("    판 내내: _incoming %(calls)d번 · 상대 목록 빈 호출 %(empty)d · 상대가 _best_move 를 거친 적 없는 "
+          "호출 %(never_best)d (그중 빈 목록 %(never_best_empty)d) · 표로 잰 값과 다른 호출 %(wrong)d · "
+          "_best_move 가 목록을 새로 바꾼 호출 %(rewrite)d" % st)
+    check("판 내내 `_incoming` 이 불렸고, 상대가 `_best_move` 를 한 번도 안 거친 호출도 있다 (%d / %d — 시험이 뜻이 있다)"
+          % (st["calls"], st["never_best"]), st["calls"] > 0 and st["never_best"] > 0)
+    check("판 내내 상대 목록이 빈 채로 잰 호출이 없다 (%d)" % st["empty"], st["empty"] == 0)
+    check("상대가 `_best_move` 를 거쳤든 안 거쳤든 목록이 있다 (안 거친 호출 중 빈 목록 %d)"
+          % st["never_best_empty"], st["never_best_empty"] == 0)
+    check("판 내내 `_incoming` 값 = 같은 순간 표로 잰 값 (다른 호출 %d)" % st["wrong"], st["wrong"] == 0)
+    check("`_best_move` 가 옮겨 적는 목록 = 판 처음에 들어간 목록 (바꾼 호출 %d — 두 규칙이 짝이 맞다)"
+          % st["rewrite"], st["rewrite"] == 0)
+
+    # ④ 7단계 판 — 끝까지 보기(run_once) · 끊어 보기(직접 돈다) · 아직 안 나온 상대 벤치까지
+    real_sample = search.sample_opp_party
+    drawn = {}
+
+    def rec(*a, **k):
+        out = real_sample(*a, **k)
+        drawn["sets"] = out[1]
+        return out
+    opp_pokes6 = [P("한카리아스"), P("핫삼"), P("아머까오")]
+    for label, turns in (("끝까지 보기", None), ("끊어 보기(2턴)", 2)):
+        search.sample_opp_party = rec
+        try:
+            got = at_start(lambda: search.rollout(
+                dex, mine, opp_pokes6[:1], ("기술", M(mt[0][0])), random.Random(9), turns=turns,
+                my_moves=mt[0], hidden=opp_pokes6[1:], take=2, my_party_moves=mt, opp_may_switch=True))
+        finally:
+            search.sample_opp_party = real_sample
+        b = got["b"]
+        oh, osame, _ = lists_ok(b.opp_party, drawn["sets"])
+        mh, msame, _ = lists_ok(b.me_party, mt)
+        check("rollout %s — 판을 막 만든 순간 상대 %d자리(안 나온 벤치 포함) 중 %d자리가 이 판에 뽑은 4기술"
+              % (label, oh, osame), oh == 3 and osame == 3)
+        check("rollout %s — 내 %d자리 중 %d자리가 내 기술표" % (label, mh, msame), mh == 3 and msame == 3)
+
+    # ⑤ 추천 경로(best_action) — 모든 판의 첫 순간
+    st2 = dict(games=0, bad=0)
+    real_act = battle.Policy.act
+    first = set()
+
+    def spy_act(self, party, i, b_=None):
+        if b_ is not None and id(b_) not in first:
+            first.add(id(b_))
+            st2["games"] += 1
+            oh, osame, _ = lists_ok(b_.opp_party, drawn["sets"])
+            mh, msame, _ = lists_ok(b_.me_party, mt)
+            st2["bad"] += (oh != osame) or (mh != msame)
+        return real_act(self, party, i, b_)
+    search.sample_opp_party, battle.Policy.act = rec, spy_act
+    try:
+        search.best_action(dex, mine, opp_pokes6[:1], my_moves=mt[0], seconds=0.5, seed=4,
+                           opp_hidden=opp_pokes6[1:], opp_take=2, my_party_moves=mt)
+    finally:
+        search.sample_opp_party, battle.Policy.act = real_sample, real_act
+    check("추천 경로 — 판 %d개 중 첫 순간에 표가 있는데 목록이 빈 자리가 있는 판 %d"
+          % (st2["games"], st2["bad"]), st2["games"] > 0 and st2["bad"] == 0)
+
+    # ⑥ 기술표가 **정말 없는** 판은 예전 그대로 — 비어 있고 사용률로 잰다
+    got = at_start(lambda: battle.run_once(dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(3)))
+    b = got["b"]
+    check("기술표 없이 돌린 판 — 양쪽 모든 자리가 빈 목록 (예전 그대로)",
+          all(s.moveset is None for s in b.me_party.members + b.opp_party.members))
+    got = at_start(lambda: battle.run_once(
+        dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(3),
+        my_party_moves=[mt[0], [], mt[2]], opp_moves=[ot[0], None, ot[2]]))
+    b = got["b"]
+    check("빈 자리가 섞인 표 — 빈 자리만 빈 목록, 나머지는 표 (내 %s / 상대 %s)"
+          % ([bool(s.moveset) for s in b.me_party.members], [bool(s.moveset) for s in b.opp_party.members]),
+          lists_ok(b.me_party, [mt[0], [], mt[2]]) == (2, 2, 0)
+          and lists_ok(b.opp_party, [ot[0], None, ot[2]]) == (2, 2, 0))
+    got = at_start(lambda: battle.run_once(dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(3),
+                                           my_moves=mt[0]))
+    b = got["b"]
+    check("계획 주인의 기술(my_moves)만 준 판 — 선봉만 그 목록, 벤치·상대는 빈 목록 (`_best_move` 와 같은 규칙)",
+          names(b.me_party.members[0]) == mt[0]
+          and all(s.moveset is None for s in b.me_party.members[1:] + b.opp_party.members))
+    st3 = dict(calls=0, empty=0, fallback=0, same=0)
+    real_cand = best.candidate_moves
+
+    def spy_inc2(self, side, b_):
+        foe = b_.opp if side is b_.me else b_.me
+        st3["calls"] += 1
+        if foe.moveset:
+            return real_inc(self, side, b_)
+        st3["empty"] += 1
+        n = [0]
+
+        def cand(*a, **k):
+            n[0] += 1
+            return real_cand(*a, **k)
+        best.candidate_moves = cand
+        try:
+            v = real_inc(self, side, b_)
+        finally:
+            best.candidate_moves = real_cand
+        t = copy.copy(self)
+        t._fallback = {}
+        st3["fallback"] += n[0] > 0
+        st3["same"] += real_inc(t, side, b_) == v
+        return v
+    battle.Policy._incoming = spy_inc2
+    try:
+        battle.evaluate(dex, mine, opp, [M("용의춤")], [M(ot[0][0])], trials=20, seed=5)
+    finally:
+        battle.Policy._incoming = real_inc
+    # (사용률 후보를 새로 부르는 것은 캐시가 빈 칸일 때뿐이다 — 캐시에서 꺼낸 호출은 안 부른다)
+    check("기술표 없는 `evaluate` — 모든 호출이 빈 목록으로 사용률 쪽을 탄다 (%d번 중 %d번 · 사용률 후보를 새로 "
+          "부른 호출 %d · 같은 순간 새 Policy 값과 같음 %d)"
+          % (st3["calls"], st3["empty"], st3["fallback"], st3["same"]),
+          st3["calls"] > 0 and st3["empty"] == st3["calls"] and st3["fallback"] > 0
+          and st3["same"] == st3["empty"])
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -7426,6 +7728,7 @@ def main():
     test_my_own_moves(dex)
     test_fallback_key(dex)
     test_incoming_key(dex)
+    test_moveset_start(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

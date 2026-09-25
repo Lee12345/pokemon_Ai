@@ -881,8 +881,8 @@ class Side(object):
         self.toxic_n = 0
         self.confused = 0
         self.drowsy = 0
-        # 배운 기술 이름 목록. 아는 경우에만 (Policy 가 내 기술을 알 때 채운다).
-        # 비장의무기가 본다 — 모르면 '기술 4개' 로 보고 경고한다.
+        # 배운 기술 이름 목록. 아는 경우에만 — 판을 만들 때 `Policy.give_movesets` 가 채운다.
+        # 비장의무기가 본다 — 모르면 '기술 4개' 로 보고 경고한다. 상대의 `_incoming` 도 본다.
         self.moveset = None
         # 이 턴의 기록 — 기습·기선제압·힘껏펀치가 본다. Battle.step 이 매 턴 지운다.
         self.chosen = None           # 이 턴에 고른 기술 (교체했으면 None)
@@ -3727,6 +3727,34 @@ class Policy(object):
                 return mv
         return None
 
+    def known_moves(self, side):
+        """이 놈이 **고를 기술 목록** — `_best_move` 가 고르는 바로 그 목록. 모르면 None (사용률로 짐작).
+
+        ① 마리별 기술표  ② 계획 주인 한 마리의 moves  (`_best_move` 와 같은 순서·같은 규칙)
+        """
+        own = self._moves_of(side)
+        if own is not None:
+            return own
+        if self.moves and self._is_lead(side):
+            return self.moves
+        return None
+
+    def give_movesets(self, party):
+        """판을 만들 때 이 편 **모든 자리**의 `Side.moveset` 을 이미 아는 기술표로 채운다.
+
+        ! 전에는 `_best_move` 가 불릴 때에야 채웠다. 상대 선봉은 계획한 첫 수를 되풀이해서
+          `_best_move` 를 거의 안 부르므로, 판에 상대 4기술이 이미 넘어와 있는데도(`opp_moves`)
+          내 `_incoming`(기점을 잡아도 되나)은 판 내내 **빈 목록 → 사용률 후보 전부**로 쟀다
+          (2026-09-25 감사: `run_once` 20,000판에서 내 `_incoming` 8,346번 중 4,496번). 메가보만다 vs
+          하마돈이 용의춤 대신 이판사판태클을, 루카리오 vs 핫삼이 나쁜음모 대신 파동탄을 골랐다 ([72]).
+        ★ **새로 알려 주는 것이 아니다.** 이 Policy 가 판 처음부터 들고 있던 목록을 늦게가 아니라
+          처음에 옮겨 적는 것뿐이다. 표가 없는 자리는 그대로 None — 예전처럼 사용률로 잰다.
+        """
+        for side in party.members:
+            known = self.known_moves(side)
+            if known is not None:
+                side.moveset = [m["name"] for m in known]
+
     def _best_move(self, side, battle=None):
         # 내 기술을 아는 경우에는 **그 안에서만** 고른다.
         # ① 마리별 기술표 — 선봉·벤치 가리지 않는다  ② 계획 주인 한 마리의 moves
@@ -3735,7 +3763,9 @@ class Policy(object):
         restricted = own is None and bool(self.moves) and self._is_lead(side)
         known = own if own is not None else (self.moves if restricted else None)
         if known is not None:
-            side.moveset = [m["name"] for m in known]   # 비장의무기가 본다
+            # 비장의무기·상대의 `_incoming` 이 본다. 판 처음에 `give_movesets` 가 이미 같은 값을
+            # 넣어 둔다 — 여기서는 그 장치를 안 거친 판(직접 만든 판)을 위해 남겨 둔다.
+            side.moveset = [m["name"] for m in known]
         # ! 열쇠는 이름이 아니라 **몸(Build)** 이다. 이름으로 두었더니 같은 종·같은 기술이면
         #   몸(노력치·성격·도구·특성)이 달라도 먼저 잰 놈의 표를 그대로 썼다 — 두 번째 놈의
         #   기대 데미지·KO 확률이 남의 것이 되고 고르는 수까지 바뀌었다 (2026-09-25, [70]).
@@ -3958,6 +3988,9 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
     theirs = Policy(dex, opp_build, me_build, opp_plan,
                     allow_switch=opp_switch, lead=b.opp_party.active.base,
                     first_switch=opp_first_switch, party_moves=opp_moves)
+    # 이미 아는 기술표는 **판 처음부터** 자리마다 적어 둔다 — 상대의 `_incoming` 이 첫 턴부터 본다.
+    mine.give_movesets(b.me_party)
+    theirs.give_movesets(b.opp_party)
     for i in range(MAX_TURNS):
         if b.over:
             break
