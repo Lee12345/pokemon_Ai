@@ -7955,6 +7955,123 @@ def test_choice_lock(dex):
           st["uses"] > 0 and st["violations"] == 0)
 
 
+def test_current_foe(dex):
+    """[75] **기술은 지금 나와 있는 상대에 대고 잰다** (2026-09-25, 감사 Patch 7).
+
+    `Policy._best_move` 는 기술 평가표를 `self._foe = _first(foe_build)` — **Policy 를 만들 때 받은 상대
+    파티의 1번** — 에 대고 쟀다 (2026-09-17 상대가 한 마리뿐이던 때 들어온 것이 파티가 된 뒤에도 남았다).
+    상대가 교체하거나 쓰러져도, 판 중간에서 상대 2번이 나와 있다고 넘겨도 1번에 대고 쟀다.
+    잰 것: 상대 2번 아머까오가 나와 있는데 한카리아스가 1번 하마돈에 대고 재서 **지진**(땅 무효)을 골랐다.
+    감사 20,000판: 지금 상대에 대고 재면 행동 다른 판 19,407 · 승패 다른 판 6,408.
+
+    ★ 지금 상대는 **판에게 묻는다** — `Battle.me / Battle.opp` (→ `Party.active`), `_incoming` 과 같은 출처.
+      모양도 `_incoming` 과 같게 `as_build()` (지금 폼·HP·랭크·상태·도구). 캐시 열쇠에는 그 몸의 지문
+      (`best._build_key`, `rate_moves` 의 방어자 열쇠와 같은 것)을 넣는다 — 객체 정체성은 안 넣는다.
+    ! 내 쪽(공격자) 상태가 표에 굳는 것은 **이 검사의 범위가 아니다** (Patch 8).
+    """
+    import random
+    import search
+    print("\n[75] 기술은 지금 나와 있는 상대에 대고 잰다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    K = best._build_key
+    real_rate, real_setup = best.rate_moves, battle.Policy._setup_move
+    st = {"evals": 0, "wrong_who": 0, "wrong_state": 0, "rates": 0}
+
+    def rate(dex_, att, dfn, moves):
+        st["rates"] += 1
+        rows = real_rate(dex_, att, dfn, moves)
+        for r in rows:
+            r["_def"] = K(dfn)
+        return rows
+
+    def setup(self, side, rows, b):
+        if b is not None and rows:
+            foe = b.opp if side is b.me else b.me
+            st["evals"] += 1
+            fk = K(foe.as_build())
+            st["wrong_who"] += rows[0]["_def"][:2] != fk[:2]
+            st["wrong_state"] += rows[0]["_def"] != fk
+        return real_setup(self, side, rows, b)
+
+    def spied(fn):
+        for k in st:
+            st[k] = 0
+        best.rate_moves, battle.Policy._setup_move = rate, setup
+        try:
+            return fn()
+        finally:
+            best.rate_moves, battle.Policy._setup_move = real_rate, real_setup
+
+    gar, hip, cor = pb("한카리아스"), pb("하마돈"), pb("아머까오")
+    T = ["지진", "용성군", "화염방사", "스톤에지"]
+
+    # ① 판 중간 — 상대 2번이 나와 있으면 1번에 대고 재지 않는다
+    b = battle.Battle(dex, [gar], [hip, cor], rng=random.Random(1), opp_active=1, my_fresh=False, opp_fresh=False)
+    pol = battle.Policy(dex, [gar], [hip, cor], [M("지진")], party_moves=[T])
+    pick = spied(lambda: pol._best_move(b.me, b)["name"])
+    ref = battle.Policy(dex, [gar], [cor], [M("지진")], party_moves=[T])._best_move(b.me, b)["name"]
+    check("상대 2번(아머까오)이 나와 있으면 그놈에 대고 잰다 — 고른 수 %s / 아머까오만 준 Policy %s (잰 상대 틀림 %d)"
+          % (pick, ref, st["wrong_who"]), pick == ref and pick != "지진" and st["wrong_who"] == 0)
+
+    # ② 상대가 교체하면 바로 새 상대에 대고 잰다 (같은 Policy)
+    b = battle.Battle(dex, [gar], [hip, cor], rng=random.Random(1))
+    pol = battle.Policy(dex, [gar], [hip, cor], [M("지진")], party_moves=[T])
+    first = pol._best_move(b.me, b)["name"]
+    b.step(M("스톤에지"), ("교체", 1))
+    after = spied(lambda: pol._best_move(b.me, b)["name"])
+    check("교체 전 하마돈에게는 %s, 아머까오로 바뀐 뒤 같은 Policy 는 %s (지진 아님 · 잰 상대 틀림 %d)"
+          % (first, after, st["wrong_who"]), after != "지진" and st["wrong_who"] == 0)
+    check("시험이 뜻이 있다 — 하마돈 상대로는 %s (지진)" % first, first == "지진")
+
+    # ③ 같은 상대·같은 상태면 표를 다시 쓴다 (쓸데없이 쪼개지 않는다) / 몸이 같은 다른 객체도 같은 칸
+    b = battle.Battle(dex, [gar], [hip, cor], rng=random.Random(1), opp_active=1)
+    pol = battle.Policy(dex, [gar], [hip, cor], [M("지진")], party_moves=[T])
+    spied(lambda: pol._best_move(b.me, b))
+    n1 = st["rates"]
+    spied(lambda: pol._best_move(b.me, b))
+    check("같은 상대·같은 상태로 다시 물으면 다시 재지 않는다 (처음 %d번 · 두 번째 %d번)" % (n1, st["rates"]),
+          n1 > 0 and st["rates"] == 0)
+    cor2 = calc.Build(dex, P("아머까오"), sp=dict(cor.sp), nature=cor.nature, item=cor.item, ability=cor.ability)
+    b = battle.Battle(dex, [gar], [cor, cor2], rng=random.Random(1))
+    pol = battle.Policy(dex, [gar], [cor, cor2], [M("지진")], party_moves=[T])
+    spied(lambda: pol._best_move(b.me, b))
+    b.opp_party.active_idx = 1
+    spied(lambda: pol._best_move(b.me, b))
+    check("필드가 같은 다른 객체(아머까오 둘)는 같은 칸을 쓴다 (두 번째 잴 때 부른 횟수 %d)" % st["rates"],
+          st["rates"] == 0)
+    # 지금 상대의 HP 가 바뀌면 (평가가 읽는 값) 새로 잰다
+    b.opp.hp = b.opp.max_hp // 3
+    spied(lambda: pol._best_move(b.me, b))
+    check("지금 상대의 HP 가 바뀌면 새로 잰다 (평가가 그 HP 로 한 방 확률을 잰다 — 부른 횟수 %d · 상태 틀림 %d)"
+          % (st["rates"], st["wrong_state"]), st["rates"] > 0 and st["wrong_state"] == 0)
+
+    # ④ 판을 끝까지 — 3대3 run_once 여러 판: 잰 상대가 지금 상대와 다른 평가가 없다
+    real_mv = lambda n: [m["name"] for m, _ in battle.realistic_moveset(dex, P(n))]
+    mine = [pb("한카리아스"), pb("하마돈"), pb("보만다")]
+    opp = [pb("아머까오"), pb("누리레느"), pb("마스카나")]
+    mt = [real_mv("한카리아스"), real_mv("하마돈"), real_mv("보만다")]
+    ot = [real_mv("아머까오"), real_mv("누리레느"), real_mv("마스카나")]
+
+    def games():
+        for s in range(20):
+            battle.run_once(dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(s), my_moves=mt[0],
+                            my_party_moves=mt, opp_moves=ot, opp_first_switch=True)
+    spied(games)
+    check("3대3 20판 — _best_move 평가 %d번 중 잰 상대(정체)가 지금 상대와 다른 것 %d · 상태가 다른 것 %d"
+          % (st["evals"], st["wrong_who"], st["wrong_state"]),
+          st["evals"] > 0 and st["wrong_who"] == 0 and st["wrong_state"] == 0)
+
+    # ⑤ 7단계(live 모양) — 판 중간 state 로 상대 2번이 나와 있고 안 나온 벤치가 있어도 지금 상대에 대고 잰다
+    got = spied(lambda: search.best_action(
+        dex, [gar, pb("하마돈")], [P("하마돈"), P("아머까오")], my_moves=T, seconds=0.5,
+        state={"my_hp": [100.0, 100.0], "opp_hp": [100.0, 100.0], "opp_active": 1, "my_active": 0,
+               "my_fresh": False, "opp_fresh": False},
+        opp_hidden=[P("누리레느"), P("마스카나")], opp_take=1, my_party_moves=[T, real_mv("하마돈")]))
+    check("7단계 판 중간(상대 2번 · 안 나온 벤치 1) — 평가 %d번 중 잰 상대가 지금 상대와 다른 것 %d"
+          % (st["evals"], st["wrong_who"]), st["evals"] > 0 and st["wrong_who"] == 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -8033,6 +8150,7 @@ def main():
     test_moveset_start(dex)
     test_incoming_moves_key(dex)
     test_choice_lock(dex)
+    test_current_foe(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

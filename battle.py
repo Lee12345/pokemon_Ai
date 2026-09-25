@@ -3826,9 +3826,21 @@ class Policy(object):
         #   몸(노력치·성격·도구·특성)이 달라도 먼저 잰 놈의 표를 그대로 썼다 — 두 번째 놈의
         #   기대 데미지·KO 확률이 남의 것이 되고 고르는 수까지 바뀌었다 (2026-09-25, [70]).
         #   몸의 지문은 `rate_moves` 캐시와 같은 `best._build_key` 를 쓴다.
+        # ! **지금 나와 있는 상대**에 대고 잰다 (감사 Patch 7, [75]). 전에는 `self._foe` — Policy 를
+        #   만들 때 받은 상대 파티의 **1번** — 에 대고 쟀다. 상대가 교체하거나 쓰러져도, 판 중간에서
+        #   2번이 나와 있다고 넘겨도 1번에 대고 재서, 아머까오(땅 무효)가 나와 있는데 1번 하마돈
+        #   기준으로 지진을 골랐다. 1번도 받은 Build 그대로(메가 폼)라 메가 전 상대를 메가로 쟀다.
+        #   지금 상대는 **판에게 묻는다** (`_incoming` 과 같은 출처·같은 모양 as_build). 열쇠에는
+        #   그 몸의 지문을 넣는다 — `rate_moves` 가 방어자를 가르는 것과 같은 것 (HP·랭크·상태·도구·폼).
+        #   판이 없으면 지금 상대를 알 수 없으므로 처음 받은 상대로 잰다 (예전 그대로).
+        if battle is not None:
+            foe_b = (battle.opp if side is battle.me else battle.me).as_build()
+        else:
+            foe_b = self._foe
         body = best._build_key(side.base)
-        key = ((body, "own", tuple(m["name"] for m in own)) if own is not None
-               else (body, restricted))
+        foe_key = best._build_key(foe_b)
+        key = ((body, "own", tuple(m["name"] for m in own), foe_key) if own is not None
+               else (body, restricted, foe_key))
         rows = self._fallback.get(key)
         if rows is None:
             if known is not None:
@@ -3836,7 +3848,7 @@ class Policy(object):
             else:
                 cand = best.candidate_moves(self.dex, side.base.poke)
             rows = best.rate_moves(
-                self.dex, side.as_build(), self._foe, cand)
+                self.dex, side.as_build(), foe_b, cand)
             self._fallback[key] = rows
         # ! 표는 한 번만 재지만 **고르는 것은 매 턴** 한다. 전에는 고른 기술 하나를
         #   외워 두고 끝까지 썼는데, 만나자마자처럼 '나온 첫 턴만' 되는 기술이 1등이면
