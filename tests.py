@@ -8221,6 +8221,118 @@ def _own_state_body(dex, st, spied, P, M, pb, K):
           cmp_["n"] > 0 and st["stale"] == 0 and cmp_["diff"] == 0)
 
 
+def test_known_lead_reselect(dex):
+    """[77] **기술표를 아는 선봉은 계획이 끝나면 매 턴 다시 고른다** (2026-09-25, 감사 Patch 9).
+
+    `Policy._choose` 는 계획이 끝난 뒤 `self.moves`(계획 주인 한 마리의 옛 장치)가 있을 때만 다시 골랐다.
+    상대 Policy 에는 마리별 기술표(`party_moves`, 감사 Patch 1)만 넘어가고 `moves` 는 안 넘어가서, 상대 선봉은
+    기술표를 알면서도 계획의 첫 수를 끝까지 되풀이했다 (`_pick`). 내 쪽에서 이미 결함으로 고친 일이다
+    (docs/이어받기.md §21). 잰 것: 내가 아머까오(땅 무효)로 바꿔 들어가도 상대 한카리아스 선봉이 지진을 되풀이.
+    감사 20,000판: 비구애 되풀이 결정 34,672 번 중 다시 골랐다면 달랐을 것 922 번.
+
+    ★ 나눠 본다 — ① 표를 알면 다시 고른다 ② 표를 모르면 예전처럼 되풀이한다 (정보가 없다)
+      ③ 구애스카프로 묶였으면 다시 골라도 묶인 기술 (Patch 6 의 판 상태) ④ 계획이 진행 중이면 계획대로
+      ⑤ 기점 판단은 `_best_move` 의 규칙 그대로.
+    """
+    import random
+    print("\n[77] 기술표를 아는 선봉은 계획이 끝나면 매 턴 다시 고른다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    real_mv = lambda n: [m["name"] for m, _ in battle.realistic_moveset(dex, P(n))]
+    hip, cor = pb("하마돈"), pb("아머까오")
+    gar = pb("한카리아스")
+    gbase = calc.base_form(dex, gar.poke) if gar.poke.get("isMega") else gar.poke
+    T = ["지진", "용성군", "화염방사", "스톤에지"]
+    mine = [hip, cor]
+    mt = [real_mv("하마돈"), real_mv("아머까오")]
+
+    unwrap = lambda a: a[1] if isinstance(a, tuple) and a[0] == "메가" else a
+    real_step = battle.Battle.step
+
+    def opp_moves_used(opp, ot, seed=1, turns=3):
+        """내가 0턴에 아머까오로 바꿔 들어가고, 상대 한카리아스 선봉은 계획 [지진]. 상대가 판에 넣은 기술 순서."""
+        seen = []
+
+        def spy(self, x, y):
+            y_ = unwrap(y)
+            if isinstance(y_, dict):
+                seen.append(y_["name"])
+            return real_step(self, x, y)
+        battle.Battle.step = spy
+        try:
+            r = battle.run_once(dex, mine, [opp], [("교체", 1)], [M("지진")], random.Random(seed),
+                                my_moves=mt[0], my_party_moves=mt, opp_moves=ot)
+        finally:
+            battle.Battle.step = real_step
+        return seen[:turns], r
+
+    # ① 표를 아는 상대 선봉 — 계획(지진)이 끝나면 지금 상대(아머까오)에 맞게 다시 고른다
+    used, r = opp_moves_used(gar, [T])
+    check("표를 아는 상대 선봉: 0턴 계획 지진 뒤 아머까오에게 다시 고른다 (%s)" % used,
+          len(used) >= 2 and used[0] == "지진" and "지진" not in used[1:])
+    # ② 표를 모르는 상대 — 예전처럼 계획을 되풀이한다 (알 수 없는 기술을 지어내지 않는다)
+    used2, r = opp_moves_used(gar, None)
+    check("표를 모르는 상대 선봉은 예전처럼 계획을 되풀이한다 (%s)" % used2,
+          len(used2) >= 2 and all(u == "지진" for u in used2))
+    # ③ 구애스카프로 묶인 표를 아는 선봉 — 다시 골라도 묶인 기술 (규칙상 강제되는 되풀이는 없애지 않는다)
+    gscarf = calc.Build(dex, gbase, sp=dict(gar.sp), nature=gar.nature, item="구애스카프",
+                        ability=gbase["abilities"][0]["name"])
+    used3, r = opp_moves_used(gscarf, [T])
+    check("구애스카프로 지진에 묶인 선봉은 표를 알아도 지진만 쓴다 (%s)" % used3,
+          len(used3) >= 2 and all(u == "지진" for u in used3)
+          and not [w for w in r["warnings"] if "묶여 있는데" in w])
+    # ④ 계획이 진행 중이면 계획대로 — 여러 수 계획 [칼춤, 지진] 은 두 턴 그대로
+    b = battle.Battle(dex, [gar], [hip], rng=random.Random(1))
+    pol = battle.Policy(dex, [gar], [hip], [M("칼춤"), M("스톤에지")], party_moves=[T + ["칼춤"]],
+                        auto_mega=False)
+    a0 = pol.act(b.me_party, 0, b)
+    b.step(a0, M("스텔스록"))
+    a1 = pol.act(b.me_party, 1, b)
+    check("계획 [칼춤, 스톤에지] 이 진행 중이면 계획대로 (%s, %s)" % (a0["name"], a1["name"]),
+          a0["name"] == "칼춤" and a1["name"] == "스톤에지")
+    # ⑤ 계획이 끝난 뒤 표를 아는 선봉의 수 = 같은 순간 _best_move (기점 판단 포함, 새 규칙을 만들지 않았다)
+    b.step(a1, M("스텔스록"))
+    a2 = unwrap(pol.act(b.me_party, 2, b))
+    ref = battle.Policy(dex, [gar], [hip], [M("칼춤")], party_moves=[T + ["칼춤"]])._best_move(b.me, b)
+    check("계획이 끝나면 같은 순간 _best_move 와 같은 수 (%s / %s)" % (a2["name"], ref["name"]),
+          a2["name"] == ref["name"])
+
+    # ⑥ 판을 끝까지 — 표를 아는 선봉이 계획 첫 수를 되풀이한(_pick) 일이 없다 / 표를 모르는 선봉은 그대로
+    real_pick = battle._pick
+    st = {"known": 0, "unknown": 0}
+    who = {}
+
+    def spy_pick(plan, i):
+        pol_ = who.get("pol")
+        side = who.get("side")
+        if pol_ is not None and side is not None:
+            known = pol_.known_moves(side) if hasattr(pol_, "known_moves") else None
+            st["known" if known is not None else "unknown"] += 1
+        return real_pick(plan, i)
+    real_choose = battle.Policy._choose
+
+    def spy_choose(self, party, i, b_=None):
+        who["pol"], who["side"] = self, party.active
+        return real_choose(self, party, i, b_)
+    battle._pick, battle.Policy._choose = spy_pick, spy_choose
+    try:
+        opp = [pb("아머까오"), pb("누리레느"), pb("마스카나")]
+        ot = [real_mv("아머까오"), real_mv("누리레느"), real_mv("마스카나")]
+        me3 = [pb("한카리아스"), pb("하마돈"), pb("보만다")]
+        m3 = [real_mv("한카리아스"), real_mv("하마돈"), real_mv("보만다")]
+        for s in range(20):
+            battle.run_once(dex, me3, opp, [M(m3[0][0])], [M(ot[0][0])], random.Random(s), my_moves=m3[0],
+                            my_party_moves=m3, opp_moves=ot, opp_first_switch=True)
+        n_known = st["known"]
+        st["known"] = st["unknown"] = 0
+        for s in range(20):
+            battle.run_once(dex, me3, opp, [M(m3[0][0])], [M(ot[0][0])], random.Random(s))
+    finally:
+        battle._pick, battle.Policy._choose = real_pick, real_choose
+    check("3대3 20판(표 있음) — 표를 아는 선봉이 계획 첫 수를 되풀이한 것 %d" % n_known, n_known == 0)
+    check("3대3 20판(표 없음) — 표를 모르는 선봉은 예전처럼 되풀이한다 (%d번)" % st["unknown"], st["unknown"] > 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -8301,6 +8413,7 @@ def main():
     test_choice_lock(dex)
     test_current_foe(dex)
     test_own_state_table(dex)
+    test_known_lead_reselect(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

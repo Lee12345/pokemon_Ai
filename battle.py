@@ -3976,7 +3976,12 @@ class Policy(object):
             #   반복해 버리면 "매 턴 이 수만 둔다면" 을 재게 된다.
             #   칼춤을 한 번 쓰는 것과 여섯 턴 내리 쓰는 것은 완전히
             #   다른 이야기다. 내 기술을 알 때는 매 턴 다시 고른다.
-            if self.moves:
+            # ! '기술을 안다' 는 `self.moves`(계획 주인 한 마리의 옛 장치)만이 아니라 **마리별 기술표**
+            #   (`party_moves`)도 뜻한다 — `known_moves` 가 `_best_move` 와 같은 규칙으로 답한다 (감사 Patch 9,
+            #   [77]). 전에는 `moves` 만 봐서, 마리별 표만 받는 상대 선봉이 기술표를 알면서도 계획의 첫 수를
+            #   끝까지 되풀이했다 (아머까오가 들어와도 지진). 표를 모르면 아래처럼 예전대로 되풀이한다.
+            #   구애스카프로 묶였으면 `act` 가 묶인 기술로 둔다 (Patch 6) — 규칙상 되풀이는 그대로 남는다.
+            if self.known_moves(party.active) is not None:
                 return self._wrap_mega(party, self._best_move(party.active, battle))
             again = _pick(self.plan, turn_index)
             # 되풀이하려는 수가 **확실히 실패하면** (만나자마자를 둘째 턴에 등)
