@@ -7295,7 +7295,12 @@ def test_incoming_key(dex):
     LUC = ["나쁜음모", "파동탄", "악의파동", "러스터캐논"]
     mas = P("마스카나")
     mx = calc.Build(dex, mas, sp={"defense": 32, "spDef": 32}, nature=N("신중"), item="생명의구슬", ability="심록")
-    my = calc.Build(dex, mas, sp={"spAtk": 32, "speed": 32}, nature=N("조심"), item=None, ability="심록")
+    # ! 두 번째 몸은 원래 공격형(특공·스피드 32 · 조심)이었다. 그런데 그 몸은 루카리오의 파동탄에 **지금
+    #   잡히는**(koNow 1.0) 몸이라, 제대로 재면 기점을 안 잡고 파동탄을 친다 — '두 몸의 고른 수가 갈린다'
+    #   는 전제가 `_best_move` 가 파티 1번에 대고 재던 결함(감사 Patch 7) 덕에 성립하고 있었다.
+    #   같은 HP(옛 열쇠가 부딪치는 조건)의 방어형·도구 없음으로 바꿨다 — 고치기 전·뒤 모두 파동탄 / 나쁜음모로
+    #   갈린다 (0.416 / 0.323). 검사 문장은 그대로다.
+    my = calc.Build(dex, mas, sp={"defense": 32, "spDef": 32}, nature=N("신중"), item=None, ability="심록")
     mm = {"X": mx, "Y": my}
     pair_checks("루카리오 vs 마스카나 X/Y (때리는 쪽)", lambda o: [luc], lambda o: [mm[o[0]], mm[o[1]]],
                 LUC, [(0, 0), (0, 1)], ["트릭플라워", "트리플악셀", "탁쳐서떨구기", "유턴"], setup_pair=True)
