@@ -8077,6 +8077,150 @@ def test_current_foe(dex):
           % (st["evals"], st["wrong_who"]), st["evals"] > 0 and st["wrong_who"] == 0)
 
 
+def test_own_state_table(dex):
+    """[76] **내 상태가 바뀌면(화상·랭크·HP·도구·폼) 기술 평가표를 다시 잰다** (2026-09-25, 감사 Patch 8).
+
+    `Policy._best_move` 의 평가표는 `rate_moves(내 as_build, 지금 상대 as_build, 후보)` 로 잰다. 그런데 캐시
+    열쇠의 내 쪽이 **정적 몸**(`side.base`)이라, 첫 호출 뒤 내 상태가 바뀌어도 옛 표를 썼다.
+    잰 것: 화상 입은 한카리아스가 같은 Policy 로는 지진(물리, 반감), 같은 순간 새 Policy 로는 용성군.
+    감사 20,000판: 표를 매번 새로 재면 행동 다른 판 1,341 · 승패 다른 판 217.
+
+    ★ 열쇠의 내 쪽 = `best._build_key(side.as_build())` — 평가가 공격자에서 읽는 것 전부
+      (폼 · 노력치·성격 · 랭크 · 지금 든 도구 · 특성 · 상태 · HP 비율 · 바뀐 타입). `rate_moves` 가
+      공격자를 가르는 것과 같은 지문이다. 평가가 안 읽는 것(날씨 · Side 에만 있는 타오르는불꽃 등)은 안 넣는다.
+    """
+    import random
+    import copy
+    print("\n[76] 내 상태가 바뀌면 기술 평가표를 다시 잰다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    K = best._build_key
+    real_rate, real_setup = best.rate_moves, battle.Policy._setup_move
+    st = {"rates": 0, "evals": 0, "stale": 0}
+    on = [False]
+
+    def rate(dex_, att, dfn, moves):
+        st["rates"] += on[0]            # 스파이 구간 안에서만 센다 (대조용 새 Policy 호출은 안 센다)
+        rows = real_rate(dex_, att, dfn, moves)
+        for r in rows:
+            r["_att"] = K(att)
+        return rows
+
+    def setup(self, side, rows, b):
+        if b is not None and rows:
+            st["evals"] += 1
+            st["stale"] += rows[0]["_att"] != K(side.as_build())
+        return real_setup(self, side, rows, b)
+
+    def spied(fn):
+        """세는 것만 이 구간에서. 꼬리표(_att)는 검사 내내 붙인다 — 스파이 밖에서 잰 표도 캐시에서 꺼내 쓰므로."""
+        for k in st:
+            st[k] = 0
+        battle.Policy._setup_move = setup
+        on[0] = True
+        try:
+            return fn()
+        finally:
+            on[0] = False
+            battle.Policy._setup_move = real_setup
+    best.rate_moves = rate
+    try:
+        _own_state_body(dex, st, spied, P, M, pb, K)
+    finally:
+        best.rate_moves = real_rate
+
+
+def _own_state_body(dex, st, spied, P, M, pb, K):
+    import random
+    import copy
+
+    def fresh_pick(pol, side, b):
+        t = copy.copy(pol)
+        t._fallback = {}
+        keep = side.moveset
+        try:
+            return real_best(t, side, b)["name"]
+        finally:
+            side.moveset = keep
+    real_best = battle.Policy._best_move
+    gar, hip = pb("한카리아스"), pb("하마돈")
+    T = ["지진", "용성군", "화염방사", "스톤에지"]
+
+    # ① 화상 — 같은 Policy 가 새 Policy 와 같은 답
+    b = battle.Battle(dex, [gar], [hip], rng=random.Random(1))
+    pol = battle.Policy(dex, [gar], [hip], [M("지진")], party_moves=[T])
+    before = pol._best_move(b.me, b)["name"]
+    b.me.status = "화상"
+    after = spied(lambda: pol._best_move(b.me, b)["name"])
+    ref = fresh_pick(pol, b.me, b)
+    check("화상 전 %s → 화상 뒤 같은 Policy %s / 같은 순간 새 Policy %s (옛 상태 표 %d)"
+          % (before, after, ref, st["stale"]), after == ref and st["stale"] == 0)
+    check("시험이 뜻이 있다 — 화상 전후로 답이 갈린다 (%s → %s)" % (before, ref), before != ref)
+
+    # ② 같은 몸·같은 상태면 같은 칸 (다시 안 잰다) / 필드가 같은 다른 객체도 같은 칸
+    spied(lambda: pol._best_move(b.me, b))
+    check("같은 상태로 다시 물으면 다시 재지 않는다 (부른 횟수 %d)" % st["rates"], st["rates"] == 0)
+    gar2 = calc.Build(dex, gar.poke, sp=dict(gar.sp), nature=gar.nature, item=gar.item, ability=gar.ability)
+    b2 = battle.Battle(dex, [gar, gar2], [hip], rng=random.Random(1))
+    pol2 = battle.Policy(dex, [gar, gar2], [hip], [M("지진")], party_moves=[T, T])
+    spied(lambda: pol2._best_move(b2.me, b2))
+    b2.me_party.active_idx = 1
+    spied(lambda: pol2._best_move(b2.me, b2))
+    check("필드·상태가 같은 다른 객체는 같은 칸을 쓴다 (두 번째 부른 횟수 %d)" % st["rates"], st["rates"] == 0)
+
+    # ③ 랭크 · HP · 도구 소모 — 바뀌면 다시 재고, 새 Policy 와 같은 답
+    for label, change in (("공격 +2", lambda s: s.ranks.__setitem__("attack", 2)),
+                          ("HP 30%", lambda s: setattr(s, "hp", max(1, int(s.max_hp * 0.3)))),
+                          ("도구를 다 씀", lambda s: setattr(s, "item_used", True))):
+        b = battle.Battle(dex, [gar], [hip], rng=random.Random(1))
+        pol = battle.Policy(dex, [gar], [hip], [M("지진")], party_moves=[T])
+        pol._best_move(b.me, b)
+        change(b.me)
+        got = spied(lambda: pol._best_move(b.me, b)["name"])
+        check("%s — 다시 잰다 · 새 Policy 와 같은 답 (%s / %s · 부른 횟수 %d · 옛 상태 표 %d)"
+              % (label, got, fresh_pick(pol, b.me, b), st["rates"], st["stale"]),
+              st["rates"] > 0 and st["stale"] == 0 and got == fresh_pick(pol, b.me, b))
+
+    # ④ 다른 몸·같은 기술표는 칸을 나눠 쓰지 않는다 ([70] 이 그대로 서 있다)
+    N = dex.find_nature
+    ga = calc.Build(dex, gar.poke, sp={"attack": 32, "speed": 32}, nature=N("고집"), item=gar.item, ability=gar.ability)
+    gb = calc.Build(dex, gar.poke, sp={"spAtk": 32, "speed": 32}, nature=N("조심"), item=gar.item, ability=gar.ability)
+    b = battle.Battle(dex, [ga, gb], [hip], rng=random.Random(1))
+    pol = battle.Policy(dex, [ga, gb], [hip], [M("지진")], party_moves=[T, T])
+    spied(lambda: pol._best_move(b.me, b))
+    b.me_party.active_idx = 1
+    spied(lambda: pol._best_move(b.me, b))
+    check("다른 몸·같은 기술표 — 두 번째 몸은 새로 잰다 (부른 횟수 %d)" % st["rates"], st["rates"] > 0)
+
+    # ⑤ 판을 끝까지 — 3대3 여러 판: 옛 상태 표로 고른 일 0 · 같은 순간 새 Policy 와 다른 답 0
+    real_mv = lambda n: [m["name"] for m, _ in battle.realistic_moveset(dex, P(n))]
+    mine = [pb("한카리아스"), pb("하마돈"), pb("보만다")]
+    opp = [pb("아머까오"), pb("누리레느"), pb("마스카나")]
+    mt = [real_mv("한카리아스"), real_mv("하마돈"), real_mv("보만다")]
+    ot = [real_mv("아머까오"), real_mv("누리레느"), real_mv("마스카나")]
+    cmp_ = {"n": 0, "diff": 0}
+
+    def spy_best(self, side, b_=None):
+        out = real_best(self, side, b_)
+        if b_ is not None:
+            cmp_["n"] += 1
+            cmp_["diff"] += out["name"] != fresh_pick(self, side, b_)
+        return out
+
+    def games():
+        battle.Policy._best_move = spy_best
+        try:
+            for s in range(20):
+                battle.run_once(dex, mine, opp, [M(mt[0][0])], [M(ot[0][0])], random.Random(s), my_moves=mt[0],
+                                my_party_moves=mt, opp_moves=ot, opp_first_switch=True)
+        finally:
+            battle.Policy._best_move = real_best
+    spied(games)
+    check("3대3 20판 — _best_move %d번 중 옛 상태 표로 고른 것 %d · 같은 순간 새 Policy 와 다른 답 %d"
+          % (cmp_["n"], st["stale"], cmp_["diff"]),
+          cmp_["n"] > 0 and st["stale"] == 0 and cmp_["diff"] == 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -8156,6 +8300,7 @@ def main():
     test_incoming_moves_key(dex)
     test_choice_lock(dex)
     test_current_foe(dex)
+    test_own_state_table(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

@@ -3837,7 +3837,13 @@ class Policy(object):
             foe_b = (battle.opp if side is battle.me else battle.me).as_build()
         else:
             foe_b = self._foe
-        body = best._build_key(side.base)
+        # ! 내 쪽도 **지금 몸**(as_build) 의 지문이다 (감사 Patch 8, [76]). 전에는 정적 몸(side.base)이라
+        #   표를 처음 잰 뒤 내가 화상을 입거나 랭크·HP·도구·폼·타입이 바뀌어도 옛 표를 썼다 — 화상 입은
+        #   한카리아스가 반감된 지진을 계속 골랐다 (새로 재면 용성군). 아래 표는 as_build 로 재므로
+        #   열쇠도 그것이어야 한다. 넣는 것은 평가(calc_damage)가 공격자에서 읽는 것 전부이고
+        #   `rate_moves` 가 공격자를 가르는 것과 같다. 날씨·Side 에만 있는 상태는 평가가 안 읽으므로 안 넣는다.
+        me_b = side.as_build()
+        body = best._build_key(me_b)
         foe_key = best._build_key(foe_b)
         key = ((body, "own", tuple(m["name"] for m in own), foe_key) if own is not None
                else (body, restricted, foe_key))
@@ -3847,8 +3853,7 @@ class Policy(object):
                 cand = [(m, None) for m in known]
             else:
                 cand = best.candidate_moves(self.dex, side.base.poke)
-            rows = best.rate_moves(
-                self.dex, side.as_build(), foe_b, cand)
+            rows = best.rate_moves(self.dex, me_b, foe_b, cand)
             self._fallback[key] = rows
         # ! 표는 한 번만 재지만 **고르는 것은 매 턴** 한다. 전에는 고른 기술 하나를
         #   외워 두고 끝까지 썼는데, 만나자마자처럼 '나온 첫 턴만' 되는 기술이 1등이면
