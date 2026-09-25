@@ -7817,6 +7817,144 @@ def test_incoming_moves_key(dex):
           and st["같은 목록 값 틀림"] == 0)
 
 
+def test_choice_lock(dex):
+    """[74] **구애스카프 — 한 번 기술을 쓰면 교체하기 전까지 그 기술만** (2026-09-25, 감사 Patch 6).
+
+    설명문: 「스피드가 1.5배가 되지만 한번 기술을 사용하면 교체하기 전까지 그 기술만 사용할 수 있게 된다.」
+    스피드 1.5배(`best.speed_item_effects`)만 돌고 **기술 고정은 없었고 경고도 없었다** — 스피드 표에
+    있다는 이유로 [36] 의 '설명문을 못 읽은 도구' 에서도 빠져 있었다 (반만 붙은 도구).
+    잰 것: 구애스카프 갑주무사가 0턴 만나자마자 → 1턴 유턴 (교체 없이 기술을 바꿈).
+    감사 20,000판: 교체 없이 기술을 바꾼 것 454번 (내 쪽). 상대 쪽 0번은 선봉이 첫 수를 되풀이했을 뿐이다.
+
+    ★ 묶임은 판(`Side.choice_lock`)이 들고, **지금 그 도구를 들고 있을 때만** 유효하다 — 떨어뜨리면 풀린다.
+      교체해 들어오면(`reset_entry`) 풀린다. 고르는 쪽(`Policy.act`)이 따르고, 판(`Battle.step`)은
+      다른 기술이 들어와도 묶인 기술을 쓰고 **경고한다** (계획을 직접 주는 경로).
+    """
+    import random
+    print("\n[74] 구애스카프 — 한 번 기술을 쓰면 교체하기 전까지 그 기술만")
+    # (고치기 전 코드에는 locked_move 가 없다 — 없으면 '안 묶임' 으로 읽어 검사가 끝까지 돌게 한다)
+    lk = lambda b: b.locked_move(b.me) if hasattr(b, "locked_move") else None
+    P, M = dex.find_pokemon, dex.find_move
+    g = calc.popular_build(dex, P("갑주무사"))[0]
+    base = calc.base_form(dex, g.poke) if g.poke.get("isMega") else g.poke
+    ab = base["abilities"][0]["name"]
+    mk = lambda item: calc.Build(dex, base, sp=dict(g.sp), nature=g.nature, item=item, ability=ab)
+    scarf, plain = mk("구애스카프"), mk(None)
+    hip = calc.popular_build(dex, P("하마돈"))[0]
+    T = ["만나자마자", "아이언헤드", "기습", "유턴"]
+
+    check("구애스카프 설명문을 '기술 고정' 으로 읽는다 (%s)" % battle.item_behaviors(dex).get("구애스카프"),
+          battle.item_effect(dex, "구애스카프", "choice_lock") is not None)
+    check("기술 고정은 턴 루프에 붙은 것으로 적혀 있다 (APPLIED_ITEM_KINDS)",
+          "choice_lock" in battle.APPLIED_ITEM_KINDS)
+
+    def two_turns(body, party=None):
+        mine = party or [body]
+        b = battle.Battle(dex, mine, [hip], rng=random.Random(1), log=True)
+        pol = battle.Policy(dex, mine, [hip], [M("만나자마자")], party_moves=[T] * len(mine), moves=T)
+        a0 = pol.act(b.me_party, 0, b)
+        b.step(a0, M("스텔스록"))
+        a1 = pol.act(b.me_party, 1, b)
+        return b, pol, a0, a1
+
+    # ① 고르는 쪽 — 묶이면 더 나은 수가 있어도 그 기술만
+    b, pol, a0, a1 = two_turns(plain)
+    check("도구 없는 갑주무사는 1턴에 다시 고른다 (만나자마자 → %s — 시험이 뜻이 있다)" % a1["name"],
+          a0["name"] == "만나자마자" and a1["name"] != "만나자마자")
+    b, pol, a0, a1 = two_turns(scarf)
+    check("구애스카프 갑주무사는 0턴에 쓴 만나자마자에 묶인다 (묶임 %s)" % lk(b),
+          lk(b) == "만나자마자")
+    check("묶이면 1턴에도 만나자마자만 고른다 — 다른 기술이 더 나아 보여도 (%s)" % a1["name"],
+          a1["name"] == "만나자마자")
+    # ② 판 쪽 — 묶인 채로 다른 기술을 넣으면 묶인 기술을 쓰고 경고한다
+    b.step(M("아이언헤드"), M("스텔스록"))
+    check("묶인 채로 아이언헤드를 넣어도 판은 만나자마자를 쓴다 (마지막 기술 %s)" % b.me.last_move["name"],
+          b.me.last_move["name"] == "만나자마자")
+    check("그 일을 경고로 남긴다", any("구애스카프" in w and "아이언헤드" in w for w in b.warnings),
+          b.warnings[-2:])
+    # ③ 교체하면 풀린다
+    b, pol, a0, a1 = two_turns(scarf, [scarf, calc.popular_build(dex, P("하마돈"))[0]])
+    b.step(("교체", 1), M("스텔스록"))
+    b.step(("교체", 0), M("스텔스록"))
+    check("교체해 나갔다 들어오면 묶임이 풀린다 (%s)" % lk(b), lk(b) is None)
+    n = len(b.warnings)
+    b.step(M("아이언헤드"), M("스텔스록"))
+    check("풀린 뒤에는 다른 기술을 그대로 쓴다 (%s, 새 경고 %d)" % (b.me.last_move["name"], len(b.warnings) - n),
+          b.me.last_move["name"] == "아이언헤드" and not [w for w in b.warnings[n:] if "구애" in w])
+    check("다시 쓴 기술에 새로 묶인다 (%s)" % lk(b), lk(b) == "아이언헤드")
+    # ④ 도구를 잃으면 풀린다 (탁쳐서떨구기)
+    b, pol, a0, a1 = two_turns(scarf)
+    b.step(M("만나자마자"), M("탁쳐서떨구기"))
+    check("탁쳐서떨구기로 구애스카프를 잃으면 묶임이 풀린다 (도구 %s · 묶임 %s)" % (b.me.item, lk(b)),
+          not b.me.item and lk(b) is None)
+    # ⑤ 못 움직인 턴(마비 등)에는 묶이지 않는다 — 기술을 안 썼다
+    b = battle.Battle(dex, [scarf], [hip], rng=random.Random(1))
+    b.me.status = "잠듦"
+    b.me.status_turns = 3
+    b.step(M("아이언헤드"), M("스텔스록"))
+    check("잠들어 기술을 못 쓴 턴에는 묶이지 않는다 (%s)" % lk(b), lk(b) is None)
+    # ⑥ 계획과 부딪칠 때 — 계획이 [칼춤, 지진] 이어도 칼춤에 묶이면 칼춤 (계획이 묶임을 이기지 않는다)
+    gar = calc.popular_build(dex, P("한카리아스"))[0]
+    gbase = calc.base_form(dex, gar.poke) if gar.poke.get("isMega") else gar.poke
+    gscarf = calc.Build(dex, gbase, sp=dict(gar.sp), nature=gar.nature, item="구애스카프",
+                        ability=gbase["abilities"][0]["name"])
+    r = battle.run_once(dex, [gscarf], [hip], [M("칼춤"), M("지진")], [M("스텔스록")], random.Random(3), log=True)
+    used = [x for x in r["log"] if "한카리아스 의 " in x and ("칼춤" in x or "지진" in x)]
+    check("계획 [칼춤, 지진] 이라도 칼춤에 묶이면 지진을 안 쓴다 (%s)" % [x.strip()[:30] for x in used[:3]],
+          used and not any("지진" in x for x in used))
+    # ⑦ 판 중간에서 시작 — 막 나온 게 아니면 묶였는지 모른다. 안 묶인 것으로 보되 경고한다
+    b = battle.Battle(dex, [scarf], [hip], rng=random.Random(1), my_fresh=False, opp_fresh=False)
+    check("판 중간(막 나온 것 아님)의 구애스카프는 '묶였는지 모른다' 고 경고한다 (%s)"
+          % [w for w in b.warnings if "구애" in w][:1],
+          any("구애스카프" in w and "몰라" in w for w in b.warnings) and lk(b) is None)
+    b = battle.Battle(dex, [scarf], [hip], rng=random.Random(1), my_fresh=True, opp_fresh=True)
+    check("판 처음(막 나옴)에는 그 경고가 없다", not [w for w in b.warnings if "구애" in w])
+    import search
+    got = search.best_action(dex, [scarf], [P("하마돈")], my_moves=T, seconds=0.3,
+                             state={"my_hp": [100.0], "opp_hp": [100.0], "my_active": 0, "opp_active": 0,
+                                    "my_fresh": False, "opp_fresh": False})
+    check("그 경고가 7단계 결과(창으로 가는 warnings)까지 올라간다 (%s)"
+          % [w for w in got["warnings"] if "구애" in w][:1],
+          any("구애스카프" in w and "몰라" in w for w in got["warnings"]))
+
+    # ⑧ 많이 돌려서 — 구애스카프를 든 놈이 교체 없이 기술을 바꾸는 일이 없다 (양쪽)
+    real_step, real_reset = battle.Battle.step, battle.Side.reset_entry
+    st = {"uses": 0, "violations": 0, "changes_plain": 0}
+    lock = {}
+
+    def spy_reset(self):
+        lock.pop(id(self), None)
+        return real_reset(self)
+
+    def spy_step(self, x, y):
+        for side, a in ((self.me, x), (self.opp, y)):
+            a = a[1] if isinstance(a, tuple) and a[0] == "메가" else a
+            if isinstance(a, dict) and side.item == "구애스카프" and not side.item_used:
+                st["uses"] += 1
+                if lock.get(id(side)) not in (None, a["name"]):
+                    st["violations"] += 1
+        out = real_step(self, x, y)
+        for side in (self.me, self.opp):
+            if side.item == "구애스카프" and side.last_move is not None and side.acted:
+                lock[id(side)] = side.last_move["name"]
+        return out
+    battle.Battle.step, battle.Side.reset_entry = spy_step, spy_reset
+    try:
+        rng = random.Random(74)
+        foes = [calc.popular_build(dex, P(n))[0] for n in ("하마돈", "아머까오", "누리레느", "마스카나")]
+        for s in range(60):
+            me = [scarf, gscarf][s % 2]
+            mv = T if s % 2 == 0 else ["지진", "용성군", "스톤에지", "칼춤"]
+            foe = foes[s % 4]
+            fm = [m["name"] for m, _ in battle.realistic_moveset(dex, foe.poke)]
+            battle.run_once(dex, [me], [foe], [M(mv[0])], [M(fm[0])], random.Random(rng.random()),
+                            my_moves=mv, my_party_moves=[mv], opp_moves=[fm])
+    finally:
+        battle.Battle.step, battle.Side.reset_entry = real_step, real_reset
+    check("60판 — 구애스카프 기술 %d번 중 교체 없이 기술을 바꾼 것 %d" % (st["uses"], st["violations"]),
+          st["uses"] > 0 and st["violations"] == 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -7894,6 +8032,7 @@ def main():
     test_incoming_key(dex)
     test_moveset_start(dex)
     test_incoming_moves_key(dex)
+    test_choice_lock(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

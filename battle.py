@@ -358,6 +358,9 @@ _ITEM_RULES = [
      lambda m: {"kind": "metronome", "step": 0.2, "cap": float(m.group(1))}),
     (r"PP가 0이 된 기술의 PP를 (\d+) 회복",
      lambda m: {"kind": "pp", "amount": int(m.group(1))}),
+    # 구애스카프 — 스피드 1.5배는 `best.speed_item_effects` 가 따로 읽는다. 여기는 **기술 고정**.
+    (r"한번 기술을 사용하면 교체하기 전까지 그 기술만 사용할 수 있",
+     lambda m: {"kind": "choice_lock"}),
     # 상태 회복 열매 — **제일 마지막에 둔다.** '^(.+?) 상태를 회복한다' 는
     # 너무 넓어서 앞에 두면 다른 규칙을 잡아먹는다.
     (r"^(.+?) 상태를 회복한다\.",
@@ -378,6 +381,10 @@ APPLIED_ITEM_KINDS = {
     "extend", "seed",
     # 큰뿌리 — 2026-09-22 흡수 기술(드레인펀치 등)을 붙이면서 같이 붙었다 (_secondaries)
     "drain_boost",
+    # 구애스카프 기술 고정 — 2026-09-25 (감사 Patch 6). 전에는 스피드만 돌고 고정이 없었는데
+    # 스피드 표에 있다는 이유로 '못 읽은 도구' 에서도 빠져 경고가 없었다 (반만 붙은 도구).
+    # `Side.choice_lock` · `Battle.locked_move` · `Policy.act` · `Battle.step`.
+    "choice_lock",
 }
 
 # ★ **반만 붙은 것.** 위 집합에 들어 있어서 경고가 안 뜨는데,
@@ -909,6 +916,9 @@ class Side(object):
         self.infatuated = None       # 헤롱헤롱 — 건 쪽 Side (그놈이 나와 있는 동안만)
         self.hangry = False          # 꼬르륵스위치 — 배고픈 모양이면 오라휠이 악타입
         self.cud = None              # 되새김질 — 다음 턴 끝에 한 번 더 먹을 열매 효과
+        # 구애스카프로 묶인 기술 이름. 교체해 들어오면 풀린다. 도구를 잃으면
+        # `Battle.locked_move` 가 무시한다 (여기 남아 있어도 풀린 것이다).
+        self.choice_lock = None
         # 판 중간에서 시작해 '막 나왔는지' 를 몰라서 막 나왔다고 **가정한** 몸인가.
         # Battle.__init__ 이 켜고, 실제로 교체해 들어오면 여기서 꺼진다.
         self.fresh_guessed = False
@@ -1312,6 +1322,13 @@ class Battle(object):
         self._immune_abilities = status_immune_abilities(dex)
         self._warn_dead_items()
         self._warn_dead_abilities()
+        # 구애스카프 — 막 나온 게 **아니라고** 받은 몸은 이미 어떤 기술에 묶여 있을 수 있다.
+        # 판은 그걸 모르므로 안 묶인 것으로 보고, 조용히 넘어가지 않게 적어 둔다.
+        for party, fresh in ((self.me_party, my_fresh), (self.opp_party, opp_fresh)):
+            side = party.active
+            if fresh is False and item_effect(dex, side.item, "choice_lock") and not side.item_used:
+                self._warn("%s 의 %s — 이미 어떤 기술에 묶였는지 몰라 **안 묶인 것**으로 봤습니다"
+                           % (side.name, side.item))
         # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
         self.matchup = matchup
         for party, sts in ((self.me_party, my_status), (self.opp_party, opp_status)):
@@ -1373,6 +1390,29 @@ class Battle(object):
     def _party_of(self, side):
         return (self.me_party if side in self.me_party.members
                 else self.opp_party)
+
+    def _honor_lock(self, side, move):
+        """묶인 기술이 있는데 다른 기술이 들어왔으면 묶인 기술로 바꾼다 (경고와 함께)."""
+        if not isinstance(move, dict):
+            return move
+        lock = self.locked_move(side)
+        if lock is None or move["name"] == lock:
+            return move
+        self._warn("%s 는 %s 로 %s 에 묶여 있는데 %s 가 들어와 %s 를 썼습니다 (그 수를 둔 쪽이 묶임을 몰랐습니다)"
+                   % (side.name, side.item, lock, move["name"], lock))
+        self._say("%s 는 %s 에 묶여 있다 — %s 대신 %s" % (side.name, side.item, move["name"], lock))
+        return self.dex.find_move(lock)
+
+    def locked_move(self, side):
+        """구애스카프로 묶인 기술 이름. 안 묶였거나 **그 도구를 이제 안 들고 있으면** None.
+
+        묶임은 교체해 들어올 때 풀리고(`Side.reset_entry`), 도구를 잃어도(탁쳐서떨구기 ·
+        도둑질) 풀린다 — 도구를 지금 들고 있는지를 여기서 매번 본다.
+        """
+        if not side.choice_lock or side.item_used \
+                or not item_effect(self.dex, side.item, "choice_lock"):
+            return None
+        return side.choice_lock
 
     def _say(self, text):
         if self.log is not None:
@@ -3058,6 +3098,13 @@ class Battle(object):
         actor.fresh_guessed = False
         actor.used_moves.add(move["name"])
         actor.last_move = move
+        # 구애스카프 — 기술을 **썼으면**(실패해도) 그 기술에 묶인다. 못 움직인 턴은 위에서 돌아갔다.
+        # 도구가 없으면 지운다 — 떨어뜨렸다가 도둑질로 다시 받아도 옛 묶임이 되살아나지 않게.
+        if item_effect(self.dex, actor.item, "choice_lock") and not actor.item_used:
+            if actor.choice_lock is None:
+                actor.choice_lock = move["name"]
+        else:
+            actor.choice_lock = None
         if not actor.move_failed:
             self._after_use(actor, move)
         actor.last_failed = actor.move_failed
@@ -3139,6 +3186,10 @@ class Battle(object):
 
         my_move = pending[0][1]
         opp_move = pending[1][1]
+        # 구애스카프 — 묶인 채로 다른 기술이 들어오면 **묶인 기술을 쓴다** (순서를 가리기 전에:
+        # 우선도·스피드가 실제로 쓸 기술로 정해져야 한다). 고르는 쪽이 묶임을 몰랐다는 뜻이라 경고한다.
+        my_move = self._honor_lock(self.me, my_move)
+        opp_move = self._honor_lock(self.opp, opp_move)
         # 이 턴의 기록 — 교체가 끝난 뒤 **지금 나와 있는 놈** 에게 단다.
         # 기습은 '상대가 공격기를 골랐고 아직 안 움직였나' 를 본다.
         for side, mv in ((self.me, my_move), (self.opp, opp_move)):
@@ -3865,6 +3916,24 @@ class Policy(object):
         return side.is_same(self.lead)
 
     def act(self, party, turn_index, battle=None):
+        """이번 턴의 수. 구애스카프로 묶였으면 기술은 **묶인 기술만** 둔다 (감사 Patch 6).
+
+        교체는 그대로 둔다 — 묶여 있어도 빼는 것은 규칙상 된다. 계획(plan)도 묶임을 못 이긴다:
+        [칼춤, 지진] 계획이라도 칼춤에 묶였으면 둘째 턴도 칼춤이다 (그게 그 계획의 실제 결과다).
+        """
+        action = self._choose(party, turn_index, battle)
+        lock = battle.locked_move(party.active) if battle is not None else None
+        if lock is None:
+            return action
+        if isinstance(action, tuple):
+            if action[0] == "메가" and isinstance(action[1], dict) and action[1]["name"] != lock:
+                return ("메가", self.dex.find_move(lock))
+            return action
+        if isinstance(action, dict) and action["name"] != lock:
+            return self.dex.find_move(lock)
+        return action
+
+    def _choose(self, party, turn_index, battle=None):
         # ★ **첫 턴에도 뺄지 본다** — 둘째 턴부터 쓰는 것과 **같은 규칙**
         #   (`Battle.should_switch`, 실제로 잰 1대1 승률)이다. 새로 지어낸 값이 아니라
         #   첫 턴만 빠져 있던 것을 메운 것이다.
