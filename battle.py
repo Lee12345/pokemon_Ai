@@ -3675,9 +3675,14 @@ class Policy(object):
         # ! 열쇠는 이름이 아니라 **지금 몸(as_build)** 이다. 이름으로 두었더니 같은 종·같은 HP·같은
         #   랭크면 몸(노력치·성격·도구·특성)이 달라도 먼저 잰 놈의 값을 그대로 썼다 — 기점을 쌓을지가
         #   남의 값으로 정해졌다 (2026-09-25, [71]). 몸의 지문은 `rate_moves` 캐시와 같은 `best._build_key`.
-        #   (상대 기술 목록은 아직 열쇠에 없다 — 따로 남긴 문제다.)
+        # ! **상대 기술 목록**도 열쇠에 넣는다 — 아래 계산이 그 목록 안에서 제일 센 수를 찾는다.
+        #   없었을 때는 같은 몸에 목록만 다르면 먼저 잰 값을 썼다 (포푸니크 vs 아머까오: 목록 없음 1.0
+        #   인파이트 / 날개쉬기·바디프레스·유턴·철벽 0.2266 칼춤, 2026-09-25, [73]).
+        #   계산이 읽는 그대로 넣는다 — None 과 빈 목록은 둘 다 사용률 후보라 같은 칸이다.
+        #   이름은 순서대로 (`rate_moves` 의 기술 열쇠와 같은 방식. 값은 순서와 무관하다).
         fb, sb = foe.as_build(), side.as_build()
-        key = ("들어오는", best._build_key(fb), best._build_key(sb), foe.hp, side.hp,
+        key = ("들어오는", best._build_key(fb), best._build_key(sb),
+               tuple(foe.moveset) if foe.moveset else None, foe.hp, side.hp,
                tuple(sorted(foe.ranks.items())), tuple(sorted(side.ranks.items())))
         got = self._fallback.get(key)
         if got is None:

@@ -7653,6 +7653,170 @@ def test_moveset_start(dex):
           and st3["same"] == st3["empty"])
 
 
+def test_incoming_moves_key(dex):
+    """[73] **몸·HP·랭크가 같아도 상대 기술 목록이 다르면 '들어오는 피해' 를 나눠 쓰지 않는다** (2026-09-25).
+
+    `Policy._incoming` 은 상대의 제일 센 수를 **상대 `moveset`** 안에서 찾는다 (없으면 사용률 후보 전부).
+    그런데 캐시 열쇠에는 몸(`best._build_key`, [71])·HP·랭크만 있고 **그 목록이 없었다.** 같은 몸에
+    목록만 다르면 먼저 잰 값을 그대로 썼다. 잰 것 (같은 판·같은 순간, 캐시만 빈 새 Policy 와 대조):
+      포푸니크 vs 아머까오 — 목록 없음 1.0 인파이트 / 날개쉬기·바디프레스·유턴·철벽 0.2266 칼춤
+      감사 격자 4,200 사례(순서마다): 부딪침 4,200 · 틀린 값 1,814 · 틀린 기점 판단 180 · 틀린 고른 수 180.
+    판 생성 경로는 Patch 4 뒤로 목록이 판 내내 안 바뀌어서 이 일이 안 생기지만, 목록을 바꾸는
+    곳(직접 만든 판 · `_best_move` 만 옮겨 적는 판)에서는 그대로였다.
+
+    ★ 열쇠에 넣는 것은 **계산이 읽는 그대로** — `tuple(foe.moveset) if foe.moveset else None`.
+      None 과 빈 목록은 둘 다 '사용률 후보' 로 같은 계산이라 **같은 칸**이다. 목록은 이름을
+      **순서대로** 담는다 (`rate_moves` 의 기술 열쇠 · `_best_move` 의 표 열쇠와 같은 방식).
+      값 자체는 순서와 무관하다 — 기술마다 따로 재고 제일 센 것만 쓴다 — 그래서 순서만 다른
+      목록은 칸이 갈려도 값은 같다 (이것도 본다).
+    ★ 대조는 [71] 처럼 **같은 판·같은 순간**에 캐시만 빈 새 Policy 로 한다.
+    """
+    import random
+    import collections
+    import search
+    print("\n[73] 몸·HP·랭크가 같아도 상대 기술 목록이 다르면 '들어오는 피해' 를 나눠 쓰지 않는다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    is_setup = lambda n: bool(battle.Policy.setup_gain(M(n)))
+    calls = [0]
+    real_rate = best.rate_moves
+
+    def spy_rate(dex_, att, dfn, moves):
+        calls[0] += 1
+        return real_rate(dex_, att, dfn, moves)
+
+    def run(mine, my_moves, opp, steps):
+        """한 판·한 Policy 에서 steps [(상대 자리, 상대 목록)] 차례로 나와 있게 두고 자리마다
+        공유 Policy 의 값·고른 수와 **같은 판·같은 순간** 캐시가 빈 새 Policy 의 것을 잰다."""
+        b = battle.Battle(dex, [mine], list(opp), rng=random.Random(1))
+        mk = lambda: battle.Policy(dex, [mine], list(opp), [M(my_moves[0])], party_moves=[my_moves])
+        pol = mk()
+        out = []
+        best.rate_moves = spy_rate
+        try:
+            for j, lst in steps:
+                b.opp_party.active_idx = j
+                b.opp.moveset = lst
+                side = b.me
+                fresh = mk()
+                fv, fp = fresh._incoming(side, b), fresh._best_move(side, b)["name"]
+                n0 = calls[0]
+                sv = pol._incoming(side, b)
+                ran = calls[0] > n0
+                out.append(dict(shared=sv, fresh=fv, ran=ran, pick=pol._best_move(side, b)["name"],
+                                fresh_pick=fp, body=best._build_key(b.opp.as_build()),
+                                slots=sum(1 for k in pol._fallback if k and k[0] == "들어오는")))
+        finally:
+            best.rate_moves = real_rate
+        return out
+
+    wea, WEA = pb("포푸니크"), ["인파이트", "페이탈클로", "칼춤", "지옥찌르기"]
+    cor = pb("아머까오")
+    L1 = ["날개쉬기", "바디프레스", "유턴", "철벽"]           # 0.2266 → 칼춤
+    L2 = ["철벽", "바디프레스", "날개쉬기", "아이언헤드"]       # 0.4339 → 인파이트
+
+    # ① 같은 몸·같은 HP·같은 랭크·**같은 목록**(다른 리스트 객체) → 같은 칸을 다시 쓴다
+    got = run(wea, WEA, [cor], [(0, list(L1)), (0, list(L1))])
+    check("같은 목록(다른 객체)이면 두 번째는 다시 재지 않고 같은 값 (새로 쟀나 %s / %s, 칸 %d)"
+          % (got[0]["ran"], got[1]["ran"], got[1]["slots"]),
+          got[0]["ran"] and not got[1]["ran"] and got[1]["slots"] == 1 and got[1]["shared"] == got[1]["fresh"])
+    got = run(wea, WEA, [cor], [(0, None), (0, [])])
+    check("목록 없음(None)과 빈 목록([])은 같은 계산(사용률 후보)이라 같은 칸 (새로 쟀나 %s / %s, 값 %.4f / %.4f)"
+          % (got[0]["ran"], got[1]["ran"], got[1]["shared"], got[1]["fresh"]),
+          got[0]["ran"] and not got[1]["ran"] and got[1]["shared"] == got[1]["fresh"])
+
+    # ② 같은 종·**다른 몸**·같은 목록 → [71] 의 몸 지문으로 갈린다 (목록을 넣어도 그대로)
+    N = dex.find_nature
+    cx = calc.Build(dex, P("아머까오"), sp={"hp": 32, "defense": 32}, nature=N("장난꾸러기"), item="울퉁불퉁멧",
+                    ability=cor.ability)
+    cy = calc.Build(dex, P("아머까오"), sp={"attack": 32, "hp": 32}, nature=N("고집"), item="먹다남은음식",
+                    ability=cor.ability)
+    got = run(wea, WEA, [cx, cy], [(0, list(L2)), (1, list(L2))])
+    check("같은 종·다른 몸·같은 목록 — 두 번째가 새로 재고 같은 순간 새 Policy 값과 같다 (%.4f / %.4f, 몸 다름 %s)"
+          % (got[1]["shared"], got[1]["fresh"], got[0]["body"] != got[1]["body"]),
+          got[0]["body"] != got[1]["body"] and got[1]["ran"] and got[1]["shared"] == got[1]["fresh"])
+
+    # ③ **같은 몸·다른 목록** — 같은 Side 의 목록을 바꿔서 / 필드가 같은 두 Side 에 다른 목록을 줘서
+    cor2 = calc.Build(dex, P("아머까오"), sp=dict(cor.sp), nature=cor.nature, item=cor.item, ability=cor.ability)
+    CASES = [  # (라벨, 나, 내 표, 상대 몸들, 목록 X, 목록 Y)
+        ("포푸니크 vs 아머까오 (없음 / 목록)", wea, WEA, [cor], None, L1),
+        ("포푸니크 vs 아머까오 (목록 / 목록)", wea, WEA, [cor], L1, L2),
+        ("보만다 vs 하마돈 (없음 / 목록)", pb("보만다"), ["이판사판태클", "용의춤", "지진", "날개쉬기"], [pb("하마돈")],
+         None, ["게으름피우기", "하품", "스텔스록", "암석봉인"]),
+        ("루카리오 vs 핫삼 (없음 / 목록)", pb("루카리오"), ["나쁜음모", "파동탄", "악의파동", "러스터캐논"], [pb("핫삼")],
+         None, ["불릿펀치", "칼춤", "날개쉬기", "유턴"]),
+    ]
+    for label, me, mv, opp, X, Y in CASES:
+        base = run(me, mv, opp, [(0, X)]), run(me, mv, opp, [(0, Y)])
+        check("%s — 캐시 없이 두 목록의 값·기점 판단이 다르다 (%.4f %s / %.4f %s — 시험이 뜻이 있다)"
+              % (label, base[0][0]["fresh"], base[0][0]["fresh_pick"], base[1][0]["fresh"], base[1][0]["fresh_pick"]),
+              base[0][0]["fresh"] != base[1][0]["fresh"]
+              and is_setup(base[0][0]["fresh_pick"]) != is_setup(base[1][0]["fresh_pick"]))
+        for name, (p, q) in (("X → Y", (X, Y)), ("Y → X", (Y, X))):
+            got = run(me, mv, opp, [(0, p), (0, q)])
+            second = got[1]
+            check("%s %s (같은 Side): 두 번째가 새로 잰다 · 값 = 같은 순간 새 Policy (%.4f / %.4f, 첫 번째 %.4f)"
+                  % (label, name, second["shared"], second["fresh"], got[0]["shared"]),
+                  second["ran"] and second["shared"] == second["fresh"])
+            check("%s %s (같은 Side): 기점 판단·고른 수 = 같은 순간 새 Policy (%s / %s)"
+                  % (label, name, second["pick"], second["fresh_pick"]), second["pick"] == second["fresh_pick"])
+    # 필드가 같은 두 Side (다른 Build 객체) 에 다른 목록 — 몸 지문은 같고 목록만 다르다
+    for name, (p, q) in (("X → Y", (L1, L2)), ("Y → X", (L2, L1))):
+        got = run(wea, WEA, [cor, cor2], [(0, list(p)), (1, list(q))])
+        check("몸이 같은 두 상대(다른 객체)에 다른 목록 %s: 몸 지문 같음 %s · 두 번째가 새로 잰다 · 값·고른 수 = "
+              "같은 순간 새 Policy (%.4f / %.4f, %s / %s)"
+              % (name, got[0]["body"] == got[1]["body"], got[1]["shared"], got[1]["fresh"], got[1]["pick"],
+                 got[1]["fresh_pick"]),
+              got[0]["body"] == got[1]["body"] and got[1]["ran"] and got[1]["shared"] == got[1]["fresh"]
+              and got[1]["pick"] == got[1]["fresh_pick"])
+    # 순서만 다른 같은 기술들 — 값은 순서와 무관하다 (칸이 갈려도 값은 맞아야 한다)
+    got = run(wea, WEA, [cor], [(0, list(L1)), (0, list(reversed(L1)))])
+    check("순서만 다른 같은 기술들 — 두 번째 값 = 같은 순간 새 Policy (%.4f / %.4f, 새로 쟀나 %s)"
+          % (got[1]["shared"], got[1]["fresh"], got[1]["ran"]), got[1]["shared"] == got[1]["fresh"])
+
+    # ④ 자동 탐색 — 기점 기술을 든 상위 종 × 상대 × 판마다 뽑는 상대 목록, 순서 셋
+    usage = json.load(open(paths.data("usage_single.json"), encoding="utf-8"))["pokemon"]
+    top = [dex._by_key[p["key"]] for p in usage if p["key"] in dex._by_key][:30]
+    mes = []
+    for p in top:
+        mv = [m["name"] for m, _ in battle.realistic_moveset(dex, p)]
+        if any(battle.Policy.setup_gain(M(n)) for n in mv):
+            mes.append((calc.popular_build(dex, p)[0], mv))
+    rng = random.Random(20260925)
+    st = collections.Counter()
+    for me, mv in mes:
+        for fp_ in top[:8]:
+            for _ in range(2):
+                builds, sets = search.sample_opp_party(dex, [fp_], rng)
+                foe, fl = builds[0], [m["name"] if isinstance(m, dict) else m for m in sets[0]]
+                for order, steps in (("없음→목록", [(0, None), (0, fl)]), ("목록→없음", [(0, fl), (0, None)]),
+                                     ("같은 목록 두 번", [(0, fl), (0, list(fl))])):
+                    got = run(me, mv, [foe], steps)
+                    first, second = got
+                    st[order + " 사례"] += 1
+                    if order == "같은 목록 두 번":
+                        st["같은 목록인데 다시 잰 것 (쓸데없이 쪼갬)"] += second["ran"]
+                        st["같은 목록 값 틀림"] += second["shared"] != second["fresh"]
+                        continue
+                    st["값이 다른 짝"] += first["fresh"] != second["fresh"]
+                    st["고른 수가 다른 짝"] += first["fresh_pick"] != second["fresh_pick"]
+                    st["칸을 나눠 씀"] += not second["ran"]
+                    st["틀린 값"] += second["shared"] != second["fresh"]
+                    st["틀린 기점 판단"] += is_setup(second["pick"]) != is_setup(second["fresh_pick"])
+                    st["틀린 고른 수"] += second["pick"] != second["fresh_pick"]
+    print("    자동 탐색:", dict(sorted(st.items())))
+    check("자동 탐색이 뜻이 있다 — 목록에 따라 값·고른 수가 갈리는 짝이 있다 (%d / %d)"
+          % (st["값이 다른 짝"], st["고른 수가 다른 짝"]), st["값이 다른 짝"] > 0 and st["고른 수가 다른 짝"] > 0)
+    check("자동 탐색: 목록이 다른 두 번째가 첫 번째 칸을 쓰지 않는다 (%d)" % st["칸을 나눠 씀"], st["칸을 나눠 씀"] == 0)
+    check("자동 탐색: 틀린 값 %d · 틀린 기점 판단 %d · 틀린 고른 수 %d"
+          % (st["틀린 값"], st["틀린 기점 판단"], st["틀린 고른 수"]),
+          st["틀린 값"] == 0 and st["틀린 기점 판단"] == 0 and st["틀린 고른 수"] == 0)
+    check("자동 탐색: 같은 목록(다른 객체)은 칸을 쪼개지 않는다 (다시 잰 것 %d · 값 틀림 %d / %d 사례)"
+          % (st["같은 목록인데 다시 잰 것 (쓸데없이 쪼갬)"], st["같은 목록 값 틀림"], st["같은 목록 두 번 사례"]),
+          st["같은 목록 두 번 사례"] > 0 and st["같은 목록인데 다시 잰 것 (쓸데없이 쪼갬)"] == 0
+          and st["같은 목록 값 틀림"] == 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -7729,6 +7893,7 @@ def main():
     test_fallback_key(dex)
     test_incoming_key(dex)
     test_moveset_start(dex)
+    test_incoming_moves_key(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
