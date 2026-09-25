@@ -7168,6 +7168,189 @@ def test_fallback_key(dex):
           first == 1 and ran[0] == 1)
 
 
+def test_incoming_key(dex):
+    """[71] **같은 종·같은 HP·같은 랭크라도 몸(Build)이 다르면 '들어오는 피해' 를 나눠 쓰지 않는다** (2026-09-25).
+
+    `Policy._incoming`(기점을 잡아도 되나 — 상대의 제일 센 수가 내 HP 의 몇 할인가)은 값을
+    `_fallback` 에 외워 두는데, 열쇠가 `(이름, 이름, HP, HP, 랭크, 랭크)` 라 **몸(노력치·성격·도구·특성)이
+    달라도 이름·HP·랭크가 같으면 같은 칸**이었다. 두 번째 놈이 첫 번째 놈의 값을 그대로 썼다.
+    잰 것 (한카리아스 A: 공격·스피드 32·고집·기합의띠 / B: 방어·특방 32·신중·돌격조끼, 둘 다 최대 HP 183):
+      하마돈 상대 B 의 값 — 자기 값 0.5087 인데 A 뒤에 평가하면 0.6411 (B → A 도 거꾸로 똑같이)
+      같은 종·다른 몸 짝 135,000 (내 쪽) / 31,500 (상대 쪽) 중 **고른 수가 바뀐 것 176 / 326**
+      (보만다 용의춤 ↔ 이판사판태클, 타부자고 나쁜음모 ↔ 섀도볼 …).
+
+    ★ 대조는 **같은 판·같은 순간**에 캐시만 빈 새 Policy 로 한다. 판을 새로 만들면 첫 놈의 위협 같은
+      등장 효과가 빠져서 캐시와 상관없는 차이까지 섞인다 (감사 때 한 번 그렇게 잘못 쟀다).
+    ! 상대 기술 목록이 열쇠에 없는 것은 **이 검사의 범위가 아니다** (따로 남긴 문제). 그래서 여기서는
+      상대 기술 목록을 판 내내 같게 둔다.
+    """
+    import random
+    import itertools
+    print("\n[71] 같은 종·같은 HP·같은 랭크라도 몸이 다르면 '들어오는 피해' 를 나눠 쓰지 않는다")
+    P, M, N = dex.find_pokemon, dex.find_move, dex.find_nature
+    SAFE = battle.Policy.SETUP_SAFE
+    calls = [0]
+    real_rate = best.rate_moves
+
+    def spy_rate(dex_, att, dfn, moves):
+        calls[0] += 1
+        return real_rate(dex_, att, dfn, moves)
+
+    def old_slot(side, b):
+        """고치기 전 열쇠 — 이 짝이 옛 열쇠로 같은 칸이었나를 보려고만 쓴다."""
+        foe = b.opp if side is b.me else b.me
+        return (foe.name, side.name, foe.hp, side.hp,
+                tuple(sorted(foe.ranks.items())), tuple(sorted(side.ranks.items())))
+
+    def run(mine, opp, moves, steps, foe_moves=None):
+        """한 판 안에서 steps [(내 자리, 상대 자리)] 차례로 나와 있게 두고, 자리마다
+        공유 Policy 의 값·고른 수와 **같은 판·같은 순간** 캐시가 빈 새 Policy 의 값·고른 수를 잰다."""
+        b = battle.Battle(dex, list(mine), list(opp), rng=random.Random(1))
+        mk = lambda: battle.Policy(dex, list(mine), list(opp), [M(moves[0])],
+                                   party_moves=[moves] * len(mine))
+        pol = mk()
+        out = []
+        best.rate_moves = spy_rate
+        try:
+            for i, j in steps:
+                b.me_party.active_idx, b.opp_party.active_idx = i, j
+                if foe_moves is not None:
+                    b.opp.moveset = list(foe_moves)       # 판 내내 같게 (이 검사의 범위 밖)
+                side = b.me
+                fresh = mk()
+                fv, fp = fresh._incoming(side, b), fresh._best_move(side, b)["name"]
+                n0 = calls[0]
+                sv = pol._incoming(side, b)
+                ran = calls[0] > n0
+                n1 = calls[0]
+                again = pol._incoming(side, b)
+                out.append(dict(shared=sv, fresh=fv, ran=ran, again=again, again_ran=calls[0] > n1,
+                                pick=pol._best_move(side, b)["name"], fresh_pick=fp,
+                                slot=old_slot(side, b),
+                                body=(best._build_key(b.opp.as_build()), best._build_key(side.as_build()))))
+        finally:
+            best.rate_moves = real_rate
+        return out
+
+    gar = P("한카리아스")
+    A = calc.Build(dex, gar, sp={"attack": 32, "speed": 32}, nature=N("고집"), item="기합의띠", ability="까칠한피부")
+    B = calc.Build(dex, gar, sp={"defense": 32, "spDef": 32}, nature=N("신중"), item="돌격조끼", ability="까칠한피부")
+    GAR = ["지진", "역린", "스톤에지", "칼춤"]
+    check("A·B 는 같은 종·같은 최대 HP (%d / %d) 에 몸이 다르다" % (A.stat("hp"), B.stat("hp")),
+          A.stat("hp") == B.stat("hp") and best._build_key(A) != best._build_key(B))
+
+    def pair_checks(label, mine_of, opp_of, moves, steps, foe_moves, setup_pair=False):
+        """label 짝을 X→Y 와 Y→X 로 돌려 본다. mine_of/opp_of 는 순서를 받아 파티를 돌려준다."""
+        xy, yx = run(mine_of("XY"), opp_of("XY"), moves, steps, foe_moves), \
+            run(mine_of("YX"), opp_of("YX"), moves, steps, foe_moves)
+        check("%s — 옛 열쇠로는 같은 칸이다 (같은 이름·HP·랭크, 몸만 다름 — 시험이 뜻이 있다)" % label,
+              xy[0]["slot"] == xy[1]["slot"] and xy[0]["body"] != xy[1]["body"])
+        # 두 몸의 자기 값은 **같은 판 안에서** 비교한다 (선봉의 위협이 상대 랭크를 바꾸므로 순서마다 따로)
+        check("%s — 캐시 없이 잰 두 몸의 값이 서로 다르다 (X→Y 판 %.4f / %.4f, Y→X 판 %.4f / %.4f)"
+              % (label, xy[0]["fresh"], xy[1]["fresh"], yx[0]["fresh"], yx[1]["fresh"]),
+              xy[0]["fresh"] != xy[1]["fresh"] and yx[0]["fresh"] != yx[1]["fresh"])
+        for name, got in (("X → Y", xy), ("Y → X", yx)):
+            first, second = got
+            check("%s %s: 두 번째가 새로 잰다 · 같은 순간 새 Policy 값과 같다 (%.4f / %.4f, 첫 번째 %.4f)"
+                  % (label, name, second["shared"], second["fresh"], first["shared"]),
+                  second["ran"] and second["shared"] == second["fresh"],
+                  "새로 쟀나 %s" % second["ran"])
+            check("%s %s: 같은 놈을 다시 물으면 캐시에서 같은 값 (캐시가 살아 있다)" % (label, name),
+                  (not second["again_ran"]) and second["again"] == second["shared"]
+                  and (not first["again_ran"]) and first["again"] == first["shared"])
+            if setup_pair:
+                check("%s %s: 두 번째가 고른 수 = 같은 순간 새 Policy 가 고른 수 (%s)"
+                      % (label, name, second["fresh_pick"]), second["pick"] == second["fresh_pick"], second["pick"])
+        if setup_pair:
+            check("%s — 캐시 없이 두 몸이 고르는 수가 같은 판에서 갈린다 (X→Y 판 %s / %s, Y→X 판 %s / %s — 기점 여부)"
+                  % (label, xy[0]["fresh_pick"], xy[1]["fresh_pick"], yx[0]["fresh_pick"], yx[1]["fresh_pick"]),
+                  xy[0]["fresh_pick"] != xy[1]["fresh_pick"] or yx[0]["fresh_pick"] != yx[1]["fresh_pick"])
+
+    # ① 내 쪽에 같은 종 둘 (맞는 쪽 몸이 다르다)
+    body = {"X": A, "Y": B}
+    for fn in ("하마돈", "패리퍼"):
+        foe = calc.popular_build(dex, P(fn))[0]
+        pair_checks("한카리아스 A/B vs %s" % fn, lambda o: [body[o[0]], body[o[1]]], lambda o: [foe],
+                    GAR, [(0, 0), (1, 0)], None)
+
+    # 몸의 필드가 전부 같으면(다른 객체라도) **같은 칸을 다시 쓴다** — 캐시를 너무 잘게 쪼개지 않았나
+    A2 = calc.Build(dex, gar, sp={"attack": 32, "speed": 32}, nature=N("고집"), item="기합의띠", ability="까칠한피부")
+    got = run([A, A2], [calc.popular_build(dex, P("하마돈"))[0]], GAR, [(0, 0), (1, 0)])
+    check("필드가 같은 몸(A, A2)이면 두 번째는 다시 재지 않고 같은 값을 쓴다 (새로 쟀나 %s / %s)"
+          % (got[0]["ran"], got[1]["ran"]),
+          got[0]["ran"] and not got[1]["ran"] and got[1]["shared"] == got[1]["fresh"])
+
+    # ② 기점 여부까지 — 보만다 두 몸 vs 하마돈 (_setup_move 가 '용의춤을 쌓나' 를 이 값으로 정한다)
+    bom = P("보만다")
+    BOM = ["이판사판태클", "용의춤", "지진", "날개쉬기"]
+    bx = calc.Build(dex, bom, sp={"hp": 32, "defense": 32}, nature=N("대담"), item="돌격조끼", ability="위협")
+    by = calc.Build(dex, bom, sp={"hp": 32, "spDef": 32}, nature=N("차분"), item="생명의구슬", ability="자기과신")
+    hip = calc.popular_build(dex, P("하마돈"))[0]
+    bb = {"X": bx, "Y": by}
+    pair_checks("보만다 X/Y vs 하마돈 (기점)", lambda o: [bb[o[0]], bb[o[1]]], lambda o: [hip],
+                BOM, [(0, 0), (1, 0)], ["얼음엄니", "지진", "하품", "스텔스록"], setup_pair=True)
+
+    # ③ 상대 쪽에 같은 종 둘 (때리는 쪽 몸이 다르다) — 루카리오의 나쁜음모
+    luc = calc.popular_build(dex, P("루카리오"))[0]
+    LUC = ["나쁜음모", "파동탄", "악의파동", "러스터캐논"]
+    mas = P("마스카나")
+    mx = calc.Build(dex, mas, sp={"defense": 32, "spDef": 32}, nature=N("신중"), item="생명의구슬", ability="심록")
+    my = calc.Build(dex, mas, sp={"spAtk": 32, "speed": 32}, nature=N("조심"), item=None, ability="심록")
+    mm = {"X": mx, "Y": my}
+    pair_checks("루카리오 vs 마스카나 X/Y (때리는 쪽)", lambda o: [luc], lambda o: [mm[o[0]], mm[o[1]]],
+                LUC, [(0, 0), (0, 1)], ["트릭플라워", "트리플악셀", "탁쳐서떨구기", "유턴"], setup_pair=True)
+
+    # ④ 자동 탐색 — 여러 종·몸·상대에서 옛 열쇠로 부딪쳤을 짝을 모아 전부 대조한다
+    SPS = [({"attack": 32, "speed": 32}, "고집"), ({"spAtk": 32, "speed": 32}, "조심"),
+           ({"defense": 32, "spDef": 32}, "신중"), ({"hp": 32, "defense": 32}, "대담"),
+           ({"hp": 32, "spDef": 32}, "차분"), ({"attack": 32, "defense": 32}, "고집")]
+
+    def bodies(poke):
+        ab = poke["abilities"][0]["name"] if poke["abilities"] else None
+        return [calc.Build(dex, poke, sp=sp, nature=N(nat), item=it, ability=ab)
+                for (sp, nat), it in itertools.product(SPS, [None, "돌격조끼", "생명의구슬"])]
+
+    st = dict(collide=0, differ=0, pick_differ=0, shared_slot=0, wrong=0, wrong_pick=0)
+
+    def tally(got):
+        first, second = got
+        if first["slot"] != second["slot"] or first["body"] == second["body"]:
+            return
+        st["collide"] += 1
+        st["differ"] += first["fresh"] != second["fresh"]
+        st["pick_differ"] += first["fresh_pick"] != second["fresh_pick"]
+        st["shared_slot"] += not second["ran"]
+        st["wrong"] += second["shared"] != second["fresh"]
+        st["wrong_pick"] += second["pick"] != second["fresh_pick"]
+
+    foes = [calc.popular_build(dex, P(n))[0] for n in ("하마돈", "고릴타", "킬가르도", "마스카나")]
+    for pn, moves in (("보만다", BOM), ("포푸니크", ["인파이트", "페이탈클로", "칼춤", "지옥찌르기"]),
+                      ("타부자고", ["섀도볼", "골드러시", "나쁜음모", "HP회복"]), ("한카리아스", GAR)):
+        bs = bodies(P(pn))
+        for foe in foes:
+            for x, y in itertools.permutations(bs, 2):
+                if x.stat("hp") == y.stat("hp"):
+                    tally(run([x, y], [foe], moves, [(0, 0), (1, 0)]))
+    for me, moves in ((luc, LUC), (calc.popular_build(dex, P("타부자고"))[0], ["섀도볼", "골드러시", "나쁜음모", "HP회복"])):
+        for pn in ("마스카나", "고릴타", "갑주무사"):
+            bs = bodies(P(pn))
+            fm = [m["name"] for m, _ in battle.realistic_moveset(dex, P(pn))]
+            for x, y in itertools.permutations(bs, 2):
+                if x.stat("hp") == y.stat("hp"):
+                    tally(run([me], [x, y], moves, [(0, 0), (0, 1)], fm))
+    print("    자동 탐색: 옛 열쇠로 같은 칸이었을 짝 %(collide)d · 자기 값이 다른 짝 %(differ)d · "
+          "자기 선택이 다른 짝 %(pick_differ)d → 칸을 나눠 쓴 짝 %(shared_slot)d · 값이 틀린 짝 %(wrong)d · "
+          "선택이 틀린 짝 %(wrong_pick)d" % st)
+    check("자동 탐색이 뜻이 있다 — 옛 열쇠로 부딪쳤을 짝·값이 다른 짝·선택이 다른 짝이 있다 (%d / %d / %d)"
+          % (st["collide"], st["differ"], st["pick_differ"]),
+          st["collide"] > 0 and st["differ"] > 0 and st["pick_differ"] > 0)
+    check("자동 탐색: 몸이 다른 두 번째 놈이 첫 번째 놈의 칸을 쓰지 않는다 (%d)" % st["shared_slot"],
+          st["shared_slot"] == 0)
+    check("자동 탐색: 두 번째 값 = 같은 순간 새 Policy 값 (틀린 짝 %d)" % st["wrong"], st["wrong"] == 0)
+    check("자동 탐색: 두 번째가 고른 수 = 같은 순간 새 Policy 가 고른 수 (틀린 짝 %d)" % st["wrong_pick"],
+          st["wrong_pick"] == 0)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -7242,6 +7425,7 @@ def main():
     test_opp_own_moves(dex)
     test_my_own_moves(dex)
     test_fallback_key(dex)
+    test_incoming_key(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

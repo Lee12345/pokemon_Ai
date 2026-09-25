@@ -3672,13 +3672,18 @@ class Policy(object):
     def _incoming(self, side, battle):
         """상대의 제일 센 수가 내 지금 HP 의 몇 할인가. 못 재면 1.0 (위험한 쪽으로)."""
         foe = battle.opp if side is battle.me else battle.me
-        key = ("들어오는", foe.name, side.name, foe.hp, side.hp,
+        # ! 열쇠는 이름이 아니라 **지금 몸(as_build)** 이다. 이름으로 두었더니 같은 종·같은 HP·같은
+        #   랭크면 몸(노력치·성격·도구·특성)이 달라도 먼저 잰 놈의 값을 그대로 썼다 — 기점을 쌓을지가
+        #   남의 값으로 정해졌다 (2026-09-25, [71]). 몸의 지문은 `rate_moves` 캐시와 같은 `best._build_key`.
+        #   (상대 기술 목록은 아직 열쇠에 없다 — 따로 남긴 문제다.)
+        fb, sb = foe.as_build(), side.as_build()
+        key = ("들어오는", best._build_key(fb), best._build_key(sb), foe.hp, side.hp,
                tuple(sorted(foe.ranks.items())), tuple(sorted(side.ranks.items())))
         got = self._fallback.get(key)
         if got is None:
             cand = ([(self.dex.find_move(m), None) for m in foe.moveset]
                     if foe.moveset else best.candidate_moves(self.dex, foe.base.poke))
-            rows = best.rate_moves(self.dex, foe.as_build(), side.as_build(), cand)
+            rows = best.rate_moves(self.dex, fb, sb, cand)
             threat = best.best_threat(rows)
             got = (threat["expected"] / float(max(1, side.hp))) if threat else 1.0
             self._fallback[key] = got
