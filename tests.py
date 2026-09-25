@@ -7063,6 +7063,111 @@ def test_my_own_moves(dex):
     check("같은 종 둘 — 2번 한카리아스는 자기 기술표(B2)만, 메가 허용 (%d판)" % N, ok, detail)
 
 
+def test_fallback_key(dex):
+    """[70] **같은 종·같은 4기술이라도 몸(Build)이 다르면 기술 평가표를 나눠 쓰지 않는다** (2026-09-25).
+
+    `Policy._best_move` 는 기술 평가표(`rate_moves`)를 `_fallback` 에 외워 두는데, 열쇠가
+    `(이름, "own", 기술 이름들)` 이라 **몸이 달라도 이름·기술이 같으면 같은 칸**이었다.
+    먼저 평가한 놈의 표를 두 번째 놈이 그대로 썼다. 잰 것 (한카리아스 A: 공격 32·고집·기합의띠 /
+    B: 체력·특방 32·조심·도구 없음, 기술 지진·역린·스톤에지·칼춤):
+      하마돈 상대 B 의 지진 기대 데미지 — 자기 표 55.9 인데 A 뒤에 평가하면 82.4
+      패리퍼 상대 B 의 스톤에지 KO 확률 — 자기 표 0.0 인데 A 뒤에 평가하면 0.5
+      몸 24가지 × 상대 6 × 기술 2벌에서 자기 표로는 다른 수를 고르는 608짝 중 **320짝의 선택이 바뀌었다.**
+    """
+    import random
+    print("\n[70] 같은 종·같은 기술이라도 몸이 다르면 평가표를 나눠 쓰지 않는다")
+    P, M = dex.find_pokemon, dex.find_move
+    gar = P("한카리아스")
+    MOVES = ["지진", "역린", "스톤에지", "칼춤"]
+
+    def body(tag):
+        if tag == "A":
+            return calc.Build(dex, gar, sp={"attack": 32, "speed": 32}, nature=dex.find_nature("고집"),
+                              item="기합의띠", ability="까칠한피부")
+        if tag == "A2":      # A 와 필드가 전부 같은 **다른 객체**
+            return body("A")
+        if tag == "S":       # 땅 기술 강화 — 하마돈 상대로 자기 표로는 지진을 고른다
+            return calc.Build(dex, gar, sp={"attack": 32, "speed": 32}, nature=dex.find_nature("고집"),
+                              item="부드러운모래", ability="까칠한피부")
+        return calc.Build(dex, gar, sp={"hp": 32, "spDef": 32}, nature=dex.find_nature("조심"),
+                          item=None, ability="모래숨기")
+
+    # _best_move 가 실제로 쓴 표(_setup_move 에 넘기는 rows)와 한카리아스 rate_moves 호출 수를 센다
+    seen, ran = [], [0]
+    real_setup, real_rate = battle.Policy._setup_move, best.rate_moves
+
+    def spy_setup(self, side, rows, b):
+        seen.append(best._rate_signature(rows))
+        return real_setup(self, side, rows, b)
+
+    def spy_rate(dex_, att, dfn, moves):
+        if att.poke["name"] == "한카리아스":
+            ran[0] += 1
+        return real_rate(dex_, att, dfn, moves)
+
+    def evaluate(tags, foe, own=True):
+        """한 Policy 안에서 tags 순서로 평가. [(표, 고른 수, 그때 rate_moves 가 돌았나)]"""
+        party = [body(t) for t in tags]
+        b = battle.Battle(dex, party, foe, rng=random.Random(1))
+        pol = battle.Policy(dex, party, foe, [M("칼춤")],
+                            party_moves=[MOVES] * len(party) if own else None)
+        out = []
+        battle.Policy._setup_move, best.rate_moves = spy_setup, spy_rate
+        try:
+            for i in range(len(party)):
+                b.me_party.active_idx = i
+                del seen[:]
+                n0 = ran[0]
+                pick = pol._best_move(b.me_party.members[i], b)["name"]
+                out.append((seen[-1], pick, ran[0] > n0))
+        finally:
+            battle.Policy._setup_move, best.rate_moves = real_setup, real_rate
+        return out
+
+    for foe_name in ("하마돈", "패리퍼"):
+        foe = calc.popular_build(dex, P(foe_name))[0]
+        for own, label in ((True, "기술표 있음"), (False, "기술표 없음(사용률)")):
+            fresh = {t: evaluate([t], foe, own)[0] for t in ("A", "B")}
+            check("%s·%s — A 와 B 는 자기 표가 서로 다르다 (시험이 뜻이 있다)" % (foe_name, label),
+                  fresh["A"][0] != fresh["B"][0])
+            for first, second in (("A", "B"), ("B", "A")):
+                got = evaluate([first, second], foe, own)[1]
+                check("%s·%s — %s → %s: %s 는 %s 의 표를 안 쓰고 자기 표를 새로 잰다"
+                      % (foe_name, label, first, second, second, first),
+                      got[2] and got[0] == fresh[second][0],
+                      "새로 쟀나 %s / 같은가 %s" % (got[2], got[0] == fresh[second][0]))
+                check("%s·%s — %s → %s: %s 가 고른 수 = 새 Policy 에서 혼자 고른 수 (%s)"
+                      % (foe_name, label, first, second, second, fresh[second][1]),
+                      got[1] == fresh[second][1], got[1])
+
+    # 최종 선택이 실제로 갈리는 짝 — 하마돈 상대 A(기합의띠)는 역린, S(부드러운모래)는 지진
+    hip = calc.popular_build(dex, P("하마돈"))[0]
+    fa, fs = evaluate(["A"], hip)[0][1], evaluate(["S"], hip)[0][1]
+    check("선택이 갈리는 짝이다 — 혼자면 A %s / S %s" % (fa, fs), fa != fs)
+    got = evaluate(["A", "S"], hip)
+    check("A → S: S 는 자기 수(%s)를 고른다 (A 의 표를 쓰면 %s)" % (fs, fa), got[1][1] == fs, got[1][1])
+    got = evaluate(["S", "A"], hip)
+    check("S → A: A 는 자기 수(%s)를 고른다 (S 의 표를 쓰면 %s)" % (fa, fs), got[1][1] == fa, got[1][1])
+
+    # 같은 몸이면 표를 **다시 쓴다** (캐시가 살아 있다) — 필드가 같은 다른 객체 · 같은 놈 두 번
+    got = evaluate(["A", "A2"], hip)
+    check("필드가 같은 몸(A, A2)이면 두 번째는 표를 다시 재지 않는다", got[0][2] and not got[1][2],
+          [g[2] for g in got])
+    party = [body("A")]
+    b = battle.Battle(dex, party, hip, rng=random.Random(1))
+    pol = battle.Policy(dex, party, hip, [M("칼춤")], party_moves=[MOVES])
+    best.rate_moves = spy_rate
+    try:
+        ran[0] = 0
+        pol._best_move(b.me_party.members[0], b)
+        first = ran[0]
+        pol._best_move(b.me_party.members[0], b)
+    finally:
+        best.rate_moves = real_rate
+    check("같은 놈을 두 번 평가하면 두 번째는 표를 다시 재지 않는다 (%d → %d)" % (first, ran[0]),
+          first == 1 and ran[0] == 1)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -7136,6 +7241,7 @@ def main():
     test_opp_switch(dex)
     test_opp_own_moves(dex)
     test_my_own_moves(dex)
+    test_fallback_key(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

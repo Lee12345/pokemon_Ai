@@ -3731,8 +3731,13 @@ class Policy(object):
         known = own if own is not None else (self.moves if restricted else None)
         if known is not None:
             side.moveset = [m["name"] for m in known]   # 비장의무기가 본다
-        key = ((side.name, "own", tuple(m["name"] for m in own)) if own is not None
-               else (side.name, restricted))
+        # ! 열쇠는 이름이 아니라 **몸(Build)** 이다. 이름으로 두었더니 같은 종·같은 기술이면
+        #   몸(노력치·성격·도구·특성)이 달라도 먼저 잰 놈의 표를 그대로 썼다 — 두 번째 놈의
+        #   기대 데미지·KO 확률이 남의 것이 되고 고르는 수까지 바뀌었다 (2026-09-25, [70]).
+        #   몸의 지문은 `rate_moves` 캐시와 같은 `best._build_key` 를 쓴다.
+        body = best._build_key(side.base)
+        key = ((body, "own", tuple(m["name"] for m in own)) if own is not None
+               else (body, restricted))
         rows = self._fallback.get(key)
         if rows is None:
             if known is not None:
