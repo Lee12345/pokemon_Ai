@@ -245,8 +245,12 @@ def _undo_guess(guess, counted):
 
 def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
             opp_build=None, turns=None, my_moves=None, state=None, sink=None,
-            guess=None, hidden=None, take=0, opp_may_switch=False):
+            guess=None, hidden=None, take=0, opp_may_switch=False,
+            my_party_moves=None):
     """한 판. 이번 턴에 `action` 을 두고 나머지는 양쪽이 알아서 둔다.
+
+    my_party_moves — 내 마리별 기술표 (`my_party_moves[i]` = `my_party[i]` 의 기술).
+    `action`(이번 턴에 시켜 보는 수)과는 다른 것이다. 그 뒤 턴과 교체해 들어간 놈이 쓴다.
 
     turns 를 주면 그 턴에서 끊고 판세로 점수를 매긴다 (마지막 수단).
     sink(집합)를 주면 이 판에서 대전이 띄운 경고를 거기 모은다.
@@ -311,7 +315,7 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
         res = battle.run_once(dex, my_party, opp, _as_plan(action),
                               opp_plan, rng, my_moves=my_moves, state=state,
                               auto_mega=False, opp_first_switch=opp_may_switch,
-                              opp_moves=opp_sets)
+                              opp_moves=opp_sets, my_party_moves=my_party_moves)
         if sink is not None:
             sink.update(res["warnings"])
         if res.get("oppSwitched"):
@@ -322,7 +326,7 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
     b = battle.Battle(dex, my_party, opp, rng=rng, **st)
     mine = battle.Policy(dex, my_party, opp, _as_plan(action),
                          moves=my_moves, lead=b.me_party.active.base,
-                         auto_mega=False)
+                         auto_mega=False, party_moves=my_party_moves)
     theirs = battle.Policy(dex, opp, my_party, opp_plan,
                            lead=b.opp_party.active.base,
                            first_switch=opp_may_switch, party_moves=opp_sets)
@@ -343,11 +347,18 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
 
 def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
                 seconds=10.0, seed=1, opp_build=None, state=None,
-                opp_hidden=None, opp_take=0, stop=None, opp_may_switch=True):
+                opp_hidden=None, opp_take=0, stop=None, opp_may_switch=True,
+                my_party_moves=None):
     """이번 턴의 수를 고른다.
 
     opp_pokes 는 **한 마리든 파티든** 받는다. 파티를 주면 상대의
     벤치까지 넣고 판을 끝까지 돌린다.
+
+    my_moves — **나와 있는 놈**의 기술. 이번 턴 후보(계획)를 만든다.
+    my_party_moves — **내 마리별 기술표** (`my_party_moves[i]` = `my_party[i]` 의 기술).
+    ! 이게 없어서 교체해 들어간 내 벤치가 사용률 기술로 싸웠다 (2026-09-25 감사) —
+      벤치 한카리아스(지진·칼춤·스텔스록·땅고르기)가 아머까오에게 화염방사 1012/1012.
+      창·live 는 파티를 `[(빌드, [기술])]` 로 들고 있으면서 나와 있는 놈 것만 넘겼다.
 
     opp_hidden / opp_take — **아직 안 나온 상대 벤치.** 프리뷰에서 본 나머지 중
     몇 마리를 판마다 새로 뽑아 상대 파티에 붙인다 (`sample_opp_party`).
@@ -392,7 +403,7 @@ def best_action(dex, my_party, opp_pokes, my_moves=None, evidence=None,
         return rollout(dex, builds, opp_pokes, action, rng, evidence,
                        opp_build, turns_, moves, state, sink=warned,
                        guess=guess_, hidden=opp_hidden, take=opp_take,
-                       opp_may_switch=opp_may_switch)
+                       opp_may_switch=opp_may_switch, my_party_moves=my_party_moves)
 
     stopped = [False]
 

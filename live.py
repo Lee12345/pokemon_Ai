@@ -1157,7 +1157,9 @@ def advise(fight):
         fight.dex, fight.builds(), fight.opp_pokes(),
         my_moves=fight.moves(), evidence=fight.evidence(),
         seconds=fight.seconds, state=fight.state(),
-        seed=fight.turn + 1)
+        seed=fight.turn + 1,
+        # 벤치도 자기 기술로 싸운다 — 나와 있는 놈 것만 넘기면 벤치는 사용률로 짐작한다
+        my_party_moves=[row[1] for row in fight.party])
     full = [r for r in got["rows"] if not r["dropped"]] or got["rows"]
     top = max(full, key=lambda r: r["score"])
 

@@ -6864,6 +6864,205 @@ def test_opp_own_moves(dex):
     check("D 비어 있거나 None 이면 기술표 없음으로 본다 (fallback)", ok_empty)
 
 
+def test_my_own_moves(dex):
+    """[69] **내 포켓몬도 자기 기술표 안에서만 싸운다** — 벤치에서 나왔든 선봉이든 (2026-09-25 감사).
+
+    창·live 는 내 파티를 `[(빌드, [기술])]` 로 들고 있는데, `best_action` 에는
+    **나와 있는 놈의 기술 하나만**(`my_moves`) 넘겼다. 그래서 교체해 들어간 벤치는
+    `Policy` 의 계획 주인이 아니라서 `best.candidate_moves`(사용률 기술 전부)에서 골랐다.
+
+    잰 것 (1e2d02c, 감사 재현 그대로):
+      선봉 하마돈 + 벤치 한카리아스(지진·칼춤·스텔스록·땅고르기) vs 아머까오
+        run_once(교체 계획)   화염방사 372/372 (기술표 밖 100%)
+        best_action 3초       화염방사·역린 1012/1012
+
+    ! 여기서는 **내 쪽만** 센다. 상대 기술표는 Patch 1([68])이 본다.
+    ! plan(이번 턴에 시켜 보는 수)과 기술표(각자 배운 기술)는 다른 것이다 —
+      `my_moves` 는 그대로 이번 턴 후보에 쓰이고, 기술표는 마리마다 따로 간다.
+    """
+    import random
+    import collections
+    import gui
+    import live
+    import search
+    print("\n[69] 내 포켓몬도 자기 기술표 안에서만 싸운다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+
+    # 내 쪽이 Battle.step 에 실제로 낸 기술을 **파티 자리별로** 센다 (같은 종이 둘이어도 갈린다)
+    used = collections.Counter()
+    real_step = battle.Battle.step
+
+    def spy_step(self, my_action, opp_action):
+        a = my_action[1] if isinstance(my_action, tuple) and my_action[0] == "메가" else my_action
+        if isinstance(a, dict):
+            slot = next(i for i, m in enumerate(self.me_party.members)
+                        if m is self.me_party.active)
+            used[(slot, a["name"])] += 1
+        return real_step(self, my_action, opp_action)
+
+    def count(fn):
+        used.clear()
+        battle.Battle.step = spy_step
+        try:
+            fn()
+        finally:
+            battle.Battle.step = real_step
+        return dict(used)
+
+    def outside(got, table):
+        """자리마다 자기 기술표 밖에서 고른 것."""
+        return {(s, m): n for (s, m), n in got.items() if m not in table[s]}
+
+    def acted(got, slot):
+        return sum(n for (s, _m), n in got.items() if s == slot)
+
+    N = 200
+    hama, gar, nuri = pb("하마돈"), pb("한카리아스"), pb("누리레느")
+    armor = pb("아머까오")
+    A = ["지진", "하품", "게으름피우기", "스텔스록"]           # 선봉 하마돈
+    B = ["지진", "칼춤", "스텔스록", "땅고르기"]               # 벤치 한카리아스 (아머까오에게 땅 무효)
+    C = ["문포스", "냉동빔", "아쿠아제트", "하품"]             # 누리레느
+    opp_plan = [best.best_threat(best.rate_moves(
+        dex, armor, hama, best.candidate_moves(dex, armor.poke)))["move"]]
+
+    # -- A. 벤치에서 나온 한카리아스 — run_once · rollout(끝까지) · rollout(끊어 보기) -----------
+    def a_run_once():
+        for s in range(N):
+            battle.run_once(dex, [hama, gar], armor, [("교체", 1)], opp_plan, random.Random(s),
+                            my_moves=A, auto_mega=False, my_party_moves=[A, B])
+
+    def a_rollout(turns):
+        def go():
+            for s in range(N):
+                search.rollout(dex, [hama, gar], [armor.poke], ("교체", 1), random.Random(s),
+                               opp_build=armor, turns=turns, my_moves=[M(x) for x in A],
+                               my_party_moves=[A, B])
+        return go
+
+    for label, fn in (("run_once", a_run_once), ("rollout 끝까지", a_rollout(None)),
+                      ("rollout 3턴 끊어 보기", a_rollout(3))):
+        try:
+            got = count(fn)
+            bad = outside(got, [A, B])
+            ok, detail = acted(got, 1) > 0 and not bad, "밖: %s / 한카리아스 %d번" % (bad, acted(got, 1))
+        except TypeError as e:
+            ok, detail = False, "내 기술표를 못 받는다: %s" % e
+        check("A 벤치에서 나온 한카리아스 — 자기 4기술 밖 선택 0 (%s, %d판)" % (label, N), ok, detail)
+
+    # -- B. production 경로 — live.advise · 창(gui._work) 이 넘기는 모양 그대로 ------------------
+    party = [(hama, A), (gar, B), (nuri, C)]
+    table = [A, B, C]
+
+    captured = []
+    real_ba = search.best_action
+
+    def spy_ba(*a, **k):
+        captured.append(k)
+        return real_ba(*a, **k)
+
+    class FakeWin(object):                 # gui._work 가 쓰는 것만 — 창 없이 부른다
+        dex = None
+        stale = False
+        headless = True
+        guessed_opp = False
+
+        def _format(self, *a, **k):
+            return ""
+
+        def _show(self, text):
+            self.text = text
+
+    win = FakeWin()
+    win.dex = dex
+    for who in ("live.advise", "창 gui._work"):
+        for idx in range(3):
+            del captured[:]
+            search.best_action = spy_ba
+            try:
+                if who == "live.advise":
+                    f = live.Fight(dex, party)
+                    f.opp_add(P("아머까오"))
+                    f.my_active = idx
+                    f.seconds = 1.0
+                    got = count(lambda: live.advise(f))
+                else:
+                    got = count(lambda: gui.App._work(
+                        win, party, [P("아머까오")], None, 1.0,
+                        {"my_active": idx, "my_hp": [100.0] * 3, "opp_hp": [100.0]}, idx))
+            finally:
+                search.best_action = real_ba
+            passed = captured[0].get("my_party_moves") if captured else None
+            check("B %s 나와 있음=%d번 — 내 파티 기술표 전체를 넘긴다" % (who, idx),
+                  passed is not None and [list(x or ()) for x in passed] == table,
+                  "넘긴 것: %s" % passed)
+            bad = outside(got, table)
+            check("B %s 나와 있음=%d번 — 자리마다 자기 기술표 밖 선택 0 (%s)"
+                  % (who, idx, ", ".join("%d번 %d" % (s, acted(got, s)) for s in range(3))),
+                  acted(got, idx) > 0 and not bad, "밖: %s" % bad)
+
+    # -- C. 선봉 기술표와 벤치 기술표가 섞이지 않는다 — active 0 → A, active 1 → B ------------
+    try:
+        for idx in (0, 1):
+            b = battle.Battle(dex, [hama, gar, nuri], armor, rng=random.Random(1),
+                              my_active=idx)
+            pol = battle.Policy(dex, [hama, gar, nuri], armor, [M("지진")], moves=A,
+                                lead=b.me_party.active.base, party_moves=table)
+            side = b.me_party.active
+            own = [m["name"] for m in (pol._moves_of(side) or [])]
+            picks = {pol._best_move(side, b)["name"] for _ in range(3)}
+            check("C 나와 있음=%d번 → 그 놈 기술표 %s (고른 수 %s)"
+                  % (idx, "A" if idx == 0 else "B", sorted(picks)),
+                  own == table[idx] and picks <= set(table[idx]), (own, picks))
+    except (TypeError, AttributeError) as e:
+        check("C 선봉·벤치 기술표 분리", False, e)
+    # 벤치 한카리아스가 **선봉 하마돈 기술(A 에만 있는 것)** 을 쓰면 실패
+    try:
+        got = count(a_run_once)
+        leak = {m: n for (s, m), n in got.items() if s == 1 and m in set(A) - set(B)}
+        check("C 벤치 한카리아스가 선봉 하마돈 기술(하품·게으름피우기)을 안 쓴다", not leak, leak)
+    except TypeError as e:
+        check("C 벤치 한카리아스가 선봉 하마돈 기술(하품·게으름피우기)을 안 쓴다", False, e)
+
+    # -- D. 기술표를 안 주면 예전 그대로 — 선봉은 my_moves, 벤치는 사용률로 짐작 --------------
+    usage = {m["name"] for m, _ in best.candidate_moves(dex, gar.poke)}
+
+    def d_run():
+        for s in range(N):
+            battle.run_once(dex, [hama, gar], armor, [("교체", 1)], opp_plan, random.Random(s),
+                            my_moves=A, auto_mega=False)
+    got = count(d_run)
+    bench = {m for (s, m), _n in got.items() if s == 1}
+    check("D 기술표 없음 — 벤치는 예전처럼 사용률 기술에서 고른다 (%s)" % sorted(bench),
+          bench and bench <= usage and not bench <= set(B), "사용률 밖: %s" % (bench - usage))
+
+    def d_lead():
+        for s in range(N):
+            battle.run_once(dex, [hama, gar], armor, [M("지진")], opp_plan, random.Random(s),
+                            my_moves=A, auto_mega=False, opp_switch=False)
+    got = count(d_lead)
+    lead = {m for (s, m), _n in got.items() if s == 0}
+    check("D 기술표 없음 — 선봉은 예전처럼 my_moves 안에서만 (%s)" % sorted(lead),
+          lead and lead <= set(A), lead)
+
+    # -- 같은 종 둘 — 한카리아스 A / 한카리아스 B (서로 다른 Build) ---------------------------
+    gar1, gar2 = pb("한카리아스"), pb("한카리아스")
+    B2 = ["역린", "불꽃엄니", "스톤에지", "아이언헤드"]
+    two = [B, B2]
+
+    def same_species():
+        for s in range(N):
+            battle.run_once(dex, [gar1, gar2], armor, [("교체", 1)], opp_plan, random.Random(s),
+                            my_moves=B, auto_mega=True, my_party_moves=two)
+    try:
+        got = count(same_species)
+        bad = outside(got, two)
+        ok, detail = acted(got, 1) > 0 and not bad, "밖: %s / 2번 %d번" % (bad, acted(got, 1))
+    except TypeError as e:
+        ok, detail = False, "내 기술표를 못 받는다: %s" % e
+    check("같은 종 둘 — 2번 한카리아스는 자기 기술표(B2)만, 메가 허용 (%d판)" % N, ok, detail)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -6936,6 +7135,7 @@ def main():
     test_switch_read(dex)
     test_opp_switch(dex)
     test_opp_own_moves(dex)
+    test_my_own_moves(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

@@ -3920,10 +3920,14 @@ def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
 
 def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
              opp_switch=True, matchup=None, my_moves=None, state=None,
-             auto_mega=True, opp_first_switch=False, opp_moves=None):
+             auto_mega=True, opp_first_switch=False, opp_moves=None,
+             my_party_moves=None):
     """한 판. 끝났을 때의 상태를 통째로 돌려준다.
 
     my_moves 를 주면 계획이 끝난 뒤에도 **내 기술 안에서만** 고른다.
+    my_party_moves 는 **내 마리별 기술표** (`my_party_moves[i]` = `me_build` 의 i번째).
+    주면 교체해 들어간 벤치도 자기 기술 안에서만 고른다. 빈 자리는 예전처럼
+    (계획 주인은 my_moves, 나머지는 사용률로 짐작).
     opp_moves 는 **상대 마리별 기술표** (`opp_moves[i]` = `opp_build` 의 i번째).
     주면 상대는 선봉이든 벤치에서 나왔든 자기 기술 안에서만 고른다 (`Policy(party_moves=…)`).
     """
@@ -3939,7 +3943,8 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
     # ! lead 를 **Battle 에게 물어서** 넘긴다. 손으로 me_build[0] 이라고
     #   적으면 state 로 '2번이 나와 있다' 를 줬을 때 조용히 어긋난다.
     mine = Policy(dex, me_build, opp_build, my_plan, moves=my_moves,
-                  lead=b.me_party.active.base, auto_mega=auto_mega)
+                  lead=b.me_party.active.base, auto_mega=auto_mega,
+                  party_moves=my_party_moves)
     theirs = Policy(dex, opp_build, me_build, opp_plan,
                     allow_switch=opp_switch, lead=b.opp_party.active.base,
                     first_switch=opp_first_switch, party_moves=opp_moves)

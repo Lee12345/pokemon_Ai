@@ -1391,6 +1391,8 @@ class App(object):
                 my_moves=party[idx][1] or None, evidence=ev,
                 seconds=secs, state=state,
                 opp_hidden=hidden, opp_take=take,
+                # 벤치도 자기 기술로 싸운다 — 나와 있는 놈 것만 넘기면 벤치는 사용률로 짐작한다
+                my_party_moves=[m for _b, m in party],
                 # ★ **생각하는 동안 나와 있는 놈이 바뀌면 그 생각은 버린다.**
                 #   끝까지 계산해 봐야 지난 상황의 답이다 (2026-09-24).
                 stop=lambda: self.stale)
