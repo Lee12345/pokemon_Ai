@@ -8361,10 +8361,13 @@ def test_setup_tie(dex):
         b = battle.Battle(dex, gy, foe, rng=random.Random(1))
         b.opp.moveset = ["철벽", "바디프레스", "날개쉬기", "유턴"]
         pol = battle.Policy(dex, gy, foe, [M(mv[0])], party_moves=[mv])
+        # ! 들어오는 피해는 **고르기 전에** 따로 잰다. 전에는 고르다 터지면 이 값도 None 으로 버려서,
+        #   고치기 전 코드에서 전제 검사까지 같이 실패한 것처럼 보였다 (전제는 멀쩡했다).
+        inc = pol._incoming(b.me, b)
         try:
-            return pol._best_move(b.me, b)["name"], pol._incoming(b.me, b)
+            return pol._best_move(b.me, b)["name"], inc
         except TypeError as e:
-            return "TypeError: %s" % e, None
+            return "TypeError: %s" % e, inc
 
     a, inc = pick(["칼춤", "용의춤", "폭포오르기", "지진"])
     check("검사 전제: 들어오는 피해가 기점 기준 미만 (%s)" % (inc if inc is None else "%.3f" % inc),
@@ -8397,11 +8400,17 @@ def test_setup_tie(dex):
 
     # ③ 판을 끝까지 — 동점 자리를 실제로 밟고도 멈추지 않는다
     real_setup = battle.Policy._setup_move
-    st = {"tie": 0}
+    st = {"tie": 0, "err": 0}
 
     def spy(self, side, rows, bt):
         names = {r["move"]["name"] for r in rows}
-        r = real_setup(self, side, rows, bt)
+        # ! 터진 것도 **밟은 것으로** 센다. 전에는 고른 뒤에만 셌으므로, 고치기 전 코드에서는
+        #   동점 자리에서 터지고도 「동점 자리를 0번 밟고」 로 찍혔다 (진단이 거꾸로 보였다).
+        try:
+            r = real_setup(self, side, rows, bt)
+        except TypeError:
+            st["err"] += 1
+            raise
         if r is not None and {"칼춤", "용의춤"} <= names and side.ranks.get("attack", 0) == 0:
             st["tie"] += 1
         return r
@@ -8418,8 +8427,9 @@ def test_setup_tie(dex):
                 crashed.append((s, str(e)))
     finally:
         battle.Policy._setup_move = real_setup
-    check("1대1 10판 — 동점 자리를 %d번 밟고 멈춘 판 %d" % (st["tie"], len(crashed)),
-          st["tie"] > 0 and not crashed, crashed[:2])
+    check("1대1 10판 — 동점 자리 %d번 (골라 넘김 %d · 기점 판단 안에서 TypeError %d), 멈춘 판 %d/10"
+          % (st["tie"] + st["err"], st["tie"], st["err"], len(crashed)),
+          st["tie"] > 0 and st["err"] == 0 and not crashed, crashed[:2])
 
 
 def test_rollout_setup_tie(dex):
@@ -8445,16 +8455,43 @@ def test_rollout_setup_tie(dex):
     _b, sets = search.sample_opp_party(dex, [mimi], random.Random(0), ev)
     names = [m["name"] for m in sets[0]]
     check("검사 전제: 뽑힌 세트에 칼춤·용의춤이 같이 든다 (%s)" % names, {"칼춤", "용의춤"} <= set(names))
-    crashed = []
-    for s in range(10):
-        try:
-            search.rollout(dex, [hip], [mimi], ("기술", M("지진")), random.Random(s), evidence=ev)
-        except TypeError as e:
-            crashed.append((s, str(e)))
-    check("본 기술로 칼춤·용의춤이 든 따라큐 — rollout 10판 중 멈춘 판 %d" % len(crashed), not crashed, crashed[:2])
+    # ! 멈춘 판만 세면 「0판」 이 **동점 자리를 안 밟아서** 나온 것인지 구별이 안 된다. 그래서 판마다
+    #   뽑힌 세트를 옆에서 보고(가로채 돌려주기만 한다), 동점 자리였던 판을 따로 센다 —
+    #   세트에 공격을 올리는 합 최대 기술이 둘 이상이고, 상대 첫 수가 기점 기술이었거나(골라 넘김)
+    #   그 전에 멈췄으면(고치기 전 코드) 밟은 것이다.
+    real = search.sample_opp_party
+    drawn = []
+
+    def peek(*a, **k):
+        out = real(*a, **k)
+        drawn.append(out[1][0])
+        return out
+    crashed, tie_ok, tie_crash = [], 0, 0
+    search.sample_opp_party = peek
+    try:
+        for s in range(10):
+            del drawn[:]
+            g = {}
+            try:
+                search.rollout(dex, [hip], [mimi], ("기술", M("지진")), random.Random(s), evidence=ev, guess=g)
+                stopped = False
+            except TypeError as e:
+                crashed.append((s, str(e)))
+                stopped = True
+            ups = [sum(gn.values()) for gn in (battle.Policy.setup_gain(m) or {} for m in drawn[0])
+                   if gn.get("attack")]
+            tied = bool(ups) and ups.count(max(ups)) > 1
+            if tied and stopped:
+                tie_crash += 1
+            elif tied and {"칼춤", "용의춤"} & set(g):
+                tie_ok += 1
+    finally:
+        search.sample_opp_party = real
+    check("본 기술로 칼춤·용의춤이 든 따라큐 — rollout 10판 중 동점 자리 %d판 (골라 넘김 %d · 그 자리에서 멈춤 %d), "
+          "멈춘 판 %d/10" % (tie_ok + tie_crash, tie_ok, tie_crash, len(crashed)),
+          tie_ok > 0 and not crashed, crashed[:2])
 
     # ② 세트 순서를 정해 놓고 상대 첫 수를 센다 (몸은 사용률 1위 따라큐로 고정)
-    real = search.sample_opp_party
 
     def first_move(order, seed=0):
         search.sample_opp_party = lambda *a, **k: ([mimi_b], [[M(n) for n in order]])
@@ -8483,6 +8520,89 @@ def test_rollout_setup_tie(dex):
     b2 = first_move(["기어체인지", "칼춤", "야습", "치근거리기"])
     check("합이 다르면 순서와 상관없이 합이 큰 기어체인지 (%s / %s)" % (b1, b2),
           b1 == ["기어체인지"] and b2 == ["기어체인지"])
+
+
+def test_fallback_setup_tie(dex):
+    """[80] 기술표를 **모를 때**(사용률 후보)도 합이 같은 기점 기술 둘에서 멈추지 않는다 (2026-09-28).
+
+    [78] 은 받은 기술표 길만 봤다. `Policy._best_move` 는 기술표가 없으면 `best.candidate_moves` 의
+    사용률 후보에서 고르는데 — **실제 사용률 자료에** 합이 같은 공격 기점 기술 둘을 같이 쓰는 종이 있다.
+    드닐레이브(칼춤 → 용의춤 순) · 장크로다일(용의춤 → 칼춤 순). 고치기 전 코드에서는 아래 두 대면이
+    둘 다 TypeError 로 멈췄다 (독립 감사가 남긴 지적). 규칙은 [78] 과 같다 — 합이 같으면 후보 순서의 첫 기술.
+    ! 후보 순서는 사용률 순서다. 자료가 바뀌어 순서·구성이 달라지면 전제 검사가 먼저 알린다.
+    """
+    import random
+    print("\n[80] 기술표를 모를 때(사용률 후보) — 합이 같은 기점 기술 둘에서 멈추지 않는다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+
+    def order(sp):
+        """사용률 후보 중 공격을 올리는 기점 기술 — (이름, 합) 을 후보 순서대로."""
+        out = []
+        for m, _pct in best.candidate_moves(dex, P(sp)):
+            g = battle.Policy.setup_gain(m)
+            if g and g.get("attack"):
+                out.append((m["name"], sum(g.values())))
+        return out
+    o1, o2 = order("드닐레이브"), order("장크로다일")
+    check("검사 전제: 드닐레이브 후보의 공격 기점은 칼춤 → 용의춤, 합이 같다 (%s)" % o1,
+          o1 == [("칼춤", 2), ("용의춤", 2)])
+    check("검사 전제: 장크로다일 후보의 공격 기점은 용의춤 → 칼춤, 합이 같다 (%s)" % o2,
+          o2 == [("용의춤", 2), ("칼춤", 2)])
+
+    # ① 한 번 고르기 — 양쪽 다 기술표 없음 (둘 다 사용률 후보로 잰다)
+    def pick(sp, fn, plan):
+        me, foe = pb(sp), pb(fn)
+        b = battle.Battle(dex, me, foe, rng=random.Random(1))
+        pol = battle.Policy(dex, me, foe, [M(plan)])
+        inc = pol._incoming(b.me, b)
+        try:
+            got = pol._best_move(b.me, b)["name"]
+        except TypeError as e:
+            got = "TypeError: %s" % e
+        return got, inc, pol.known_moves(b.me)
+
+    for sp, fn, plan, want in (("드닐레이브", "갸라도스", "지진", "칼춤"),
+                               ("장크로다일", "엠페르트", "아쿠아브레이크", "용의춤")):
+        got, inc, known = pick(sp, fn, plan)
+        check("검사 전제: %s vs %s — 기술표가 없어 사용률 후보로 고르고, 들어오는 피해 %.3f < %.2f"
+              % (sp, fn, inc, battle.Policy.SETUP_SAFE),
+              known is None and inc < battle.Policy.SETUP_SAFE)
+        check("%s vs %s — 멈추지 않고 후보에서 먼저 나온 %s (%s)" % (sp, fn, want, got), got == want)
+    again = [pick("드닐레이브", "갸라도스", "지진")[0] for _ in range(3)]
+    check("같은 입력이면 늘 같은 답 (%s)" % again, again == ["칼춤"] * 3)
+
+    # ② 판을 끝까지 — 상대 벤치의 장크로다일이 나와서 사용률 후보로 기점을 고르는 자리
+    real_setup = battle.Policy._setup_move
+    st = {"tie": 0, "err": 0, "pick": {}}
+
+    def spy(self, side, rows, bt):
+        names = {r["move"]["name"] for r in rows}
+        tie_here = ("장크로다일" in side.base.poke["name"] and {"칼춤", "용의춤"} <= names
+                    and side.ranks.get("attack", 0) == 0)
+        try:
+            r = real_setup(self, side, rows, bt)
+        except TypeError:
+            st["err"] += 1                  # 터진 것도 밟은 것으로 센다 ([78] 과 같은 까닭)
+            raise
+        if tie_here and r is not None:
+            st["tie"] += 1
+            st["pick"][r["name"]] = st["pick"].get(r["name"], 0) + 1
+        return r
+    battle.Policy._setup_move = spy
+    crashed = []
+    try:
+        for s in range(10):
+            try:
+                battle.run_once(dex, [pb("엠페르트")], [pb("하마돈"), pb("장크로다일")],
+                                [M("파도타기")], [M("지진")], random.Random(s))
+            except TypeError as e:
+                crashed.append((s, str(e)))
+    finally:
+        battle.Policy._setup_move = real_setup
+    check("엠페르트 vs 하마돈·장크로다일 10판 — 동점 자리 %d번 (골라 넘김 %d %s · 기점 판단 안에서 TypeError %d), "
+          "멈춘 판 %d/10" % (st["tie"] + st["err"], st["tie"], st["pick"], st["err"], len(crashed)),
+          st["tie"] > 0 and st["err"] == 0 and not crashed and set(st["pick"]) == {"용의춤"}, crashed[:2])
 
 
 def main():
@@ -8568,6 +8688,7 @@ def main():
     test_known_lead_reselect(dex)
     test_setup_tie(dex)
     test_rollout_setup_tie(dex)
+    test_fallback_setup_tie(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
