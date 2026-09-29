@@ -8333,6 +8333,158 @@ def test_known_lead_reselect(dex):
     check("3대3 20판(표 없음) — 표를 모르는 선봉은 예전처럼 되풀이한다 (%d번)" % st["unknown"], st["unknown"] > 0)
 
 
+def test_setup_tie(dex):
+    """[78] **올리는 합이 같은 기점 기술 둘** — 멈추지 않고, 표에서 먼저 나온 것을 고른다 (2026-09-28).
+
+    `Policy._setup_move` 가 `max(cand)` 로 (올리는 합, 기술 dict) 짝을 통째로 비교했다. 칼춤(공격+2)과
+    용의춤(공격+1 스피드+1)처럼 합이 같으면 dict 끼리 크기를 비교하다 TypeError 로 판이 멈췄다.
+    [61] 의 `search.best_action(seconds=1.5)` 가 이 자리를 **가끔** 밟아서(시간으로 판수를 정하므로)
+    전체 검사가 가끔 [61] 에서 멈췄다 — 단독으로 세 번 돌려 한 번.
+
+    ★ 멈추지만 않게 하는 것이 아니라 **어느 것을 고르는지까지** 고정한다 — 합이 같으면 표 순서의 첫 기술,
+      합이 다르면 표 순서와 상관없이 합이 큰 기술 (예전과 같은 답).
+    """
+    import random
+    print("\n[78] 올리는 합이 같은 기점 기술 둘 — 멈추지 않고 표에서 먼저 나온 것")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    check("검사 전제: 칼춤·용의춤은 둘 다 공격을 올리고 합이 2",
+          battle.Policy.setup_gain(M("칼춤")) == {"attack": 2}
+          and battle.Policy.setup_gain(M("용의춤")) == {"attack": 1, "speed": 1})
+    check("검사 전제: 기어체인지는 공격을 올리고 합이 3",
+          battle.Policy.setup_gain(M("기어체인지")) == {"attack": 1, "speed": 2})
+
+    # ① 자연스러운 자리 — 갸라도스 vs 아머까오 (상대 기술을 알아서 들어오는 피해가 작다 → 기점 조건을 넘는다)
+    gy, foe = pb("갸라도스"), pb("아머까오")
+
+    def pick(mv):
+        b = battle.Battle(dex, gy, foe, rng=random.Random(1))
+        b.opp.moveset = ["철벽", "바디프레스", "날개쉬기", "유턴"]
+        pol = battle.Policy(dex, gy, foe, [M(mv[0])], party_moves=[mv])
+        try:
+            return pol._best_move(b.me, b)["name"], pol._incoming(b.me, b)
+        except TypeError as e:
+            return "TypeError: %s" % e, None
+
+    a, inc = pick(["칼춤", "용의춤", "폭포오르기", "지진"])
+    check("검사 전제: 들어오는 피해가 기점 기준 미만 (%s)" % (inc if inc is None else "%.3f" % inc),
+          inc is not None and inc < battle.Policy.SETUP_SAFE)
+    check("동점 [칼춤, 용의춤, …] — 멈추지 않고 먼저 나온 칼춤 (%s)" % a, a == "칼춤")
+    a2, _ = pick(["용의춤", "칼춤", "폭포오르기", "지진"])
+    check("동점 [용의춤, 칼춤, …] — 순서를 바꾸면 먼저 나온 용의춤 (%s)" % a2, a2 == "용의춤")
+    again = [pick(["칼춤", "용의춤", "폭포오르기", "지진"])[0] for _ in range(3)]
+    check("같은 입력이면 늘 같은 답 (%s)" % again, again == ["칼춤"] * 3)
+    # 합이 다르면 표 순서와 상관없이 합이 큰 기술 — 예전 max(cand) 와 같은 답
+    b1, _ = pick(["칼춤", "기어체인지", "폭포오르기", "지진"])
+    b2, _ = pick(["기어체인지", "칼춤", "폭포오르기", "지진"])
+    check("합이 다르면 순서와 상관없이 합이 큰 기어체인지 (%s / %s)" % (b1, b2),
+          b1 == "기어체인지" and b2 == "기어체인지")
+
+    # ② `_setup_move` 를 곧장 — 공짜 한 대(대타)가 있어 HP·들어오는 피해 조건을 건너뛰는 길
+    gar, hip = pb("한카리아스"), pb("하마돈")
+    got = []
+    for order in (["지진", "칼춤", "용의춤"], ["지진", "용의춤", "칼춤"]):
+        b = battle.Battle(dex, [gar], [hip], rng=random.Random(1))
+        pol = battle.Policy(dex, [gar], [hip], [M("지진")], party_moves=[order], auto_mega=False)
+        b.me.substitute = 1
+        rows = best.rate_moves(dex, b.me.as_build(), b.opp.as_build(), [(M(n), None) for n in order])
+        try:
+            r = pol._setup_move(b.me, rows, b)
+            got.append(r["name"] if r else None)
+        except TypeError as e:
+            got.append("TypeError: %s" % e)
+    check("대타 길에서도 동점이면 표에서 먼저 나온 기술 (%s)" % got, got == ["칼춤", "용의춤"])
+
+    # ③ 판을 끝까지 — 동점 자리를 실제로 밟고도 멈추지 않는다
+    real_setup = battle.Policy._setup_move
+    st = {"tie": 0}
+
+    def spy(self, side, rows, bt):
+        names = {r["move"]["name"] for r in rows}
+        r = real_setup(self, side, rows, bt)
+        if r is not None and {"칼춤", "용의춤"} <= names and side.ranks.get("attack", 0) == 0:
+            st["tie"] += 1
+        return r
+    battle.Policy._setup_move = spy
+    crashed = []
+    try:
+        for s in range(10):
+            try:
+                # 계획 첫 수는 공격기 — 칼춤으로 시작하면 공격 +2 라 다음 턴부터 동점 자리가 안 생긴다
+                battle.run_once(dex, [gy], [foe], [M("폭포오르기")], [M("철벽")], random.Random(s),
+                                my_moves=["칼춤", "용의춤", "폭포오르기", "지진"],
+                                opp_moves=[["철벽", "바디프레스", "날개쉬기", "유턴"]])
+            except TypeError as e:
+                crashed.append((s, str(e)))
+    finally:
+        battle.Policy._setup_move = real_setup
+    check("1대1 10판 — 동점 자리를 %d번 밟고 멈춘 판 %d" % (st["tie"], len(crashed)),
+          st["tie"] > 0 and not crashed, crashed[:2])
+
+
+def test_rollout_setup_tie(dex):
+    """[79] `search.rollout` 의 **탈 기점 첫 수**도 합이 같으면 멈추지 않고 세트에서 먼저 나온 것 (2026-09-28).
+
+    [78] 과 같은 모양이 `search.rollout` 에 따로 있었다 — 상대가 탈(따라큐)이면 첫 턴 계획을 기점 기술로
+    바꾸는 자리에서 `max(ups)` 가 (합, 기술 dict) 짝을 통째로 비교했다. 칼춤·용의춤이 함께 든 따라큐면
+    TypeError 로 판이 멈췄다 (독립 감사가 찾음, 고치기 전 씨앗 0~19 전부).
+    시간 예산 없이 `rollout` 을 직접 부르고 씨앗을 고정한다. 고르는 것은 `guess` 에 센 상대 첫 수로 본다.
+    """
+    import random
+    import search
+    import scout
+    print("\n[79] rollout 의 탈 기점 첫 수 — 합이 같아도 멈추지 않고 세트에서 먼저 나온 것")
+    P, M = dex.find_pokemon, dex.find_move
+    hip = calc.popular_build(dex, P("하마돈"))[0]
+    mimi = P("따라큐")
+    mimi_b = calc.popular_build(dex, mimi)[0]
+    check("검사 전제: 따라큐의 특성은 탈 (%s)" % mimi_b.ability, mimi_b.ability == battle.DISGUISE)
+
+    # ① 공개 경로 그대로 — 본 기술(evidence)로 칼춤·용의춤을 세트에 넣는다
+    ev = [scout.Evidence(seen_moves=["칼춤", "용의춤"])]
+    _b, sets = search.sample_opp_party(dex, [mimi], random.Random(0), ev)
+    names = [m["name"] for m in sets[0]]
+    check("검사 전제: 뽑힌 세트에 칼춤·용의춤이 같이 든다 (%s)" % names, {"칼춤", "용의춤"} <= set(names))
+    crashed = []
+    for s in range(10):
+        try:
+            search.rollout(dex, [hip], [mimi], ("기술", M("지진")), random.Random(s), evidence=ev)
+        except TypeError as e:
+            crashed.append((s, str(e)))
+    check("본 기술로 칼춤·용의춤이 든 따라큐 — rollout 10판 중 멈춘 판 %d" % len(crashed), not crashed, crashed[:2])
+
+    # ② 세트 순서를 정해 놓고 상대 첫 수를 센다 (몸은 사용률 1위 따라큐로 고정)
+    real = search.sample_opp_party
+
+    def first_move(order, seed=0):
+        search.sample_opp_party = lambda *a, **k: ([mimi_b], [[M(n) for n in order]])
+        g = {}
+        try:
+            search.rollout(dex, [hip], [mimi], ("기술", M("지진")), random.Random(seed), guess=g)
+        except TypeError as e:
+            return "TypeError: %s" % e
+        finally:
+            search.sample_opp_party = real
+        return [k for k in g if k != search.MEGA_KEY]
+
+    tie = ["칼춤", "용의춤", "야습", "치근거리기"]
+    rows = best.rate_moves(dex, mimi_b, hip, [(M(n), None) for n in tie])
+    thr = best.best_threat(rows)
+    check("검사 전제: 위협이 물리이고 지금 못 잡는다 (%s koNow %.2f)" % (thr["move"]["name"], thr["koNow"]),
+          thr["move"]["category"] == "물리" and thr["koNow"] < 0.5)
+    a = first_move(tie)
+    check("동점 [칼춤, 용의춤, …] — 상대 첫 수는 먼저 나온 칼춤 (%s)" % a, a == ["칼춤"])
+    a2 = first_move(["용의춤", "칼춤", "야습", "치근거리기"])
+    check("동점 [용의춤, 칼춤, …] — 순서를 바꾸면 용의춤 (%s)" % a2, a2 == ["용의춤"])
+    again = [first_move(tie, seed=s) for s in range(3)]
+    check("씨앗이 달라도 같은 세트면 같은 첫 수 (%s)" % again, again == [["칼춤"]] * 3)
+    # 합이 다르면 순서와 상관없이 합이 큰 기술 — 예전 max(ups) 와 같은 답
+    b1 = first_move(["칼춤", "기어체인지", "야습", "치근거리기"])
+    b2 = first_move(["기어체인지", "칼춤", "야습", "치근거리기"])
+    check("합이 다르면 순서와 상관없이 합이 큰 기어체인지 (%s / %s)" % (b1, b2),
+          b1 == ["기어체인지"] and b2 == ["기어체인지"])
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -8414,6 +8566,8 @@ def main():
     test_current_foe(dex)
     test_own_state_table(dex)
     test_known_lead_reselect(dex)
+    test_setup_tie(dex)
+    test_rollout_setup_tie(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

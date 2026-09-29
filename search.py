@@ -283,7 +283,10 @@ def rollout(dex, my_party, opp_pokes, action, rng, evidence=None,
                ((m, battle.Policy.setup_gain(m) or {}) for m in opp_moves)
                if g.get(want)]
         if ups:
-            opp_plan = [max(ups)[1]]
+            # ! 합만 비교하고, 같으면 **세트에서 먼저 나온 기술** (`Policy._setup_move` 와 같은 규칙, [78]).
+            #   전에는 max(ups) 가 (합, 기술 dict) 짝을 통째로 비교해서, 칼춤·용의춤처럼 합이 같으면
+            #   dict 끼리 크기를 비교하다 TypeError 로 판이 멈췄다 ([79]). 합이 다를 때는 예전과 같은 기술.
+            opp_plan = [max(ups, key=lambda u: u[0])[1]]
     # 상대도 메가를 쓴다. **안 쓰게 두면 상대가 실제보다 약해진다** —
     # 그러면 내 승률이 통째로 뻥튀기된다. 상대는 '첫 기회에 바로' 로 둔다
     # (정한 규칙이지 잰 것이 아니다. `Policy._wrap_mega` 와 같은 규칙).

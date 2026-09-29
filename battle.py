@@ -3774,7 +3774,12 @@ class Policy(object):
                 return None
             if self._incoming(side, battle) >= self.SETUP_SAFE:
                 return None
-        return max(cand)[1]
+        # ! 올리는 합만 비교하고, 같으면 **표에서 먼저 나온 기술** (max 는 먼저 만난 최댓값을 돌려준다).
+        #   전에는 max(cand) 가 (합, 기술 dict) 짝을 통째로 비교해서, 칼춤(공격+2)·용의춤(공격+1 스피드+1)
+        #   처럼 합이 같으면 dict 끼리 크기를 비교하다 TypeError 로 판이 통째로 멈췄다 ([78]).
+        #   표 순서는 받은 기술표(없으면 사용률 후보) 순서라 같은 입력이면 늘 같은 답이다.
+        #   합이 다를 때는 예전과 같은 기술을 고른다.
+        return max(cand, key=lambda c: c[0])[1]
 
     def _moves_of(self, side):
         """이 놈의 기술표 (마리별로 받은 것). 없으면 None."""
