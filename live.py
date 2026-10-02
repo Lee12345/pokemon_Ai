@@ -1120,6 +1120,8 @@ def choose_three(dex, party, text, fight=None, seconds=SELECT_SECONDS,
     """
     say = say or (lambda t: None)
     my6 = [row[0] for row in party]
+    # 기술표도 **같은 순서로** 넘긴다 — 전에는 버려서 선출 평가가 사용률로 짐작했다 ([83]).
+    my_moves6 = [list(row[1] or []) for row in party]
     names = [x.strip() for x in text.replace(" ", ",").split(",") if x.strip()]
     if names:
         opp6 = []
@@ -1141,7 +1143,8 @@ def choose_three(dex, party, text, fight=None, seconds=SELECT_SECONDS,
                                                       pick.PICK)
 
     opp_builds = [calc.popular_build(dex, p)[0] for p in opp6]
-    got = pick.choose(dex, my6, opp_builds, seconds=seconds, say=say)
+    got = pick.choose(dex, my6, opp_builds, seconds=seconds, say=say,
+                      my_moves6=my_moves6)
     return pick.short_report(dex, my6, opp_builds, got)
 
 

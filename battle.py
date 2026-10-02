@@ -4202,12 +4202,16 @@ def run_once(dex, me_build, opp_build, my_plan, opp_plan, rng, log=False,
 
 
 def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
-             seed=7, my_party=None, matchup=None):
+             seed=7, my_party=None, matchup=None, my_party_moves=None):
     """같은 계획을 여러 번 돌려 승률과 '평균적으로 어떤 상태로 끝나는지' 를 낸다.
 
     난수(데미지 16단계 · 명중 · 급소 · 마비)가 있으므로 한 판만 봐서는 안 된다.
 
     matchup 을 주면 1대1 상성표를 **다시 재지 않는다.**
+
+    my_party_moves 는 **내 마리별 기술표** (`my_party_moves[i]` = `me_build` 의 i번째) — `run_once` 에
+    그대로 넘긴다. ! 이게 없어서 선출(`pick._one_combo`)이 기술표를 하나도 못 넘겼다 — 내 선봉은
+    계획이 끝난 뒤에도 첫 수를 되풀이했다 (감사 Patch 9 의 다시 고르기가 선출에서는 안 돌았다, [83]).
 
     ! 이걸 안 주면 여기서 매번 표를 새로 잰다. 표 하나가 3x3 x 25판
       = 225판이라, 400조합을 훑는 6단계(선출)에서는 **조합당 225판이
@@ -4227,7 +4231,7 @@ def evaluate(dex, me_build, opp_build, my_plan, opp_plan, trials=400,
         dex, me_build, opp_build)
     for _ in range(trials):
         r = run_once(dex, me_build, opp_build, my_plan, opp_plan, rng,
-                     matchup=table)
+                     matchup=table, my_party_moves=my_party_moves)
         counts[r["result"]] = counts.get(r["result"], 0) + 1
         if r["result"] == "이김":
             wins += 1

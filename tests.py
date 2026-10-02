@@ -8930,6 +8930,106 @@ def test_matchup_mega_names(dex):
           and all(v is not None for _, v in spy.seen), spy.seen)
 
 
+def test_pick_known_moves(dex):
+    """[83] 선출 평가(`pick._one_combo → evaluate → run_once → Policy.act`)에도 **내 기술표**가 간다 (2026-10-02).
+
+    감사 Patch 9 로 '기술표를 아는 선봉은 계획이 끝나면 매 턴 다시 고른다' 를 넣었는데([77]), 선출 경로는
+    기술표를 하나도 안 넘겼다 — `gui.ask_pick` 이 `[b for b, _m in party]` 로, `live.choose_three` 가
+    `row[0]` 만 넘겨 기술을 버렸고, `evaluate` 는 받는 자리조차 없었다. 그래서 `known_moves` 가 늘 None 이라
+    계획의 첫 수를 끝까지 되풀이했다. 잰 것 (HEAD 46b039c, 메가한카리아스Z vs 아머까오, 계획 [지진]):
+    표가 있으면 0턴 지진 → 1·2턴 스톤에지, 표가 없으면 지진·지진·지진 (run_once 20판: 지진 58 / 스톤에지 0).
+    ★ 상대 기술표·상성표(`matchup_table`)·`should_switch` 는 이번 범위가 아니다 — 안 건드렸다.
+    ① evaluate 가 기술표를 run_once 까지 넘긴다 — 0턴 계획 지진, 그 뒤 아머까오에게 스톤에지
+    ② `_one_combo` 가 선봉을 앞으로 옮겨도(`_ordered`) 기술표가 **제 놈에게** 붙는다
+    ③ `_one_combo` 끝까지 — 내 놈은 자기 표 밖의 기술을 안 쓰고, 한카리아스는 아머까오 앞에서 지진을 안 고른다
+    """
+    import random
+    print("\n[83] 선출 평가에도 내 기술표가 간다 — 계획이 끝나면 아는 기술 안에서 다시 고른다")
+    P, M = dex.find_pokemon, dex.find_move
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    real_mv = lambda n: [m["name"] for m, _ in battle.realistic_moveset(dex, P(n))]
+    gar, cor = pb("한카리아스"), pb("아머까오")
+    T = ["지진", "스톤에지"]
+    unwrap = lambda a: a[1] if isinstance(a, tuple) and a[0] == "메가" else a
+    real_step, real_eval = battle.Battle.step, battle.evaluate
+
+    seen = []          # (판, 내 자리 번호, 내 놈 이름, 상대 놈 이름, 기술 이름) — 고르는 순간의 상대
+
+    def spy_step(self, x, y):
+        x_ = unwrap(x)
+        if isinstance(x_, dict):
+            me = self.me_party.active
+            seen.append((self, self.me_party.members.index(me), me.name,
+                         self.opp_party.active.name, x_["name"]))
+        return real_step(self, x, y)
+
+    def by_battle():
+        out = {}
+        for b, _i, _n, _f, mv in seen:
+            out.setdefault(id(b), []).append(mv)
+        return list(out.values())
+
+    # ① evaluate → run_once → Policy.act — 계획 [지진] 은 0턴만, 그 뒤 아머까오에게는 표 안의 스톤에지
+    battle.Battle.step = spy_step
+    try:
+        del seen[:]
+        battle.evaluate(dex, [gar], [cor], [M("지진")], [M("브레이브버드")], trials=5, seed=1,
+                        my_party_moves=[T])
+        runs = by_battle()
+        del seen[:]
+        battle.evaluate(dex, [gar], [cor], [M("지진")], [M("브레이브버드")], trials=5, seed=1)
+        runs0 = by_battle()
+    finally:
+        battle.Battle.step = real_step
+        del seen[:]
+    check("검사 전제: 표를 안 주면(고치기 전 선출과 같은 모양) 지진을 되풀이한다 (%s)" % runs0[:1],
+          runs0 and all(r and all(m == "지진" for m in r) for r in runs0))
+    check("evaluate 에 표를 주면 0턴 계획 지진 → 그 뒤 스톤에지 (%d판, %s)" % (len(runs), runs[:1]),
+          len(runs) == 5 and all(len(r) >= 2 and r[0] == "지진" and "스톤에지" in r[1:]
+                                 and "지진" not in r[1:] for r in runs), runs)
+
+    # ②·③ pick._one_combo 끝까지 — 선봉을 일부러 3번(한카리아스)으로 둔다 → `_ordered` 가 순서를 바꾼다
+    my3 = [pb("갸라도스"), pb("하마돈"), gar]
+    op3 = [cor, pb("누리레느"), pb("마스카나")]
+    mt = [real_mv("갸라도스"), real_mv("하마돈"), list(T)]
+    named = battle.matchup_table(dex, my3, op3, trials=5, seed=1)
+    # 선봉을 정하는 칸 — 내 쪽은 3번이 제일 높고, 상대 쪽은 모두 같아 1번(아머까오)이 선봉
+    table = {(i, j): (0.9 if i == 2 else 0.4) for i in range(3) for j in range(3)}
+    table["_named"] = named
+    got = []
+
+    def spy_eval(dex_, me, opp, plan, opp_plan, **kw):
+        got.append(([b.name for b in me], kw.get("my_party_moves"), [unwrap(p)["name"] for p in plan
+                                                                       if isinstance(unwrap(p), dict)]))
+        return real_eval(dex_, me, opp, plan, opp_plan, **kw)
+    battle.evaluate, battle.Battle.step = spy_eval, spy_step
+    try:
+        for s in range(4):
+            selection._one_combo(dex, my3, op3, table, (0, 1, 2), (0, 1, 2), 6, 30 + s, named,
+                                 my_moves6=mt)
+    finally:
+        battle.evaluate, battle.Battle.step = real_eval, real_step
+    names, pm, plan = got[0]
+    want = {my3[i].name: mt[i] for i in range(3)}
+    check("검사 전제: 선봉을 3번으로 옮겨 순서가 바뀐다 (%s)" % names,
+          names[0] == gar.name and names != [b.name for b in my3])
+    check("_one_combo → evaluate: 기술표가 제 놈에게 붙는다 (%s)"
+          % ["%s:%s" % (n, "/".join(m)) for n, m in zip(names, pm or [])],
+          pm is not None and len(pm) == 3 and all(want[n] == m for n, m in zip(names, pm)), pm)
+    check("계획도 선봉의 표 안에서 만든다 (%s ⊂ %s)" % (plan, T), plan and set(plan) <= set(T), plan)
+    outside = [(n, mv) for b, i, n, _f, mv in seen if mv not in pm[i]]
+    # 한카리아스(0번 자리) 만 본다 — 표에 스톤에지가 있는 놈. ! 하마돈(지진·하품·스텔스록·날려버리기)은
+    #   공격기가 지진뿐이라 아머까오 앞에서도 지진을 고른다 (`_best_move` 의 마지막 자리가 `kind != "status"`
+    #   라 효과 없는 공격기도 받는다). 그건 이번 범위(기술표 전달) 밖이다 — 2026-10-02 에 131/322 수로 봤다.
+    gar_cor = [mv for b, i, n, f, mv in seen if i == 0 and f == cor.name]
+    eq_cor = [mv for mv in gar_cor if mv == "지진"]
+    check("끝까지 돌려도 내 놈은 자기 표 밖의 기술을 안 쓴다 (%d수 중 %d)" % (len(seen), len(outside)),
+          seen and not outside, outside[:5])
+    check("한카리아스는 아머까오가 나와 있을 때 지진을 고르지 않는다 (%d수 중 %d)"
+          % (len(gar_cor), len(eq_cor)), gar_cor and not eq_cor, eq_cor[:5])
+    del seen[:]
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -9016,6 +9116,7 @@ def main():
     test_fallback_setup_tie(dex)
     test_matchup_cache_key(dex)
     test_matchup_mega_names(dex)
+    test_pick_known_moves(dex)
 
     print("\n" + "=" * 50)
     if FAIL:

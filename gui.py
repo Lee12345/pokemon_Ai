@@ -1970,17 +1970,20 @@ class App(object):
         self.go_pick.config(text="고르는 중...", state="disabled")
         self.set_state("생각하는 중… 어떤 3마리를 낼까 (%.0f초)" % secs, BAR)
         self.say("선출을 고릅니다 (%.0f초)..." % secs, clear=clear)
-        args = ([b for b, _m in party], [p for p, _hp in foes], secs)
+        # 기술표도 **같은 순서로** 넘긴다 — 전에는 버려서 선출 평가가 사용률로 짐작했다 ([83]).
+        args = ([b for b, _m in party], [p for p, _hp in foes], secs,
+                [list(m) for _b, m in party])
         if self.headless:
             self._work_pick(*args)
         else:
             threading.Thread(target=self._work_pick, args=args,
                              daemon=True).start()
 
-    def _work_pick(self, my_builds, foes, secs):
+    def _work_pick(self, my_builds, foes, secs, my_moves=None):
         try:
             opp_builds = [calc.popular_build(self.dex, p)[0] for p in foes]
-            got = pick.choose(self.dex, my_builds, opp_builds, seconds=secs)
+            got = pick.choose(self.dex, my_builds, opp_builds, seconds=secs,
+                              my_moves6=my_moves)
             text = pick.short_report(self.dex, my_builds, opp_builds, got)
         except Exception:
             import traceback

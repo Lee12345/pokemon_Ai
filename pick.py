@@ -92,22 +92,36 @@ def _ordered(party, trio_idx, lead):
 # ---------------------------------------------------------------------------
 # 400 조합 전부 돌리기
 # ---------------------------------------------------------------------------
-def _one_combo(dex, my6, opp6, table, a, b, trials, seed, named):
-    """조합 하나를 돌린다. 이긴 판수를 돌려준다."""
+def _one_combo(dex, my6, opp6, table, a, b, trials, seed, named,
+               my_moves6=None):
+    """조합 하나를 돌린다. 이긴 판수를 돌려준다.
+
+    my_moves6 는 **내 마리별 기술표** (`my_moves6[i]` = `my6[i]` 의 기술 이름들, 모르면 빈 목록·None).
+    ! 이게 없어서 선출 평가가 내 기술표를 하나도 못 받았다 — 내 선봉은 계획이 끝난 뒤에도 첫 수를
+      되풀이했고(지진만 든 게 아닌데 아머까오에게 지진), 계획도 사용률 후보에서 골라 **들고 있지도
+      않은 기술**로 시작할 수 있었다 ([83]). 7단계(`search`)는 처음부터 넘기고 있었다.
+    ★ 파티와 **같은 `_ordered`** 로 줄 세운다 — 선봉을 앞으로 옮겨도 기술표가 남의 놈에게 안 붙는다.
+    """
     my_lead = _lead_for(a, b, table)
     op_lead = _lead_for(b, a, table, flip=True)
     mine = _ordered(my6, a, my_lead)
     theirs = _ordered(opp6, b, op_lead)
+    mine_moves = (_ordered(my_moves6, a, my_lead)
+                  if my_moves6 is not None else None)
     opp_plan, _, _ = battle.opponent_plan(dex, theirs, mine)
-    plans, _ = battle.build_plans(dex, mine, theirs)
+    # 계획도 선봉이 **들고 있는 기술** 안에서 만든다 (`build_plans` 가 이미 받는 인자).
+    # 표가 비었으면 None — 예전처럼 사용률 후보에서 만든다.
+    plans, _ = battle.build_plans(dex, mine, theirs,
+                                  my_moves=(mine_moves[0] or None) if mine_moves else None)
     plan = plans[0] if plans else [dex.find_move("막치기")]
     r = battle.evaluate(dex, mine, theirs, plan, opp_plan,
-                        trials=trials, seed=seed, matchup=named)
+                        trials=trials, seed=seed, matchup=named,
+                        my_party_moves=mine_moves)
     return r["winRate"] * trials
 
 
 def selection_matrix(dex, my6, opp6, table, trials=20, seed=5, verbose=False,
-                     acc=None, deadline=None, say=None):
+                     acc=None, deadline=None, say=None, my_moves6=None):
     """내 20가지 x 상대 20가지의 승률. 실제로 3대3 을 돌려서 잰다.
 
     acc 를 주면 **판수를 쌓는다** ({(a,b): [이긴판수, 전체판수]}).
@@ -129,7 +143,7 @@ def selection_matrix(dex, my6, opp6, table, trials=20, seed=5, verbose=False,
                 break
             cell = acc.setdefault((a, b), [0.0, 0])
             cell[0] += _one_combo(dex, my6, opp6, table, a, b, trials,
-                                  seed + done, named)
+                                  seed + done, named, my_moves6)
             cell[1] += trials
             done += 1
             if verbose and done % 40 == 0:
@@ -179,7 +193,7 @@ def rank_selections(matrix, my_trios, opp_trios, only=None):
 MIN_TRIALS = 10
 
 
-def _combo_cost(dex, my6, opp6, table, seed=1):
+def _combo_cost(dex, my6, opp6, table, seed=1, my_moves6=None):
     """조합 하나에 드는 비용을 **두 점으로 재서** 갈라놓는다.
 
     (고정비, 한 판당 비용). 조합마다 `opponent_plan` · `build_plans` 를
@@ -194,14 +208,15 @@ def _combo_cost(dex, my6, opp6, table, seed=1):
     named = table.get("_named")
     # 덥히기 — 버린다
     for i in range(3):
-        _one_combo(dex, my6, opp6, table, a, b, 1, seed + 900 + i, named)
+        _one_combo(dex, my6, opp6, table, a, b, 1, seed + 900 + i, named,
+                   my_moves6)
 
     def at(trials, tag):
         fastest = None
         for i in range(3):
             t0 = time.time()
             _one_combo(dex, my6, opp6, table, a, b, trials,
-                       seed + tag * 100 + i, named)
+                       seed + tag * 100 + i, named, my_moves6)
             took = time.time() - t0
             fastest = took if fastest is None else min(fastest, took)
         return fastest
@@ -213,11 +228,14 @@ def _combo_cost(dex, my6, opp6, table, seed=1):
     return fixed, per
 
 
-def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
+def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None, my_moves6=None):
     """예산(초) 안에서 선출을 고른다.
 
     400 조합을 **전부** 훑는 것은 그대로 두고, 남는 시간으로 판수를
     쌓는다. 판수를 적어 돌려주므로 오차를 같이 말할 수 있다.
+
+    my_moves6 — 내 마리별 기술 이름 목록 (`my_moves6[i]` = `my6[i]` 의 기술, 모르면 빈 목록).
+    `my6` 와 **같은 순서·같은 길이**여야 한다 — 어긋나면 남의 기술로 싸우므로 멈춘다.
 
     돌려주는 것 —
       rows / myTrios / oppTrios / matrix / table
@@ -227,6 +245,11 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
       tight      : 최소 판수조차 다 못 돌렸으면 True
     """
     my6, opp6 = list(my6), list(opp6)
+    if my_moves6 is not None:
+        my_moves6 = [list(m) if m else [] for m in my_moves6]
+        if len(my_moves6) != len(my6):
+            raise ValueError("기술표 %d개 / 내 파티 %d마리 — 순서가 어긋난다"
+                             % (len(my_moves6), len(my6)))
     n_combos = (len(list(itertools.combinations(range(len(my6)), PICK)))
                 * len(list(itertools.combinations(range(len(opp6)), PICK))))
     n_pairs = len(my6) * len(opp6)
@@ -240,7 +263,7 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
         say("1대1 상성표 재는 중 (%d쌍 x %d판)" % (n_pairs, pair_trials))
     table = pairwise(dex, my6, opp6, trials=pair_trials, seed=seed)
 
-    fixed, per = _combo_cost(dex, my6, opp6, table, seed)
+    fixed, per = _combo_cost(dex, my6, opp6, table, seed, my_moves6)
     left = max(0.0, end - time.time())
     # 한 바퀴(모든 조합 1판) 에 드는 시간
     lap = n_combos * (fixed + per)
@@ -253,7 +276,7 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
     acc = {}
     matrix, my_trios, opp_trios = selection_matrix(
         dex, my6, opp6, table, trials=first, seed=seed + 4, acc=acc,
-        deadline=end)
+        deadline=end, my_moves6=my_moves6)
     # 남는 예산으로 판수를 더 쌓는다. 한 바퀴가 통째로 들어갈 만할 때만.
     passes = 1
     while True:
@@ -263,7 +286,7 @@ def choose(dex, my6, opp6, seconds=60.0, seed=1, say=None):
             break
         matrix, my_trios, opp_trios = selection_matrix(
             dex, my6, opp6, table, trials=add, seed=seed + 40 * passes,
-            acc=acc, deadline=end)
+            acc=acc, deadline=end, my_moves6=my_moves6)
         passes += 1
         if say:
             say("남는 시간으로 %d판 더 쌓았다" % add)
