@@ -1773,14 +1773,17 @@ def test_scout(dex):
 
 
 def test_scout_narrowing(dex):
-    """관찰하면 범위가 좁아지는가 — 설계 문서 3-4(2)."""
+    """관찰하면 범위가 좁아지는가 — 설계 문서 3-4(2).
+
+    blind 는 600판 — 얼음엄니 채용이 약 3.5% 라 150판에서는 진 판이 3 미만일 수 있다 (seed 4 에서 든 판 2).
+    """
     print("\n[18] 관찰로 좁히기")
     me, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
     opp_poke = dex.find_pokemon("하마돈")
     plan = [dex.find_move("이판사판태클")]
 
     blind = battle.evaluate_vs_distribution(dex, me, opp_poke, plan,
-                                            trials=150, seed=4)
+                                            trials=600, seed=4)
     seen = battle.evaluate_vs_distribution(
         dex, me, opp_poke, plan, trials=150, seed=4,
         evidence=scout.Evidence(seen_moves=["얼음엄니"]))
@@ -8653,8 +8656,8 @@ def test_matchup_cache_key(dex):
     내 한카리아스·하마돈 / 상대 하마돈·한카리아스 20판에서 내 한카리아스 vs 상대 하마돈 실제 1.00 이
     표에서 0.15, 칸 8개 중 4개. 상대 쪽 칸은 (OPP_VIEW, 이름, 이름) 으로 가르고 `matchup_get` 으로 읽는다.
     ! 검사 전 캐시를 비우고, 끝나면 **원래 캐시를 되돌려 놓는다** (다른 검사의 캐시 상태를 안 건드린다).
-    ! 전제의 0.45 / 0.95 차이는 반동이 '넘친 피해' 에도 매겨지는 것 때문이다 (2026-09-30 분석, 안 고침).
-      반동을 고치면 둘 다 1.00 이 되어 전제가 깨진다 — 그때는 다른 대면으로 바꾼다.
+    ! 전제 대면은 타부자고·갸라도스 vs 메가보만다 (20판) — 타부자고 조심 0.70 / 무보정 0.30 / seed 99 0.55.
+      위의 메가보만다 vs 하마돈(0.45 / 0.95)은 반동을 고친 뒤([84]) 둘 다 1.00 이 되어 바꿨다 (2026-10-02).
     """
     print("\n[81] 상성표 캐시 — 이름만 같은 다른 몸·다른 seed 에 먼저 잰 표를 안 돌려준다")
     import random
@@ -8669,10 +8672,10 @@ def test_matchup_cache_key(dex):
         return battle.matchup_table(dex, me, op, trials=T, **kw)
 
     try:
-        op = [pb("하마돈")]
-        a = [pb("보만다"), pb("갸라도스")]
-        b = [pb("보만다"), pb("갸라도스")]
-        b[0].nature = None                      # 무보정 — 이름은 그대로 메가보만다
+        op = [pb("보만다")]
+        a = [pb("타부자고"), pb("갸라도스")]
+        b = [pb("타부자고"), pb("갸라도스")]
+        b[0].nature = None                      # 무보정 — 이름은 그대로 타부자고
         pair = (a[0].name, op[0].name)
         check("검사 전제: 두 몸은 이름이 같고 (%s / %s) 지문은 다르다" % (a[0].name, b[0].name),
               [x.name for x in a] == [x.name for x in b]
@@ -8701,7 +8704,7 @@ def test_matchup_cache_key(dex):
               g99 is not g11 and g99 == f99)
 
         # 캐시는 그대로 쓰인다 — 내용이 같은 새 몸 객체로 물어도 같은 표 객체를 돌려준다
-        again = battle.matchup_table(dex, [pb("보만다"), pb("갸라도스")], op, trials=T, seed=11)
+        again = battle.matchup_table(dex, [pb("타부자고"), pb("갸라도스")], op, trials=T, seed=11)
         check("같은 몸·같은 seed 는 (새 몸 객체라도) 캐시에서 받는다", again is g11)
         n_keys = len(battle._MATCHUP_CACHE)          # seed 11 · seed 99 두 칸
         g99b = battle.matchup_table(dex, a, op, trials=T, seed=99)
@@ -9087,6 +9090,94 @@ def test_recoil_actual_loss(dex):
               % (label, r["hit"], r["hit"] and max(1, int(r["hit"] / 3.0)), r["back"]),
               r["hit"] and r["back"] == max(1, int(r["hit"] * battle.move_recoil(dedge))),
               r["log"])
+
+    # --- 대타·탈·버티기류 — 맞은 몸이 계산 피해보다 적게 잃는 자리 ---
+    def scene(action, op_build, op_action=quake, opp_hp=None, my_ranks=None, sub=None,
+              seed=1):
+        b = battle.Battle(dex, me, op_build, rng=random.Random(seed), log=True,
+                          my_fresh=True, opp_fresh=True, opp_hp=opp_hp, my_ranks=my_ranks)
+        if sub is not None:
+            b.opp.substitute = sub
+        pre = calc.calc_damage(dex, b.me.as_build(), b.opp.as_build(), dedge)
+        op0 = b.opp.hp
+        b.step(action, op_action)
+        text = " ".join(b.log)
+        back = re.search(r"보만다 반동 (\d+) \(HP", text)
+        return {"b": b, "pre": pre, "op0": op0, "text": text, "log": b.log,
+                "back": int(back.group(1)) if back else None}
+
+    def fresh(name, ability=None, item=None):
+        bd, _ = calc.popular_build(dex, dex.find_pokemon(name))
+        if ability is not None:
+            bd.ability = ability
+        if item is not None:
+            bd.item = item or None
+        return bd
+
+    # 1. 대타가 안 부서진다 — 반동 = max(1, int(대타가 잃은 HP / 3))
+    r = scene(dedge, fresh("하마돈"), sub=100)
+    m = re.search(r"이판사판태클 → 하마돈 의 대타에게 (\d+) \(대타 (\d+) 남음\)", r["text"])
+    check("검사 전제(대타 안 부서짐): 대타 100 > 계산 피해 최대 %s, 대타가 맞고 남았다 (%s), "
+          "하마돈 몸은 그대로 (%d → %d)"
+          % (r["pre"].get("max"), m and m.groups(), r["op0"], r["b"].opp.hp),
+          m and r["pre"]["max"] < 100 and int(m.group(2)) == 100 - int(m.group(1))
+          and r["b"].opp.substitute == int(m.group(2)) and r["b"].opp.hp == r["op0"], r["log"])
+    took = int(m.group(1)) if m else None
+    check("대타 안 부서짐: 반동 = max(1, int(대타가 잃은 %s / 3)) = %s (반동 %s)"
+          % (took, took and max(1, int(took / 3.0)), r["back"]),
+          took and r["back"] == max(1, int(took * battle.move_recoil(dedge))), r["log"])
+
+    # 2. 대타가 부서진다 (계산 피해 > 대타 남은 HP) — 반동은 대타 남은 HP 기준
+    r = scene(dedge, fresh("하마돈"), sub=30)
+    m = re.search(r"이판사판태클 → 하마돈 의 대타에게 (\d+) — 대타가 부서졌다", r["text"])
+    check("검사 전제(대타 부서짐): 계산 피해 최소 %s > 대타 30, 대타가 부서졌다 (%s), "
+          "하마돈 몸은 그대로 (%d → %d)"
+          % (r["pre"].get("min"), m and m.group(1), r["op0"], r["b"].opp.hp),
+          m and r["pre"]["min"] > 30 and int(m.group(1)) == 30
+          and r["b"].opp.substitute == 0 and r["b"].opp.hp == r["op0"], r["log"])
+    check("대타 부서짐: 반동 = int(대타 남은 30 / 3) = 10 — 계산 피해 기준이 아니다 (반동 %s)"
+          % r["back"], r["back"] == 10, r["log"])
+
+    # 3. 따라큐의 탈이 막았다 — 반동 없음.
+    #    이판사판태클(노말)은 고스트에 안 통하므로 메가(스카이스킨 → 비행)로 친다.
+    r = scene(("메가", dedge), fresh("따라큐"))
+    mimi = r["b"].opp
+    check("검사 전제(탈): 따라큐(특성 %s)의 탈이 이 공격에 벗겨졌고, 몸·대타에 들어간 줄이 없다 (탈 %s)"
+          % (mimi.base.ability, mimi.disguise),
+          mimi.base.ability == battle.DISGUISE and "탈이 벗겨졌다" in r["text"]
+          and "이판사판태클 →" not in r["text"] and not mimi.disguise, r["log"])
+    check("탈: 반동이 없다 (반동 %s)" % r["back"], r["back"] is None, r["log"])
+
+    # 4. 옹골참 · 기합의띠로 HP 1 — 반동 = int((맞기 전 HP - 1) / 3)
+    for label, op_build, note in (
+            ("기합의띠", fresh("하마돈", item="기합의띠"), "기합의띠 로 HP 1 남기고 버팀"),
+            ("옹골참", fresh("하마돈", ability=battle.ENDURE_FULL, item=""),
+             "옹골참으로 HP 1 남기고 버팀")):
+        r = scene(dedge, op_build, my_ranks={"attack": 6})
+        hp_line = re.search(r"이판사판태클 → 하마돈 에게 (\d+) \(HP (\d+)/(\d+)\)", r["text"])
+        check("검사 전제(%s): HP 가득(%d/%d)한 하마돈에게 계산 피해 최소 %s ≥ HP, 맞고 HP %s · 「%s」"
+              % (label, r["op0"], r["b"].opp.max_hp, r["pre"].get("min"),
+                 hp_line and hp_line.group(2), note),
+              r["op0"] == r["b"].opp.max_hp and r["pre"]["min"] >= r["op0"]
+              and hp_line and hp_line.group(2) == "1" and note in r["text"], r["log"])
+        want = int((r["op0"] - 1) * battle.move_recoil(dedge))
+        check("%s: 반동 = int((%d - 1) / 3) = %d (반동 %s)" % (label, r["op0"], want, r["back"]),
+              r["back"] == want, r["log"])
+
+    # 5. 버티기로 HP 1 — 위와 같다. 버티기(우선도 +4)가 먼저 나가야 한다.
+    endure = dex.find_move("버티기")
+    r = scene(dedge, fresh("하마돈"), op_action=endure, opp_hp=[10])
+    hp_line = re.search(r"이판사판태클 → 하마돈 에게 (\d+) \(HP (\d+)/(\d+)\)", r["text"])
+    check("검사 전제(버티기): 하마돈 HP %d · 「이 턴은 버틴다」 가 먼저 · 계산 피해 최소 %s > HP · "
+          "맞고 HP %s · 「버티기로 HP 1 남김」"
+          % (r["op0"], r["pre"].get("min"), hp_line and hp_line.group(2)),
+          "이 턴은 버틴다" in r["text"] and r["pre"]["min"] > r["op0"]
+          and r["text"].index("이 턴은 버틴다") < r["text"].index("이판사판태클 →")
+          and hp_line and hp_line.group(2) == "1" and "버티기로 HP 1 남김" in r["text"],
+          r["log"])
+    want = int((r["op0"] - 1) * battle.move_recoil(dedge))
+    check("버티기: 반동 = int((%d - 1) / 3) = %d (반동 %s)" % (r["op0"], want, r["back"]),
+          r["back"] == want, r["log"])
 
 
 def main():
