@@ -795,6 +795,24 @@ _NO_REPEAT = re.compile(r"이 기술은 2회 연속으로 사용할 수 없다")
 # ---------------------------------------------------------------------------
 # 대전 중 한 마리의 상태
 # ---------------------------------------------------------------------------
+def mega_base_build(dex, build):
+    """메가 폼 Build 면 **메가 전 기본 폼** Build (스톤은 그대로 든다), 아니면 None.
+
+    `Side` 가 메가 폼을 받으면 이것으로 시작하고, `matchup_table` 은 이것으로 '메가를 못 하게 된
+    기본 폼' 칸을 잰다 — **같은 함수**라 두 쪽의 몸이 어긋나지 않는다.
+    """
+    if not build.poke.get("isMega"):
+        return None
+    base_poke = calc.base_form(dex, build.poke)
+    if base_poke is build.poke:
+        return None
+    return calc.Build(
+        dex, base_poke, sp=build.sp, nature=build.nature,
+        ranks=build.ranks, item=build.item,
+        ability=calc.base_ability(dex, base_poke),
+        status=build.status, hp_ratio=build.hp_ratio)
+
+
 class Side(object):
     """`calc.Build` 는 그대로 두고, 대전 중 변하는 것만 여기 담는다.
 
@@ -819,15 +837,10 @@ class Side(object):
         self.mega_form = None
         self.is_mega = False
         origin = build
-        if build.poke.get("isMega"):
-            base_poke = calc.base_form(dex, build.poke)
-            if base_poke is not build.poke:
-                self.mega_form = build
-                build = calc.Build(
-                    dex, base_poke, sp=build.sp, nature=build.nature,
-                    ranks=build.ranks, item=build.item,
-                    ability=calc.base_ability(dex, base_poke),
-                    status=build.status, hp_ratio=build.hp_ratio)
+        pre = mega_base_build(dex, build)
+        if pre is not None:
+            self.mega_form = build
+            build = pre
         self.base = build
         # ! **넘겨받은 그대로의 Build 도 들고 있는다.** 위에서 메가 폼을
         #   기본 폼으로 갈아 끼우면 `self.base` 가 **새 객체**가 되는데,
@@ -1329,7 +1342,7 @@ class Battle(object):
             if fresh is False and item_effect(dex, side.item, "choice_lock") and not side.item_used:
                 self._warn("%s 의 %s — 이미 어떤 기술에 묶였는지 몰라 **안 묶인 것**으로 봤습니다"
                            % (side.name, side.item))
-        # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다).
+        # 이름쌍 -> 1대1 승률. 교체 판단에 쓴다 (matchup_table 로 미리 재 둔다. 읽기는 matchup_get).
         self.matchup = matchup
         for party, sts in ((self.me_party, my_status), (self.opp_party, opp_status)):
             for side, st in zip(party.members, sts or ()):
@@ -3334,6 +3347,22 @@ class Battle(object):
             return 1.0 + 0.5 * left        # 1.0 ~ 1.5 — 여유가 많을수록 높다
         return 0.6 * dealt                 # 0 ~ 0.6 — 못 이기면 무조건 아래
 
+    @staticmethod
+    def _matchup_name(side, party):
+        """상성표에서 이 놈을 찾을 이름 — **지금 상태**에 맞는 칸 (`_variants`).
+
+        메가했거나 아직 메가할 수 있으면 넘겨받은 메가 폼 몸의 칸 (그 칸은 '첫 행동에 메가한다' 로 쟀다),
+        같은 편이 이미 메가를 써서 못 하게 됐으면 기본 폼 몸의 칸.
+        ! 전에는 `side.name` 을 그대로 썼다. 메가스톤 든 놈은 기본 폼으로 시작해서 이름이 「보만다」
+          인데 표의 칸은 「메가보만다」 라, **메가 전에는 표를 한 번도 못 찾고** 어림셈으로 돌아갔다.
+          벤치에 앉은 그런 놈은 교체 후보에서 소리 없이 빠졌다 ([81]).
+        """
+        if side.mega_form is None:
+            return side.name
+        if side.is_mega or not party.mega_used:
+            return side.origin.name
+        return side.name                  # 메가를 못 하게 된 기본 폼
+
     def should_switch(self, party):
         """지금 빼는 게 나은가. 나으면 바꿀 번호를, 아니면 None.
 
@@ -3351,11 +3380,15 @@ class Battle(object):
             return None
 
         if self.matchup is not None:
-            stay = self.matchup.get((party.active.name, foe.name))
+            mine = party is self.me_party
+            foe_party = self.opp_party if mine else self.me_party
+            foe_name = self._matchup_name(foe, foe_party)
+            stay = matchup_get(self.matchup, mine,
+                               self._matchup_name(party.active, party), foe_name)
             if stay is not None:
                 best_idx, best_val = None, stay + SWITCH_MARGIN
                 for i, side in bench:
-                    v = self.matchup.get((side.name, foe.name))
+                    v = matchup_get(self.matchup, mine, self._matchup_name(side, party), foe_name)
                     if v is None:
                         continue
                     # 들어오면서 한 대 맞고, 압정도 밟는다. 그만큼 깎아 본다.
@@ -4024,37 +4057,87 @@ def _as_party(builds):
 
 
 _MATCHUP_CACHE = {}
+OPP_VIEW = "상대"          # 상성표에서 **상대 쪽에서 본** 칸의 머리표 — `matchup_get`
+
+
+def matchup_get(table, mine, name, foe_name):
+    """상성표에서 `name` 이 `foe_name` 을 이길 확률. mine 은 name 이 **내 파티** 쪽인가.
+
+    ! 내 쪽은 (내 이름, 상대 이름), 상대 쪽은 (OPP_VIEW, 상대 이름, 내 이름) 칸이다.
+      전에는 둘 다 (이름, 이름) 이라, 같은 종이 양쪽에 있으면 (내 한카리아스·하마돈 /
+      상대 하마돈·한카리아스) 상대 쪽 칸이 내 쪽 칸을 덮어썼다 — 내 한카리아스 vs 상대 하마돈
+      실제 1.00 이 표에서 0.15 ([81]). 교체 판단·선출 표가 그 값을 읽었다.
+    """
+    return table.get((name, foe_name) if mine else (OPP_VIEW, name, foe_name))
+
+
+def _variants(dex, build):
+    """상성표에서 이 놈이 가질 수 있는 몸들. [넘겨받은 몸] + 메가 폼이면 [메가 못 하는 기본 폼].
+
+    ! 넘겨받은 메가 폼 몸으로 잰 칸은 **'첫 행동에 메가한다'** 는 판이다 (1대1 도 기본 폼으로 시작해
+      `_wrap_mega` 로 메가한다). 같은 편이 이미 메가를 써서 이놈은 기본 폼으로만 싸우는 상태에는
+      안 맞는다 — 그래서 그 상태의 칸을 기본 폼 몸(`mega_base_build`)으로 **따로 잰다.**
+      어느 칸을 읽을지는 `Battle._matchup_name` 이 지금 상태로 정한다.
+    """
+    pre = mega_base_build(dex, build)
+    return [build] if pre is None else [build, pre]
+
+
+def _matchup_raw(dex, mine, theirs, trials, seed):
+    """캐시 없이 상성표를 잰다 (`matchup_table` 과 그 대조 모드가 쓴다)."""
+    out = {}
+    for i, a0 in enumerate(mine):
+        for j, b0 in enumerate(theirs):
+            for va, a in enumerate(_variants(dex, a0)):
+                for vb, b in enumerate(_variants(dex, b0)):
+                    opp_plan, _, _ = opponent_plan(dex, b, a)
+                    plans, _ = build_plans(dex, a, b)
+                    plan = plans[0] if plans else [dex.find_move("막치기")]
+                    # 넘겨받은 몸끼리(va = vb = 0)는 예전과 같은 씨앗 — 원래 칸의 값이 안 바뀐다
+                    rng = random.Random(seed + i * 13 + j + 7919 * (va * 2 + vb))
+                    win = 0
+                    for _ in range(trials):
+                        r = run_once(dex, a, b, plan, opp_plan, rng, opp_switch=False)
+                        if r["result"] == "이김":
+                            win += 1
+                    p = win / float(trials)
+                    out[(a.name, b.name)] = p
+                    out[(OPP_VIEW, b.name, a.name)] = 1.0 - p
+    return out
 
 
 def matchup_table(dex, my_builds, opp_builds, trials=25, seed=11):
-    """양쪽 파티의 1대1 승률을 미리 재 둔다. 이름쌍으로 찾는다.
+    """양쪽 파티의 1대1 승률을 미리 재 둔다. 이름쌍으로 찾는다 — 읽을 때는 `matchup_get`.
 
     교체를 판단할 때 쓴다. 대전 한 판마다 다시 재면 너무 비싸므로
     시작 전에 한 번만 재고 돌려 쓴다.
     (여기서 돌리는 1대1 에는 교체가 없다 — 있으면 서로를 불러 무한히 돈다.)
+    메가 폼 몸은 '메가 못 하는 기본 폼' 칸도 같이 잰다 (`_variants`) — 칸 수는 몸 수의 곱의 2배다.
     """
     mine = _as_party(my_builds)
     theirs = _as_party(opp_builds)
     if len(mine) == 1 and len(theirs) == 1:
         return {}                       # 1대1 이면 교체가 없으니 필요 없다
-    key = (tuple(b.name for b in mine), tuple(b.name for b in theirs), trials)
-    if key in _MATCHUP_CACHE:
-        return _MATCHUP_CACHE[key]
-    out = {}
-    for i, a in enumerate(mine):
-        for j, b in enumerate(theirs):
-            opp_plan, _, _ = opponent_plan(dex, b, a)
-            plans, _ = build_plans(dex, a, b)
-            plan = plans[0] if plans else [dex.find_move("막치기")]
-            rng = random.Random(seed + i * 13 + j)
-            win = 0
-            for _ in range(trials):
-                r = run_once(dex, a, b, plan, opp_plan, rng, opp_switch=False)
-                if r["result"] == "이김":
-                    win += 1
-            p = win / float(trials)
-            out[(a.name, b.name)] = p
-            out[(b.name, a.name)] = 1.0 - p
+    # ! 열쇠는 이름이 아니라 **몸(Build) 의 지문 + trials + seed** 다. 전에는 (이름들, trials) 만 봐서
+    #   이름만 같으면 성격·노력치·도구·특성이 다른 몸이나 다른 seed 로 물어도 먼저 잰 표를 그대로
+    #   돌려줬다 — 메가보만다 vs 하마돈 20판: 고집 0.45 / 무보정 0.95 / seed 99 0.60 인데 셋 다
+    #   0.45 로 받았다 ([81]). 지문은 `rate_moves` 캐시·`_best_move` 표와 같은 `best._build_key`.
+    #   dex 와 calc.CONFIG 는 열쇠에 없다 — Dex 는 늘 같은 파일을 읽고, CONFIG 를 바꿔 가며 도는
+    #   곳(sensitivity · samples.fit)은 1대1 만 돌려 이 표를 안 만든다. 어긋나면 아래 대조 모드가 잡는다.
+    key = (tuple(best._build_key(b) for b in mine), tuple(best._build_key(b) for b in theirs),
+           trials, seed)
+    got = _MATCHUP_CACHE.get(key)
+    if got is not None and not best.CHECK_CACHE:
+        return got
+    out = _matchup_raw(dex, mine, theirs, trials, seed)
+    if got is not None:
+        # 대조 모드 (best.CHECK_CACHE) — 열쇠에 빠진 것이 있으면 여기서 걸린다
+        if got != out:
+            diff = sorted(k for k in set(got) | set(out) if got.get(k) != out.get(k))
+            raise AssertionError(
+                "matchup_table 캐시가 다른 답을 돌려준다. 열쇠에 빠진 것이 있다: %s 저장 %s / 새로 %s"
+                % (diff[:1], got.get(diff[0]) if diff else None, out.get(diff[0]) if diff else None))
+        return got                      # 같은 표 객체 — 대조 모드에서도 캐시 적중의 모양은 그대로
     _MATCHUP_CACHE[key] = out
     return out
 

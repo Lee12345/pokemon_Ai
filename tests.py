@@ -2218,11 +2218,12 @@ def test_opponent_switching(dex):
     op = [B("갑주무사"), B("루카리오"), B("드닐레이브")]
 
     table = battle.matchup_table(dex, me, op, trials=15)
-    check("1대1 표가 양방향으로 다 찬다",
-          len(table) == 2 * len(me) * len(op), len(table))
+    check("1대1 표가 양방향으로 다 찬다 (%d칸 — 메가 폼은 기본 폼 칸까지)" % len(table),
+          len(table) == 2 * _n_bodies(me) * _n_bodies(op), len(table))
     a, b = me[0].name, op[0].name
     check("서로 반대 방향은 합이 1",
-          abs(table[(a, b)] + table[(b, a)] - 1.0) < 1e-9)
+          abs(battle.matchup_get(table, True, a, b)
+              + battle.matchup_get(table, False, b, a) - 1.0) < 1e-9)
 
     opp_plan, _, _ = battle.opponent_plan(dex, op, me)
     plan = battle.build_plans(dex, me, op)[0][0]
@@ -2242,15 +2243,49 @@ def test_opponent_switching(dex):
     check("상대가 빠지면 내 승률이 내려간다 (%.0f%% -> %.0f%%)"
           % (off * 100, on * 100), on < off, "%.2f vs %.2f" % (off, on))
 
-    # 상대가 이미 유리하면 굳이 안 뺀다
+    # 상대가 이미 유리하면 굳이 안 뺀다 — **표를 보고** 그렇게 판단하는지까지 본다.
+    # ! 전에는 메가보만다가 기본 폼(보만다)으로 시작해 표의 「메가보만다」 칸을 못 찾고 어림셈으로
+    #   답했다. 이 확인은 표가 아니라 어림셈을 재고 있었다 (표를 줘도 안 줘도 같은 답, 2026-09-30).
+    #   그리고 칸 값이 0.9 아래면 `if` 로 **소리 없이 건너뛰었다** — 이제 전제로 센다.
     me2 = [B("누리레느"), B("아머까오")]
     op2 = [B("메가보만다"), B("한카리아스")]
     t2 = battle.matchup_table(dex, me2, op2, trials=15)
-    bt = battle.Battle(dex, me2, op2, rng=random.Random(1), matchup=t2)
-    if t2[(op2[0].name, me2[0].name)] >= 0.9:
-        check("상대 리드가 이미 이기고 있으면 안 뺀다",
-              bt.should_switch(bt.opp_party) is None,
-              bt.should_switch(bt.opp_party))
+    spy = _SpyTable(t2)
+    bt = battle.Battle(dex, me2, op2, rng=random.Random(1), matchup=spy)
+    lead = bt.opp_party.active
+    want = (battle.OPP_VIEW, op2[0].name, me2[0].name)
+    check("검사 전제: 상대 리드는 메가 전 기본 폼(%s)이고 표의 %s 칸은 0.9 이상 (%s)"
+          % (lead.name, want[1:], t2.get(want)),
+          lead.mega_form is not None and not lead.is_mega and (t2.get(want) or 0) >= 0.9,
+          t2.get(want))
+    got = bt.should_switch(bt.opp_party)
+    check("상대 리드가 이미 이기고 있으면 안 뺀다 — 표의 그 칸을 읽고 (%s)" % spy.seen[:1],
+          got is None and dict(spy.seen).get(want) == t2.get(want), (got, spy.seen))
+    # 같은 자리에서 **그 칸만** 낮추고 벤치 칸을 올리면 빼야 한다 — 답이 정말 표에서 나온다
+    low = dict(t2)
+    low[want] = 0.0
+    low[(battle.OPP_VIEW, op2[1].name, me2[0].name)] = 1.0
+    bl = battle.Battle(dex, me2, op2, rng=random.Random(1), matchup=low)
+    check("그 칸만 0 으로 (벤치 칸 1) 바꾸면 벤치로 뺀다 — 표가 답을 정한다",
+          bl.should_switch(bl.opp_party) == 1, bl.should_switch(bl.opp_party))
+
+
+class _SpyTable(dict):
+    """상성표를 **어느 칸을 읽었는지** 적어 두는 표 — `should_switch` 가 표를 실제로 썼는지 본다."""
+
+    def __init__(self, *args):
+        dict.__init__(self, *args)
+        self.seen = []
+
+    def get(self, key, default=None):
+        v = dict.get(self, key, default)
+        self.seen.append((key, v))
+        return v
+
+
+def _n_bodies(builds):
+    """상성표에 칸이 생기는 몸 수 — 메가 폼이면 기본 폼 몸이 하나 더 (`battle._variants` 와 따로 센다)."""
+    return sum(2 if b.poke.get("isMega") else 1 for b in builds)
 
 
 def test_sensitivity(dex):
@@ -8605,6 +8640,296 @@ def test_fallback_setup_tie(dex):
           st["tie"] > 0 and st["err"] == 0 and not crashed and set(st["pick"]) == {"용의춤"}, crashed[:2])
 
 
+def test_matchup_cache_key(dex):
+    """[81] 1대1 상성표 캐시가 **이름만 같은 다른 몸·다른 seed** 에 먼저 잰 표를 돌려주지 않는다 (2026-09-30).
+
+    `battle.matchup_table` 의 캐시 열쇠가 (양쪽 이름들, trials) 뿐이었다. 계산에는 몸(성격·노력치·도구·
+    특성·폼)과 seed 도 쓰이는데, 이름과 trials 만 같으면 먼저 잰 표를 그대로 돌려줬다. 잰 것
+    (메가보만다·갸라도스 vs 하마돈, 20판) — 메가보만다 고집 0.45 / 무보정 0.95 / seed 99 0.60 인데
+    고치기 전에는 먼저 물은 쪽의 0.45 를 셋 다 받았다.
+    ★ 캐시를 끈 것이 아니다 — 같은 몸·같은 seed 를 다시 물으면(몸 객체가 새것이어도) 캐시에서 받는다.
+    대조 모드(`best.CHECK_CACHE`)도 여기서 본다 — 맞는 칸은 안 터지고, 일부러 남의 표를 심은 칸은 터진다.
+    이름쌍: 표의 칸이 (이름, 이름) 뿐이라 같은 종이 양쪽에 있으면 상대 쪽 칸이 내 쪽 칸을 덮어썼다 —
+    내 한카리아스·하마돈 / 상대 하마돈·한카리아스 20판에서 내 한카리아스 vs 상대 하마돈 실제 1.00 이
+    표에서 0.15, 칸 8개 중 4개. 상대 쪽 칸은 (OPP_VIEW, 이름, 이름) 으로 가르고 `matchup_get` 으로 읽는다.
+    ! 검사 전 캐시를 비우고, 끝나면 **원래 캐시를 되돌려 놓는다** (다른 검사의 캐시 상태를 안 건드린다).
+    ! 전제의 0.45 / 0.95 차이는 반동이 '넘친 피해' 에도 매겨지는 것 때문이다 (2026-09-30 분석, 안 고침).
+      반동을 고치면 둘 다 1.00 이 되어 전제가 깨진다 — 그때는 다른 대면으로 바꾼다.
+    """
+    print("\n[81] 상성표 캐시 — 이름만 같은 다른 몸·다른 seed 에 먼저 잰 표를 안 돌려준다")
+    import random
+    P = dex.find_pokemon
+    pb = lambda n: calc.popular_build(dex, P(n))[0]
+    T = 20
+    saved = dict(battle._MATCHUP_CACHE)
+
+    def fresh(me, op, **kw):
+        """캐시를 비우고 새로 잰 값 — 비교의 기준."""
+        battle._MATCHUP_CACHE.clear()
+        return battle.matchup_table(dex, me, op, trials=T, **kw)
+
+    try:
+        op = [pb("하마돈")]
+        a = [pb("보만다"), pb("갸라도스")]
+        b = [pb("보만다"), pb("갸라도스")]
+        b[0].nature = None                      # 무보정 — 이름은 그대로 메가보만다
+        pair = (a[0].name, op[0].name)
+        check("검사 전제: 두 몸은 이름이 같고 (%s / %s) 지문은 다르다" % (a[0].name, b[0].name),
+              [x.name for x in a] == [x.name for x in b]
+              and best._build_key(a[0]) != best._build_key(b[0]))
+        fa, fb = fresh(a, op), fresh(b, op)
+        check("검사 전제: 새로 재면 두 몸의 승률이 다르다 (%.2f / %.2f)" % (fa[pair], fb[pair]),
+              fa[pair] != fb[pair])
+
+        battle._MATCHUP_CACHE.clear()
+        ga = battle.matchup_table(dex, a, op, trials=T)
+        gb = battle.matchup_table(dex, b, op, trials=T)
+        check("A 를 잰 뒤 이름 같은 B 를 물으면 B 의 값 (%.2f, 새로 잰 B %.2f)" % (gb[pair], fb[pair]),
+              gb is not ga and gb == fb)
+        battle._MATCHUP_CACHE.clear()
+        gb2 = battle.matchup_table(dex, b, op, trials=T)
+        ga2 = battle.matchup_table(dex, a, op, trials=T)
+        check("순서를 바꿔도 각자 값 (B %.2f → A %.2f)" % (gb2[pair], ga2[pair]), gb2 == fb and ga2 == fa)
+
+        f11, f99 = fresh(a, op, seed=11), fresh(a, op, seed=99)
+        check("검사 전제: 새로 재면 seed 11 과 99 의 승률이 다르다 (%.2f / %.2f)" % (f11[pair], f99[pair]),
+              f11[pair] != f99[pair])
+        battle._MATCHUP_CACHE.clear()
+        g11 = battle.matchup_table(dex, a, op, trials=T, seed=11)
+        g99 = battle.matchup_table(dex, a, op, trials=T, seed=99)
+        check("seed 11 을 잰 뒤 seed 99 를 물으면 seed 99 의 값 (%.2f, 새로 잰 %.2f)" % (g99[pair], f99[pair]),
+              g99 is not g11 and g99 == f99)
+
+        # 캐시는 그대로 쓰인다 — 내용이 같은 새 몸 객체로 물어도 같은 표 객체를 돌려준다
+        again = battle.matchup_table(dex, [pb("보만다"), pb("갸라도스")], op, trials=T, seed=11)
+        check("같은 몸·같은 seed 는 (새 몸 객체라도) 캐시에서 받는다", again is g11)
+        n_keys = len(battle._MATCHUP_CACHE)          # seed 11 · seed 99 두 칸
+        g99b = battle.matchup_table(dex, a, op, trials=T, seed=99)
+        check("이미 잰 입력을 다시 물으면 캐시가 늘지 않는다 (%d개 그대로)" % n_keys,
+              g99b is g99 and len(battle._MATCHUP_CACHE) == n_keys == 2, len(battle._MATCHUP_CACHE))
+        gb3 = battle.matchup_table(dex, b, op, trials=T)     # 대조 모드에서 고장을 심을 칸
+
+        # --- 대조 모드 (best.CHECK_CACHE) — CLAUDE.md §7: 캐시에 무엇을 더하든 대조 모드를 같이 만든다
+        was = best.CHECK_CACHE
+        best.CHECK_CACHE = True
+        try:
+            blew = None
+            try:
+                hit = battle.matchup_table(dex, a, op, trials=T, seed=11)
+            except AssertionError as e:
+                blew = str(e)
+            check("대조 모드: 맞는 캐시는 다시 재도 같아서 안 터지고 같은 표 객체를 준다",
+                  blew is None and hit is g11, blew)
+            # 일부러 옛 결함을 심는다 — 무보정 몸의 칸에 고집 몸의 표 (이름만 보던 열쇠가 하던 짓)
+            kb = [k for k, v in battle._MATCHUP_CACHE.items() if v is gb3]
+            check("검사 전제: 고장을 심을 캐시 칸을 하나 찾았다 (%d개)" % len(kb), len(kb) == 1, len(kb))
+            if len(kb) == 1:
+                battle._MATCHUP_CACHE[kb[0]] = dict(fa)
+                blew = None
+                try:
+                    battle.matchup_table(dex, b, op, trials=T)
+                except AssertionError as e:
+                    blew = str(e)
+                check("대조 모드: 남의 표가 든 칸을 물으면 터진다 (일부러 심은 고장을 잡는가)",
+                      blew is not None and "matchup_table" in blew, blew)
+        finally:
+            best.CHECK_CACHE = was
+
+        # --- 이름쌍 — 같은 종이 양쪽에 있으면 상대 쪽 칸이 내 쪽 칸을 덮어쓰지 않는다
+        me2 = [pb("한카리아스"), pb("하마돈")]
+        op2 = [pb("하마돈"), pb("한카리아스")]
+        battle._MATCHUP_CACHE.clear()
+        T2 = 40
+        t2 = battle.matchup_table(dex, me2, op2, trials=T2)
+        want_n = 2 * _n_bodies(me2) * _n_bodies(op2)
+        check("엇갈린 이름쌍: 칸이 양방향으로 다 있다 (%d / %d)" % (len(t2), want_n),
+              len(t2) == want_n, sorted(t2))
+
+        def bodies(x):
+            """이 놈의 몸들 — 넘겨받은 몸, 메가 폼이면 메가 못 하는 기본 폼 몸도."""
+            pre = battle.mega_base_build(dex, x)
+            return [x] if pre is None else [x, pre]
+
+        def ref(x, y):
+            """기준값 — 표와 **다른 길**(`battle.evaluate`, 1대1)·다른 씨앗·100판으로 따로 잰 승률."""
+            oplan, _, _ = battle.opponent_plan(dex, y, x)
+            plans, _ = battle.build_plans(dex, x, y)
+            return battle.evaluate(dex, x, y, plans[0], oplan, trials=100, seed=5)["winRate"]
+
+        # ! 칸의 값은 판수가 달라 기준값과 딱 같지 않다 — 0.35 안이면 같은 대면으로 본다.
+        #   옛 결함은 차이가 0.85 였다 (내 한카리아스 vs 상대 하마돈: 실제 1.00, 표 0.15).
+        bad, seen = [], 0
+        for x0 in me2:
+            for y0 in op2:
+                for x in bodies(x0):
+                    for y in bodies(y0):
+                        p = ref(x, y)
+                        mine = battle.matchup_get(t2, True, x.name, y.name)
+                        theirs = battle.matchup_get(t2, False, y.name, x.name)
+                        seen += 1
+                        if (mine is None or theirs is None or abs(mine - p) > 0.35
+                                or abs(theirs - (1.0 - mine)) > 1e-9):
+                            bad.append((x.name, y.name, p, mine, theirs))
+        check("엇갈린 이름쌍: 칸 %d개가 따로 잰 기준값과 맞는다 (내 쪽 ≈ 기준 · 상대 쪽 = 1 - 내 쪽)" % seen,
+              not bad and seen * 2 == want_n, bad)
+        mir_me, mir_op = [pb("한카리아스"), pb("갸라도스")], [pb("한카리아스"), pb("하마돈")]
+        mirror = battle.matchup_table(dex, mir_me, mir_op, trials=T)
+        want_m = 2 * _n_bodies(mir_me) * _n_bodies(mir_op)
+        check("거울 대면 (양쪽 %s): 칸이 %d개 다 있다 (%d)" % (me2[0].name, want_m, len(mirror)),
+              len(mirror) == want_m, sorted(mirror))
+    finally:
+        battle._MATCHUP_CACHE.clear()
+        battle._MATCHUP_CACHE.update(saved)
+    check("검사 뒤 캐시를 원래대로 돌려놓는다 (%d개)" % len(saved),
+          battle._MATCHUP_CACHE == saved)
+
+
+def test_matchup_mega_names(dex):
+    """[82] 교체 판단이 메가 가능한 놈의 상성표 칸을 **지금 상태에 맞게** 읽는다 (2026-09-30).
+
+    표의 칸은 넘겨받은 몸 이름(「메가보만다」)인데 대전은 기본 폼(「보만다」)으로 시작해서,
+    `should_switch` 가 메가 전에는 표를 한 번도 못 찾고 어림셈으로 돌아갔다 — 표를 줘도 안 줘도 같은 답.
+    그렇다고 기본 폼을 **무조건** 메가로 보면 안 된다: 같은 편이 이미 메가를 썼으면 이놈은 기본 폼으로만
+    싸운다. 그래서 칸이 둘이다 — 메가했거나 아직 할 수 있으면 메가 폼 몸의 칸('첫 행동에 메가' 로 잼),
+    못 하게 됐으면 기본 폼 몸의 칸. 여기서는 `_SpyTable` 로 **읽은 칸** 을 직접 보고,
+    그 칸 값만 바꿔서 **답이 뒤집히는지** 로 표가 정말 판단을 정하는지 본다.
+    """
+    print("\n[82] 교체 판단 — 메가 가능한 놈의 상성표 칸을 지금 상태(메가 전·후·같은 편이 먼저 씀)로 읽는다")
+    import random
+    B = lambda n: calc.popular_build(dex, dex.find_pokemon(n))[0]
+    OV = battle.OPP_VIEW
+    me = [B("누리레느"), B("아머까오")]
+    op = [B("보만다"), B("한카리아스")]          # 사용률 1위 세트가 둘 다 메가 폼
+    mb, mh = op[0].name, op[1].name                # 메가보만다 / 메가한카리아스Z
+    bb = battle.mega_base_build(dex, op[0]).name  # 보만다
+    bh = battle.mega_base_build(dex, op[1]).name  # 한카리아스
+    nu = me[0].name
+    check("검사 전제: 상대 둘 다 메가 폼 몸이고 기본 폼 이름이 다르다 (%s/%s, %s/%s)" % (mb, bb, mh, bh),
+          all(b.poke.get("isMega") for b in op) and mb != bb and mh != bh)
+    t = battle.matchup_table(dex, me, op, trials=10)
+    need = [(OV, mb, nu), (OV, mh, nu), (OV, bb, nu), (OV, bh, nu)]
+    check("상성표에 메가 폼 칸과 기본 폼 칸이 다 있다", all(k in t for k in need),
+          [k for k in need if k not in t])
+
+    def read(state):
+        """state 대로 판을 만들고 상대의 should_switch 가 읽은 칸 [(칸, 값)]."""
+        spy = _SpyTable(t)
+        bt = battle.Battle(dex, me, op, rng=random.Random(1), matchup=spy)
+        state(bt.opp_party)
+        bt.should_switch(bt.opp_party)
+        return bt, spy.seen
+
+    def nothing(p):
+        pass
+
+    def lead_megas(p):
+        p.do_mega(p.active)
+
+    def mate_megas(p):
+        p.do_mega(p.members[1])          # 벤치의 한카리아스가 먼저 메가를 썼다
+
+    bt, seen = read(nothing)
+    check("메가 전(아직 할 수 있음): 나와 있는 %s·벤치 %s 모두 메가 폼 칸을 읽는다 %s"
+          % (bt.opp_party.active.name, bh, [k for k, _ in seen]),
+          [k for k, _ in seen] == [(OV, mb, nu), (OV, mh, nu)] and all(v is not None for _, v in seen),
+          seen)
+    bt, seen = read(lead_megas)
+    check("리드가 메가한 뒤: 리드는 메가 폼 칸, 메가를 못 하게 된 벤치는 기본 폼 칸 %s" % [k for k, _ in seen],
+          bt.opp_party.active.is_mega
+          and [k for k, _ in seen] == [(OV, mb, nu), (OV, bh, nu)] and all(v is not None for _, v in seen),
+          seen)
+    bt, seen = read(mate_megas)
+    check("같은 편이 먼저 메가: 메가 못 하는 리드는 **기본 폼** 칸, 메가한 벤치는 메가 폼 칸 %s"
+          % [k for k, _ in seen],
+          not bt.opp_party.active.is_mega
+          and [k for k, _ in seen] == [(OV, bb, nu), (OV, mh, nu)] and all(v is not None for _, v in seen),
+          seen)
+
+    # 표가 답을 정하는가 — 읽어야 할 칸만 바꾸면 답이 뒤집히고, 안 읽어야 할 칸을 바꾸면 그대로다
+    def decide(state, cells):
+        tb = dict(t)
+        tb.update(cells)
+        bt = battle.Battle(dex, me, op, rng=random.Random(1), matchup=tb)
+        state(bt.opp_party)
+        return bt.should_switch(bt.opp_party)
+
+    check("메가 전: 메가 폼 칸(리드 0 · 벤치 1)대로 벤치로 뺀다",
+          decide(nothing, {(OV, mb, nu): 0.0, (OV, mh, nu): 1.0}) == 1)
+    check("메가 전: 메가 폼 칸(리드 1 · 벤치 0)대로 안 뺀다",
+          decide(nothing, {(OV, mb, nu): 1.0, (OV, mh, nu): 0.0}) is None)
+    check("같은 편이 먼저 메가: 기본 폼 칸이 0 이면 (메가 폼 칸이 1 이어도) 뺀다 — 메가로 간주하지 않는다",
+          decide(mate_megas, {(OV, bb, nu): 0.0, (OV, mb, nu): 1.0, (OV, mh, nu): 1.0}) == 1)
+    check("같은 편이 먼저 메가: 기본 폼 칸이 1 이면 (메가 폼 칸이 0 이어도) 안 뺀다",
+          decide(mate_megas, {(OV, bb, nu): 1.0, (OV, mb, nu): 0.0, (OV, mh, nu): 0.0}) is None)
+
+    # 대칭 — **내 파티**에서 같은 편이 먼저 메가를 쓰면, 아직 메가 안 한 내 놈은 기본 폼 칸을 읽는다.
+    # 상대 쪽과 같은 방법 (읽은 칸 · 그 칸만 바꾸면 답이 뒤집히나). 내 쪽 칸은 (내 이름, 상대 이름).
+    mme, mop = op, me                              # 내 파티 = 메가보만다·메가한카리아스Z / 상대 = 누리레느·아머까오
+    tm = battle.matchup_table(dex, mme, mop, trials=10)
+    need_m = [(mb, nu), (mh, nu), (bb, nu), (bh, nu)]
+    check("내 쪽: 상성표에 내 메가 폼 칸과 기본 폼 칸이 다 있다", all(k in tm for k in need_m),
+          [k for k in need_m if k not in tm])
+
+    def read_me(state):
+        spy = _SpyTable(tm)
+        bt = battle.Battle(dex, mme, mop, rng=random.Random(1), matchup=spy)
+        state(bt.me_party)
+        bt.should_switch(bt.me_party)
+        return bt, spy.seen
+
+    bt, seen = read_me(nothing)
+    check("내 쪽 메가 전(아직 할 수 있음): 내 리드·벤치 모두 메가 폼 칸 %s" % [k for k, _ in seen],
+          [k for k, _ in seen] == [(mb, nu), (mh, nu)] and all(v is not None for _, v in seen), seen)
+    bt, seen = read_me(lead_megas)
+    check("내 리드가 메가한 뒤: 리드는 메가 폼 칸, 메가 못 하게 된 내 벤치는 기본 폼 칸 %s" % [k for k, _ in seen],
+          bt.me_party.active.is_mega
+          and [k for k, _ in seen] == [(mb, nu), (bh, nu)] and all(v is not None for _, v in seen), seen)
+    bt, seen = read_me(mate_megas)
+    check("내 같은 편이 먼저 메가: 메가 안 한 내 리드는 **기본 폼** 칸, 메가한 벤치는 메가 폼 칸 %s"
+          % [k for k, _ in seen],
+          bt.me_party.mega_used and not bt.me_party.active.is_mega
+          and [k for k, _ in seen] == [(bb, nu), (mh, nu)] and all(v is not None for _, v in seen), seen)
+
+    def decide_me(state, cells):
+        tb = dict(tm)
+        tb.update(cells)
+        bt = battle.Battle(dex, mme, mop, rng=random.Random(1), matchup=tb)
+        state(bt.me_party)
+        return bt.should_switch(bt.me_party)
+
+    check("내 같은 편이 먼저 메가: 기본 폼 칸이 0 이면 (메가 폼 칸이 1 이어도) 뺀다 — 메가로 간주하지 않는다",
+          decide_me(mate_megas, {(bb, nu): 0.0, (mb, nu): 1.0, (mh, nu): 1.0}) == 1)
+    check("내 같은 편이 먼저 메가: 기본 폼 칸이 1 이면 (메가 폼 칸이 0 이어도) 안 뺀다",
+          decide_me(mate_megas, {(bb, nu): 1.0, (mb, nu): 0.0, (mh, nu): 0.0}) is None)
+
+    # 내 쪽도 — 그리고 상대 이름은 **상대의** 지금 상태를 따른다
+    me3 = [B("한카리아스"), B("누리레느")]
+    op3 = [B("보만다"), B("아머까오")]
+    t3 = battle.matchup_table(dex, me3, op3, trials=10)
+    spy = _SpyTable(t3)
+    bt = battle.Battle(dex, me3, op3, rng=random.Random(1), matchup=spy)
+    bt.should_switch(bt.me_party)
+    k1 = [k for k, _ in spy.seen]
+    spy.seen[:] = []
+    bt.opp_party.do_mega(bt.opp_party.members[0])
+    bt.should_switch(bt.me_party)
+    k2 = [k for k, _ in spy.seen]
+    mh3, mb3 = me3[0].name, op3[0].name
+    check("내 쪽: 메가 전인 내 %s 는 메가 폼 칸, 상대 이름도 메가 전·후 모두 %s (%s → %s)"
+          % (mh3, mb3, k1[:1], k2[:1]),
+          k1 and k1[0] == (mh3, mb3) and k2 and k2[0] == (mh3, mb3)
+          and all(v is not None for _, v in spy.seen), (k1, k2))
+    op4 = [B("보만다"), B("갑주무사")]              # 상대 벤치도 메가 폼
+    spy = _SpyTable(battle.matchup_table(dex, me3, op4, trials=10))
+    bt = battle.Battle(dex, me3, op4, rng=random.Random(1), matchup=spy)
+    bt.opp_party.do_mega(bt.opp_party.members[1])   # 상대 벤치(갑주무사)가 먼저 메가 → 상대 리드는 기본 폼
+    bt.should_switch(bt.me_party)
+    k3 = [k for k, _ in spy.seen]
+    check("내 쪽: 상대가 같은 편 메가로 메가를 못 하게 되면 상대 이름은 기본 폼 %s (%s)" % (bb, k3[:1]),
+          op4[1].poke.get("isMega") and k3 and k3[0] == (mh3, bb)
+          and all(v is not None for _, v in spy.seen), spy.seen)
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -8689,6 +9014,8 @@ def main():
     test_setup_tie(dex)
     test_rollout_setup_tie(dex)
     test_fallback_setup_tie(dex)
+    test_matchup_cache_key(dex)
+    test_matchup_mega_names(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
