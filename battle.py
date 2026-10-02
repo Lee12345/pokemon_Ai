@@ -2132,6 +2132,7 @@ class Battle(object):
         n_hits = self._hit_count(atk, move, fx)
         my_party, foe_party = self._party_of(atk), self._party_of(dfn)
         total, landed, connected = 0, 0, False
+        lost_total = 0          # 맞은 몸(대타)이 실제로 잃은 HP 의 합 — 반동이 이걸 본다
         for i in range(n_hits):
             if i > 0:
                 # 레드카드·탈출버튼으로 누가 빠졌거나 쓰러졌으면 멈춘다
@@ -2151,8 +2152,9 @@ class Battle(object):
                                        mv_i, critical=crit, extra=extra)
                 if "error" in res:
                     break
-            got, touched = self._land(atk, dfn, move, res, crit, mold)
+            got, touched, lost = self._land(atk, dfn, move, res, crit, mold)
             total += got
+            lost_total += lost
             landed += 1
             connected = connected or touched
         if n_hits > 1:
@@ -2171,10 +2173,12 @@ class Battle(object):
         # 본편처럼 **생명의구슬 반동도 없다** — 추가 효과가 있는 기술일 때만.
         sheer = calc.sheer_force_on(self.dex, atk.as_build(), move)
 
-        # 반동
+        # 반동 — 계산한 피해가 아니라 **상대(대타)가 실제로 잃은 HP** 기준 (연속기는 매 방의 합).
+        # ! 전에는 계산 피해(dmg)로 매겼다. HP 22 인 하마돈에게 이판사판태클이 63 으로 계산되면
+        #   하마돈은 22 만 잃는데 반동은 21 이 들어갔다 (메가 뒤 120 → 40). 맞으면 7 이다 — [84].
         rec = move_recoil(move)
-        if rec and dmg and not self._rules(atk, "rock_head"):   # 돌머리
-            back = max(1, int(dmg * rec))
+        if rec and lost_total and not self._rules(atk, "rock_head"):   # 돌머리
+            back = max(1, int(lost_total * rec))
             if atk.chip(back):
                 self._say("%s 반동 %d (HP %d/%d)" % (atk.name, back, atk.hp, atk.max_hp))
         # 생명의구슬
@@ -2285,7 +2289,11 @@ class Battle(object):
         return self.rng.randint(lo, hi)
 
     def _land(self, atk, dfn, move, res, crit, mold=False):
-        """한 방. (몸에 들어간 데미지, 닿았나) — 대타·탈에 막혀도 '닿은' 것이다."""
+        """한 방. (몸에 들어간 데미지, 닿았나, 실제로 깎인 HP) — 대타·탈에 막혀도 '닿은' 것이다.
+
+        실제로 깎인 HP 는 맞은 몸(대타가 맞았으면 대타)이 **실제로 잃은 양**이다. 반동이 이걸 본다 —
+        남은 HP 보다 큰 피해는 넘친 만큼 안 깎인다 ([84]). 탈이 막았으면 0 이다.
+        """
         # 원격 — "사용하는 기술이 접촉 기술이 아니게 된다" (울퉁불퉁멧·정전기 등을 안 받는다)
         contact = bool(move["isContact"]) and not self._rules(atk, "long_reach")
         hp_before = dfn.hp
@@ -2306,7 +2314,7 @@ class Battle(object):
             self._say("%s 의 탈이 벗겨졌다 — 데미지 무효, %d 만 잃음 (HP %d/%d)"
                       % (dfn.name, lost, dfn.hp, dfn.max_hp))
             self._pinch_berry(dfn)
-            return 0, True
+            return 0, True, 0
 
         if dfn.substitute > 0 and not infiltrate:
             took = min(dfn.substitute, dmg)
@@ -2318,9 +2326,10 @@ class Battle(object):
                          " (대타 %d 남음)" % dfn.substitute))
             if gone:
                 dfn.substitute = 0
-            return 0, True
+            return 0, True, took
 
         note = dfn.damage(dmg, ignore_ability=mold)
+        lost = hp_before - dfn.hp          # 넘친 피해·버티기(HP 1)를 뺀, 실제로 깎인 양
         self._say("%s 의 %s → %s 에게 %d (HP %d/%d)%s%s"
                   % (atk.name, move["name"], dfn.name, dmg, dfn.hp, dfn.max_hp,
                      "  급소!" if crit else "",
@@ -2402,7 +2411,7 @@ class Battle(object):
                     self._say("%s 의 %s — 스스로 물러난다"
                               % (dfn.name, dfn.item))
                     self._force_switch(self._party_of(dfn), dfn.item)
-        return dmg, True
+        return dmg, True, lost
 
     def _ability_on_hit(self, atk, dfn, move, res, crit, dmg, contact, hp_before):
         """한 방이 몸에 들어갔을 때 양쪽 특성이 반응한다 (ability_rules).

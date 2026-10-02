@@ -9030,6 +9030,65 @@ def test_pick_known_moves(dex):
     del seen[:]
 
 
+def test_recoil_actual_loss(dex):
+    """[84] 반동은 계산 피해가 아니라 **상대가 실제로 잃은 HP** 기준 (2026-10-02).
+
+    ! 전에는 계산 피해로 매겼다. HP 22(10%) 인 하마돈에게 이판사판태클이 63 으로 계산되면
+      하마돈은 22 만 잃는데 반동은 21 이 들어갔다 (메가 뒤 120 → 40). 맞는 값은 int(22/3) = 7.
+    """
+    import random
+    import re
+    print("\n[84] 반동은 상대가 실제로 잃은 HP 기준 — 넘친 피해에는 안 매긴다")
+    me, _ = calc.popular_build(dex, dex.find_pokemon("메가보만다"))
+    opp, _ = calc.popular_build(dex, dex.find_pokemon("하마돈"))
+    dedge = dex.find_move("이판사판태클")
+    quake = dex.find_move("지진")      # 비행에는 안 통한다 — 내 HP 는 반동으로만 준다
+    check("검사 전제: 이판사판태클 반동 비율은 1/3",
+          abs(battle.move_recoil(dedge) - 1.0 / 3) < 1e-9, battle.move_recoil(dedge))
+
+    def one_turn(action, opp_hp, seed=1):
+        b = battle.Battle(dex, me, opp, rng=random.Random(seed), log=True,
+                          my_fresh=True, opp_fresh=True, opp_hp=opp_hp)
+        mine, theirs = b.me_party.active, b.opp_party.active
+        my0, op0 = mine.hp, theirs.hp
+        b.step(action, quake)
+        mine = b.me_party.active
+        text = " ".join(b.log)
+        hit = re.search(r"이판사판태클 → 하마돈 에게 (\d+)", text)
+        back = re.search(r"반동 (\d+) \(HP", text)
+        return {"name": mine.name, "max": mine.max_hp, "my_lost": my0 - mine.hp,
+                "opp_lost": op0 - theirs.hp, "opp_before": op0, "opp_alive": theirs.alive,
+                "hit": int(hit.group(1)) if hit else None,
+                "back": int(back.group(1)) if back else None, "log": b.log}
+
+    for label, action, form in (("메가 전", dedge, "보만다"),
+                                ("메가 후", ("메가", dedge), "메가보만다")):
+        r = one_turn(action, [10])
+        check("검사 전제(%s): %s 가 HP %d 인 하마돈에게 계산 피해 %s — 남은 HP 보다 크다"
+              % (label, r["name"], r["opp_before"], r["hit"]),
+              r["name"] == form and r["opp_before"] == 22 and r["hit"] and r["hit"] > 22,
+              r["log"])
+        check("%s: 하마돈은 22 를 잃고 쓰러진다 (%d)" % (label, r["opp_lost"]),
+              r["opp_lost"] == 22 and not r["opp_alive"], r["log"])
+        check("%s: 반동 7 — int(22/3), 계산 피해 %s 기준이 아니다 (반동 %s · 내가 잃은 HP %d)"
+              % (label, r["hit"], r["back"], r["my_lost"]),
+              r["back"] == 7 and r["my_lost"] == 7, r["log"])
+
+    # HP 가 가득하면 판이 안 끝난다 — 턴 끝 모래바람(내 HP)·자뭉열매(하마돈 HP)가 끼므로
+    # HP 차이가 아니라 로그에 찍힌 피해·반동으로 본다.
+    for label, action, form in (("메가 전", dedge, "보만다"),
+                                ("메가 후", ("메가", dedge), "메가보만다")):
+        r = one_turn(action, None)
+        check("검사 전제(%s): HP 가득한 하마돈 — 피해 %s 가 넘치지 않는다 (HP %d)"
+              % (label, r["hit"], r["opp_before"]),
+              r["name"] == form and r["hit"] and r["hit"] < r["opp_before"]
+              and r["opp_alive"], r["log"])
+        check("%s: 넘치지 않으면 반동은 수정 전과 같다 — max(1, int(%s/3)) = %s (반동 %s)"
+              % (label, r["hit"], r["hit"] and max(1, int(r["hit"] / 3.0)), r["back"]),
+              r["hit"] and r["back"] == max(1, int(r["hit"] * battle.move_recoil(dedge))),
+              r["log"])
+
+
 def main():
     paths.fix_console()          # 윈도우에서 한글을 찍다 죽지 않게
     dex = calc.Dex()
@@ -9117,6 +9176,7 @@ def main():
     test_matchup_cache_key(dex)
     test_matchup_mega_names(dex)
     test_pick_known_moves(dex)
+    test_recoil_actual_loss(dex)
 
     print("\n" + "=" * 50)
     if FAIL:
